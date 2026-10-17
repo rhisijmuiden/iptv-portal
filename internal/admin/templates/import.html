@@ -5,6 +5,8 @@
   <h2>Result</h2>
   <p>{{.Added}} channels added, {{.Updated}} updated{{if .Skipped}}, {{len .Skipped}} skipped{{end}}.</p>
   {{if .Skipped}}<ul class="muted">{{range .Skipped}}<li>{{.}}</li>{{end}}</ul>{{end}}
+  {{if .EPGAdded}}<p>The playlist announces a program guide, which was added as a <a href="/epg">guide source</a>:</p>
+  <ul>{{range .EPGAdded}}<li><code>{{.}}</code></li>{{end}}</ul>{{end}}
   <p><a href="/channels">View channels</a></p>
 </section>
 {{end}}

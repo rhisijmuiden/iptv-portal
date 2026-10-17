@@ -1,0 +1,31 @@
+{{define "content"}}
+<div class="titlebar">
+  <h1>Packages</h1>
+  <a class="button" href="/packages/new">Add package</a>
+</div>
+<p class="muted">A package is a set of channels you give to users: either every channel, or the channels in the categories you choose.</p>
+{{if .Data.Packages}}
+<div class="card flush">
+<table>
+  <thead><tr><th>Name</th><th>Channels</th><th>Users</th><th></th></tr></thead>
+  <tbody>
+  {{range .Data.Packages}}
+  <tr>
+    <td><a href="/packages/{{.ID}}">{{.Name}}</a></td>
+    <td>{{if .AllChannels}}All channels{{else}}{{range $i, $c := .CategoryIDs}}{{if $i}}, {{end}}{{index $.Data.Categories $c}}{{end}}{{end}}</td>
+    <td>{{.UserCount}}</td>
+    <td class="actions">
+      <form method="post" action="/packages/{{.ID}}/delete" onsubmit="return confirm('Delete this package? Users lose the channels it gave them.')">
+        <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+        <button class="link danger">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+</div>
+{{else}}
+<section class="card empty"><p>No packages yet. <a href="/packages/new">Add a package</a>.</p></section>
+{{end}}
+{{end}}

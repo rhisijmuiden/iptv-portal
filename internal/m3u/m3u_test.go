@@ -18,10 +18,14 @@ func TestParse(t *testing.T) {
 		"http://stream.example/lokaal.m3u8\n" +
 		"http://stream.example/kaal.m3u8\n"
 
-	got, err := Parse(strings.NewReader(in))
+	pl, err := Parse(strings.NewReader(in))
 	if err != nil {
 		t.Fatal(err)
 	}
+	if u := pl.EPGURLs(); len(u) != 1 || u[0] != "http://epg" {
+		t.Fatalf("EPGURLs = %v", u)
+	}
+	got := pl.Entries
 	if len(got) != 4 {
 		t.Fatalf("got %d entries, want 4: %+v", len(got), got)
 	}

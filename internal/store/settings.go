@@ -23,6 +23,9 @@ type Settings struct {
 	AdminPort int
 	// PortalPort is the port the client portal (M3U / Xtream API) listens on.
 	PortalPort int
+	// EPGURLs are XMLTV guide sources (plain or gzipped) that are merged
+	// into the guide served to players.
+	EPGURLs []string
 }
 
 // DefaultSettings are used for every key that has not been stored yet.
@@ -37,6 +40,7 @@ const (
 	keyPublicURL  = "public_url"
 	keyAdminPort  = "admin_port"
 	keyPortalPort = "portal_port"
+	keyEPGURLs    = "epg_urls"
 )
 
 // Settings returns the current settings, falling back to defaults.
@@ -65,6 +69,8 @@ func (s *Store) Settings(ctx context.Context) (Settings, error) {
 			if p, err := strconv.Atoi(v); err == nil {
 				out.PortalPort = p
 			}
+		case keyEPGURLs:
+			out.EPGURLs = strings.Fields(v)
 		}
 	}
 	return out, rows.Err()
@@ -91,6 +97,20 @@ func (st *Settings) Validate() error {
 	if st.AdminPort == st.PortalPort {
 		return errors.New("admin panel and portal must use different ports")
 	}
+	var urls []string
+	seen := map[string]bool{}
+	for _, u := range st.EPGURLs {
+		u = strings.TrimSpace(u)
+		if u == "" || seen[u] {
+			continue
+		}
+		if !isHTTPURL(u) {
+			return fmt.Errorf("guide URL %q must start with http:// or https://", u)
+		}
+		seen[u] = true
+		urls = append(urls, u)
+	}
+	st.EPGURLs = urls
 	return nil
 }
 
@@ -104,6 +124,7 @@ func (s *Store) SaveSettings(ctx context.Context, st Settings) error {
 		keyPublicURL:  st.PublicURL,
 		keyAdminPort:  strconv.Itoa(st.AdminPort),
 		keyPortalPort: strconv.Itoa(st.PortalPort),
+		keyEPGURLs:    strings.Join(st.EPGURLs, "\n"),
 	}
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		for k, v := range values {
@@ -127,4 +148,30 @@ func (s *Store) withTx(ctx context.Context, fn func(*sql.Tx) error) error {
 		return err
 	}
 	return tx.Commit()
+}
+
+// SetEPGURLs replaces the guide sources.
+func (s *Store) SetEPGURLs(ctx context.Context, urls []string) error {
+	st, err := s.Settings(ctx)
+	if err != nil {
+		return err
+	}
+	st.EPGURLs = urls
+	return s.SaveSettings(ctx, st)
+}
+
+// AddEPGURL adds a guide source unless it is already configured. It
+// reports whether the source was added.
+func (s *Store) AddEPGURL(ctx context.Context, u string) (bool, error) {
+	st, err := s.Settings(ctx)
+	if err != nil {
+		return false, err
+	}
+	for _, have := range st.EPGURLs {
+		if have == u {
+			return false, nil
+		}
+	}
+	st.EPGURLs = append(st.EPGURLs, u)
+	return true, s.SaveSettings(ctx, st)
 }

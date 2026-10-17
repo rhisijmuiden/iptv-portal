@@ -23,7 +23,7 @@ func TestSettingsDefaultsAndValidation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if st != DefaultSettings {
+	if st.PortalName != DefaultSettings.PortalName || st.AdminPort != 8080 || st.PortalPort != 80 || len(st.EPGURLs) != 0 {
 		t.Fatalf("defaults = %+v", st)
 	}
 	st.PublicURL = "https://tv.example.com/"
@@ -34,6 +34,18 @@ func TestSettingsDefaultsAndValidation(t *testing.T) {
 	got, _ := s.Settings(ctx)
 	if got.PublicURL != "https://tv.example.com" || got.AdminPort != 9000 || got.PortalPort != 80 {
 		t.Fatalf("saved = %+v", got)
+	}
+	if added, err := s.AddEPGURL(ctx, "https://epg.example/guide.xml.gz"); err != nil || !added {
+		t.Fatalf("AddEPGURL = %v, %v", added, err)
+	}
+	if added, _ := s.AddEPGURL(ctx, "https://epg.example/guide.xml.gz"); added {
+		t.Fatal("duplicate guide URL added")
+	}
+	if got, _ := s.Settings(ctx); len(got.EPGURLs) != 1 || got.AdminPort != 9000 {
+		t.Fatalf("after AddEPGURL = %+v", got)
+	}
+	if err := s.SetEPGURLs(ctx, []string{"ftp://x"}); err == nil {
+		t.Fatal("ftp guide URL accepted")
 	}
 	for _, bad := range []Settings{
 		{PortalName: "x", AdminPort: 80, PortalPort: 80},

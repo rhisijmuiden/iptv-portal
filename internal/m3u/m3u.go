@@ -18,12 +18,32 @@ type Entry struct {
 // Attr returns an attribute value or "".
 func (e Entry) Attr(key string) string { return e.Attrs[key] }
 
+// Playlist is a parsed playlist.
+type Playlist struct {
+	Attrs   map[string]string // attributes of the #EXTM3U header line
+	Entries []Entry
+}
+
+// EPGURLs returns the guide URLs announced in the header (x-tvg-url or
+// url-tvg; several URLs may be separated by commas).
+func (p Playlist) EPGURLs() []string {
+	var out []string
+	for _, key := range []string{"x-tvg-url", "url-tvg"} {
+		for _, u := range strings.Split(p.Attrs[key], ",") {
+			if u = strings.TrimSpace(u); u != "" {
+				out = append(out, u)
+			}
+		}
+	}
+	return out
+}
+
 // Parse reads a playlist. Lines it does not understand are ignored, so a
 // plain list of URLs is accepted too (the URL is then used as name).
-func Parse(r io.Reader) ([]Entry, error) {
+func Parse(r io.Reader) (Playlist, error) {
+	pl := Playlist{Attrs: map[string]string{}}
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 64*1024), 1024*1024)
-	var out []Entry
 	var pending *Entry
 	first := true
 	for sc.Scan() {
@@ -34,6 +54,8 @@ func Parse(r io.Reader) ([]Entry, error) {
 		}
 		switch {
 		case line == "":
+		case strings.HasPrefix(line, "#EXTM3U"):
+			pl.Attrs = parseExtinf("#EXTINF:" + strings.TrimPrefix(line, "#EXTM3U")).Attrs
 		case strings.HasPrefix(line, "#EXTINF"):
 			e := parseExtinf(line)
 			pending = &e
@@ -53,10 +75,10 @@ func Parse(r io.Reader) ([]Entry, error) {
 			if e.Name == "" {
 				e.Name = line
 			}
-			out = append(out, e)
+			pl.Entries = append(pl.Entries, e)
 		}
 	}
-	return out, sc.Err()
+	return pl, sc.Err()
 }
 
 // parseExtinf parses `#EXTINF:-1 tvg-id="x" group-title="y",Display name`.

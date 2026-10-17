@@ -1,0 +1,24 @@
+{{define "content"}}
+<section class="card narrow wide">
+  <h1>Your account is ready</h1>
+  <p>Add the portal to your TV box or IPTV app with these details.</p>
+
+  <h2>Xtream Codes login (recommended)</h2>
+  <p class="muted">For MyTVOnline (Formuler), TiviMate, IPTV Smarters and most other apps.</p>
+  <table class="details">
+    <tr><th>Server / portal URL</th><td><code>{{.Base}}</code></td></tr>
+    <tr><th>Username</th><td><code>{{.Username}}</code></td></tr>
+    <tr><th>Password</th><td>The password you just chose</td></tr>
+  </table>
+  <p class="muted">On a Formuler with MyTVOnline: <em>Add portal</em> → choose <em>Xtream Codes</em> (or <em>XC</em>) → enter the details above.</p>
+
+  <h2>M3U playlist</h2>
+  <p class="muted">For apps that only accept a playlist link.</p>
+  <div class="copy"><input readonly value="{{.Base}}/get.php?username={{.Username}}&amp;password=YOUR_PASSWORD&amp;type=m3u_plus&amp;output=m3u8" onclick="this.select()"></div>
+
+  <h2>Program guide (EPG)</h2>
+  <div class="copy"><input readonly value="{{.Base}}/xmltv.php?username={{.Username}}&amp;password=YOUR_PASSWORD" onclick="this.select()"></div>
+  <p class="muted">Replace YOUR_PASSWORD with your password. With an Xtream Codes login the guide is loaded automatically.</p>
+  {{with .ExpiresAt}}<p>Your account is valid until <strong>{{.}}</strong>.</p>{{end}}
+</section>
+{{end}}

@@ -4,6 +4,7 @@
   <a class="card stat" href="/channels"><strong>{{.Data.Channels}}</strong><span>channels</span></a>
   <a class="card stat" href="/channels"><strong>{{.Data.Enabled}}</strong><span>enabled</span></a>
   <a class="card stat" href="/categories"><strong>{{.Data.Categories}}</strong><span>categories</span></a>
+  <a class="card stat" href="/users"><strong>{{.Data.Active}}</strong><span>active users{{if ne .Data.Active .Data.Users}} of {{.Data.Users}}{{end}}</span></a>
 </div>
 <section class="card">
   <h2>Portal address</h2>

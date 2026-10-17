@@ -1,0 +1,23 @@
+{{define "content"}}
+{{$p := .Data.Package}}
+<h1>{{.Title}}</h1>
+<section class="card">
+<form method="post" action="{{if $p.ID}}/packages/{{$p.ID}}{{else}}/packages/new{{end}}" class="stack">
+  <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+  <label>Name <input name="name" value="{{$p.Name}}" placeholder="For example Regional" required></label>
+  <label class="check"><input type="checkbox" name="all_channels" {{if $p.AllChannels}}checked{{end}}> All channels, including channels added later</label>
+  <fieldset>
+    <legend>Or only these categories</legend>
+    {{range .Data.Categories}}
+    <label class="check"><input type="checkbox" name="category" value="{{.ID}}" {{if has $p.CategoryIDs .ID}}checked{{end}}> {{.Name}} <span class="muted">({{.ChannelCount}})</span></label>
+    {{else}}
+    <p class="muted">There are no categories yet. <a href="/categories">Add categories</a> first.</p>
+    {{end}}
+  </fieldset>
+  <div class="buttons">
+    <button>Save</button>
+    <a class="button secondary" href="/packages">Cancel</a>
+  </div>
+</form>
+</section>
+{{end}}

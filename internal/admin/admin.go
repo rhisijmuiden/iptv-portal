@@ -15,19 +15,17 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
+	"github.com/rhisijmuiden/iptv-portal/internal/epg"
 	"github.com/rhisijmuiden/iptv-portal/internal/server"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 	"github.com/rhisijmuiden/iptv-portal/internal/version"
+	"github.com/rhisijmuiden/iptv-portal/internal/web"
 )
 
 //go:embed templates/*.html
 var templateFS embed.FS
-
-//go:embed static
-var staticFS embed.FS
 
 const sessionCookie = "iptv_admin"
 
@@ -45,12 +43,15 @@ type Handler struct {
 	log       *slog.Logger
 	pages     map[string]*template.Template
 	mux       *http.ServeMux
-	limiter   *loginLimiter
+	limiter   *web.Limiter
+	guide     *epg.Guide
+	refresh   chan<- struct{}
 }
 
-// New builds the admin panel.
-func New(st *store.Store, listeners Listeners, log *slog.Logger) (*Handler, error) {
-	h := &Handler{store: st, listeners: listeners, log: log, limiter: newLoginLimiter()}
+// New builds the admin panel. A send on refresh asks the guide to reload.
+func New(st *store.Store, listeners Listeners, guide *epg.Guide, refresh chan<- struct{}, log *slog.Logger) (*Handler, error) {
+	h := &Handler{store: st, listeners: listeners, log: log, limiter: web.NewLimiter(10, 15*time.Minute),
+		guide: guide, refresh: refresh}
 	if err := h.parseTemplates(); err != nil {
 		return nil, err
 	}
@@ -61,6 +62,28 @@ func New(st *store.Store, listeners Listeners, log *slog.Logger) (*Handler, erro
 func (h *Handler) parseTemplates() error {
 	funcs := template.FuncMap{
 		"version": func() string { return version.Version },
+		"has": func(ids []int64, id int64) bool {
+			for _, v := range ids {
+				if v == id {
+					return true
+				}
+			}
+			return false
+		},
+		// date formats an optional time for display; "" for nil.
+		"date": func(t *time.Time) string {
+			if t == nil {
+				return ""
+			}
+			return t.Local().Format("2006-01-02")
+		},
+		"ptr": func(t time.Time) *time.Time { return &t },
+		"datetime": func(t *time.Time) string {
+			if t == nil {
+				return ""
+			}
+			return t.Local().Format("2006-01-02 15:04")
+		},
 	}
 	layout, err := template.New("layout.html").Funcs(funcs).ParseFS(templateFS, "templates/layout.html")
 	if err != nil {
@@ -87,8 +110,7 @@ func (h *Handler) parseTemplates() error {
 
 func (h *Handler) routes() {
 	m := http.NewServeMux()
-	static, _ := fs.Sub(staticFS, "static")
-	m.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(static)))
+	m.Handle("GET /static/", web.Static())
 	m.HandleFunc("GET /login", h.loginForm)
 	m.HandleFunc("POST /login", h.login)
 
@@ -111,6 +133,26 @@ func (h *Handler) routes() {
 	auth("POST /categories/{id}/delete", h.categoryDelete)
 	auth("GET /import", h.importForm)
 	auth("POST /import", h.importRun)
+	auth("GET /users", h.userList)
+	auth("GET /users/new", h.userForm)
+	auth("POST /users/new", h.userSave)
+	auth("GET /users/{id}", h.userForm)
+	auth("POST /users/{id}", h.userSave)
+	auth("POST /users/{id}/toggle", h.userToggle)
+	auth("POST /users/{id}/delete", h.userDelete)
+	auth("GET /packages", h.packageList)
+	auth("GET /packages/new", h.packageForm)
+	auth("POST /packages/new", h.packageSave)
+	auth("GET /packages/{id}", h.packageForm)
+	auth("POST /packages/{id}", h.packageSave)
+	auth("POST /packages/{id}/delete", h.packageDelete)
+	auth("GET /invites", h.inviteList)
+	auth("POST /invites", h.inviteCreate)
+	auth("POST /invites/{id}/revoke", h.inviteRevoke)
+	auth("POST /invites/{id}/delete", h.inviteDelete)
+	auth("GET /epg", h.epgPage)
+	auth("POST /epg", h.epgSave)
+	auth("POST /epg/refresh", h.epgRefresh)
 	auth("GET /settings", h.settingsForm)
 	auth("POST /settings", h.settingsSave)
 	h.mux = m
@@ -190,24 +232,12 @@ func (h *Handler) render(w http.ResponseWriter, r *http.Request, name string, p 
 	if p.Flash == "" {
 		p.Flash = r.URL.Query().Get("ok")
 	}
-	p.Error = sentence(p.Error)
+	p.Error = web.Sentence(p.Error)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	if err := t.ExecuteTemplate(w, "layout.html", p); err != nil {
 		h.log.Error("rendering template", "page", name, "err", err)
 	}
-}
-
-// sentence capitalises an error message for display.
-func sentence(s string) string {
-	if s == "" {
-		return s
-	}
-	s = strings.ToUpper(s[:1]) + s[1:]
-	if !strings.HasSuffix(s, ".") {
-		s += "."
-	}
-	return s
 }
 
 func (h *Handler) serverError(w http.ResponseWriter, err error) {
@@ -219,10 +249,6 @@ func redirectFlash(w http.ResponseWriter, r *http.Request, path, msg string) {
 	http.Redirect(w, r, path+"?ok="+url.QueryEscape(msg), http.StatusSeeOther)
 }
 
-func isHTTPS(r *http.Request) bool {
-	return r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
-}
-
 // ---- login ----
 
 func (h *Handler) loginForm(w http.ResponseWriter, r *http.Request) {
@@ -230,15 +256,15 @@ func (h *Handler) loginForm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
-	ip := clientIP(r)
-	if !h.limiter.allow(ip) {
+	ip := web.ClientIP(r)
+	if !h.limiter.Allow(ip) {
 		w.WriteHeader(http.StatusTooManyRequests)
 		h.render(w, r, "login", page{Title: "Log in", Error: "Too many failed attempts, try again in 15 minutes."})
 		return
 	}
 	admin, err := h.store.Authenticate(r.Context(), r.FormValue("username"), r.FormValue("password"))
 	if errors.Is(err, store.ErrInvalidLogin) {
-		h.limiter.fail(ip)
+		h.limiter.Fail(ip)
 		h.log.Warn("failed login", "username", r.FormValue("username"), "ip", ip)
 		w.WriteHeader(http.StatusUnauthorized)
 		h.render(w, r, "login", page{Title: "Log in", Error: err.Error()})
@@ -248,7 +274,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, err)
 		return
 	}
-	h.limiter.reset(ip)
+	h.limiter.Reset(ip)
 	sess, err := h.store.CreateSession(r.Context(), admin)
 	if err != nil {
 		h.serverError(w, err)
@@ -256,7 +282,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name: sessionCookie, Value: sess.Token, Path: "/",
-		HttpOnly: true, Secure: isHTTPS(r), SameSite: http.SameSiteLaxMode,
+		HttpOnly: true, Secure: web.IsHTTPS(r), SameSite: http.SameSiteLaxMode,
 		MaxAge: int(store.SessionTTL.Seconds()),
 	})
 	http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -293,6 +319,8 @@ type dashboardData struct {
 	Channels   int
 	Enabled    int
 	Categories int
+	Users      int
+	Active     int
 	Listeners  []server.Status
 	PortalURL  string
 }
@@ -313,8 +341,13 @@ func (h *Handler) dashboard(w http.ResponseWriter, r *http.Request, sess store.S
 		h.serverError(w, err)
 		return
 	}
-	d := dashboardData{Channels: len(chs), Categories: len(cats), Listeners: h.listeners.Status(),
-		PortalURL: PortalURL(st, r)}
+	active, total, err := h.store.CountActiveUsers(r.Context())
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	d := dashboardData{Channels: len(chs), Categories: len(cats), Users: total, Active: active,
+		Listeners: h.listeners.Status(), PortalURL: PortalURL(st, r)}
 	for _, c := range chs {
 		if c.Enabled {
 			d.Enabled++
@@ -363,6 +396,7 @@ func (h *Handler) settingsSave(w http.ResponseWriter, r *http.Request, sess stor
 	st := store.Settings{
 		PortalName: r.FormValue("portal_name"),
 		PublicURL:  r.FormValue("public_url"),
+		EPGURLs:    old.EPGURLs,
 	}
 	st.AdminPort, _ = strconv.Atoi(r.FormValue("admin_port"))
 	st.PortalPort, _ = strconv.Atoi(r.FormValue("portal_port"))
@@ -405,74 +439,6 @@ func (h *Handler) settingsSave(w http.ResponseWriter, r *http.Request, sess stor
 	}
 	h.render(w, r, "restarted", page{Title: "Settings saved", Nav: "settings", Session: &sess,
 		Data: map[string]any{"Settings": st, "NewAdminURL": newAdmin}})
-}
-
-// ---- login rate limiting ----
-
-type loginLimiter struct {
-	mu       sync.Mutex
-	failures map[string][]time.Time
-}
-
-const (
-	loginWindow   = 15 * time.Minute
-	loginMaxFails = 10
-)
-
-func newLoginLimiter() *loginLimiter {
-	return &loginLimiter{failures: map[string][]time.Time{}}
-}
-
-func (l *loginLimiter) recent(ip string) []time.Time {
-	cutoff := time.Now().Add(-loginWindow)
-	var keep []time.Time
-	for _, t := range l.failures[ip] {
-		if t.After(cutoff) {
-			keep = append(keep, t)
-		}
-	}
-	if len(keep) == 0 {
-		delete(l.failures, ip)
-	} else {
-		l.failures[ip] = keep
-	}
-	return keep
-}
-
-func (l *loginLimiter) allow(ip string) bool {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return len(l.recent(ip)) < loginMaxFails
-}
-
-func (l *loginLimiter) fail(ip string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.failures[ip] = append(l.recent(ip), time.Now())
-}
-
-func (l *loginLimiter) reset(ip string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	delete(l.failures, ip)
-}
-
-// clientIP returns the remote address. X-Forwarded-For is only trusted when
-// the request comes from a local or private address, i.e. a reverse proxy
-// on the same host or network.
-func clientIP(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		host = r.RemoteAddr
-	}
-	ip := net.ParseIP(host)
-	if ip != nil && (ip.IsLoopback() || ip.IsPrivate()) {
-		if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
-			parts := strings.Split(fwd, ",")
-			return strings.TrimSpace(parts[len(parts)-1])
-		}
-	}
-	return host
 }
 
 // PurgeLoop removes expired sessions periodically until ctx is done.
