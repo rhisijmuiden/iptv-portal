@@ -19,7 +19,8 @@ import (
 )
 
 // This file implements the parts of the Xtream Codes API that IPTV players
-// (MyTVOnline, TiviMate, IPTV Smarters, ...) use for live TV, plus the
+// (MyTVOnline, TiviMate, IPTV Smarters, ...) use for live TV (On Demand is
+// in vod.go), plus the
 // classic get.php playlist and xmltv.php guide. Streams are never proxied:
 // /live/... answers with a redirect to the broadcaster's own URL.
 
@@ -107,10 +108,9 @@ func (h *Handler) playerAPI(w http.ResponseWriter, r *http.Request) {
 		h.shortEPG(w, r, u, false)
 	case "get_simple_data_table":
 		h.shortEPG(w, r, u, true)
-	case "get_vod_categories", "get_vod_streams", "get_series_categories", "get_series":
-		writeJSON(w, []any{}) // live TV only
-	case "get_vod_info", "get_series_info":
-		writeJSON(w, map[string]any{})
+	case "get_vod_categories", "get_vod_streams", "get_series_categories", "get_series",
+		"get_vod_info", "get_series_info":
+		h.vodAction(w, r, u, action)
 	default:
 		writeJSON(w, []any{})
 	}

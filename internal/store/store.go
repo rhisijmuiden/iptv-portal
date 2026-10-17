@@ -1,5 +1,6 @@
 // Package store holds all persistent state of the portal in a single SQLite
-// database: settings, admin accounts, sessions, categories and channels.
+// database: settings, admin accounts, sessions, categories, channels,
+// users and media servers.
 package store
 
 import (
@@ -129,6 +130,25 @@ var migrations = []string{
 	);`,
 
 	`ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT '';`,
+
+	`ALTER TABLE packages ADD COLUMN on_demand INTEGER NOT NULL DEFAULT 0;
+	CREATE TABLE media_servers (
+		id         INTEGER PRIMARY KEY,
+		name       TEXT NOT NULL UNIQUE COLLATE NOCASE,
+		kind       TEXT NOT NULL,
+		url        TEXT NOT NULL,
+		token      TEXT NOT NULL,
+		libraries  TEXT NOT NULL DEFAULT '',
+		direct     INTEGER NOT NULL DEFAULT 0,
+		enabled    INTEGER NOT NULL DEFAULT 1,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE TABLE media_ids (
+		id        INTEGER PRIMARY KEY,
+		server_id INTEGER NOT NULL REFERENCES media_servers(id) ON DELETE CASCADE,
+		key       TEXT NOT NULL,
+		UNIQUE (server_id, key)
+	);`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

@@ -15,6 +15,10 @@
     <p class="muted">There are no categories yet. <a href="/categories">Add categories</a> first.</p>
     {{end}}
   </fieldset>
+  <fieldset>
+    <legend>On Demand</legend>
+    <label class="check"><input type="checkbox" name="on_demand" {{if $p.OnDemand}}checked{{end}}> Movies and series from the <a href="/media">media servers</a></label>
+  </fieldset>
   <div class="form-actions">
     <button>Save</button>
     <a class="button secondary" href="/packages">Cancel</a>

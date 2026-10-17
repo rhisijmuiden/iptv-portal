@@ -2,19 +2,20 @@
 <div class="titlebar">
   <div>
     <h1>Packages</h1>
-    <p class="subtitle">A package is a set of channels you give to users: either every channel, or the channels in the categories you choose.</p>
+    <p class="subtitle">A package is a set of channels you give to users: either every channel, or the channels in the categories you choose, and optionally On Demand.</p>
   </div>
   <a class="button" href="/packages/new">{{icon "plus"}}Add package</a>
 </div>
 {{if .Data.Packages}}
 <div class="card flush">
 <table>
-  <thead><tr><th>Name</th><th>Channels</th><th>Users</th><th></th></tr></thead>
+  <thead><tr><th>Name</th><th>Channels</th><th>On Demand</th><th>Users</th><th></th></tr></thead>
   <tbody>
   {{range .Data.Packages}}
   <tr>
     <td><a class="name" href="/packages/{{.ID}}">{{.Name}}</a></td>
     <td>{{if .AllChannels}}All channels{{else}}{{range $i, $c := .CategoryIDs}}{{if $i}}, {{end}}{{index $.Data.Categories $c}}{{end}}{{end}}</td>
+    <td>{{if .OnDemand}}<span class="badge on">yes</span>{{else}}<span class="muted">no</span>{{end}}</td>
     <td>{{.UserCount}}</td>
     <td class="actions">
       <a class="button secondary sm" href="/packages/{{.ID}}" title="Edit">{{icon "edit"}}<span class="label">Edit</span></a>

@@ -84,6 +84,9 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        # Stream On Demand movies straight through instead of buffering
+        # them to disk.
+        proxy_buffering off;
     }
 }
 ```

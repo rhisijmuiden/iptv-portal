@@ -79,7 +79,7 @@ func setup(t *testing.T) fixture {
 	}
 
 	f.act = activity.New()
-	h, err := New(st, guide, f.act, slog.New(slog.DiscardHandler))
+	h, err := New(st, guide, f.act, nil, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatal(err)
 	}

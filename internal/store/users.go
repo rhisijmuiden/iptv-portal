@@ -17,12 +17,14 @@ import (
 )
 
 // Package is a set of channels that can be given to users: either every
-// channel, or the channels of the selected categories.
+// channel, or the channels of the selected categories. OnDemand adds the
+// movies and series of the media servers.
 type Package struct {
 	ID          int64
 	Name        string
 	AllChannels bool
 	CategoryIDs []int64
+	OnDemand    bool
 	UserCount   int
 }
 
@@ -53,7 +55,7 @@ func (u User) Active() bool { return u.Enabled && !u.Expired() }
 // Packages returns all packages with their categories and user counts.
 func (s *Store) Packages(ctx context.Context) ([]Package, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT p.id, p.name, p.all_channels,
+		`SELECT p.id, p.name, p.all_channels, p.on_demand,
 		 (SELECT COUNT(*) FROM user_packages up WHERE up.package_id = p.id)
 		 FROM packages p ORDER BY p.name`)
 	if err != nil {
@@ -62,7 +64,7 @@ func (s *Store) Packages(ctx context.Context) ([]Package, error) {
 	var out []Package
 	for rows.Next() {
 		var p Package
-		if err := rows.Scan(&p.ID, &p.Name, &p.AllChannels, &p.UserCount); err != nil {
+		if err := rows.Scan(&p.ID, &p.Name, &p.AllChannels, &p.OnDemand, &p.UserCount); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -85,7 +87,8 @@ func (s *Store) Packages(ctx context.Context) ([]Package, error) {
 func (s *Store) Package(ctx context.Context, id int64) (Package, error) {
 	var p Package
 	err := s.db.QueryRowContext(ctx,
-		`SELECT id, name, all_channels FROM packages WHERE id = ?`, id).Scan(&p.ID, &p.Name, &p.AllChannels)
+		`SELECT id, name, all_channels, on_demand FROM packages WHERE id = ?`, id).
+		Scan(&p.ID, &p.Name, &p.AllChannels, &p.OnDemand)
 	if errors.Is(err, sql.ErrNoRows) {
 		return p, ErrNotFound
 	}
@@ -102,19 +105,20 @@ func (s *Store) SavePackage(ctx context.Context, p Package) (int64, error) {
 	if p.Name == "" {
 		return 0, errors.New("name must not be empty")
 	}
-	if !p.AllChannels && len(p.CategoryIDs) == 0 {
-		return 0, errors.New("select at least one category, or all channels")
+	if !p.AllChannels && len(p.CategoryIDs) == 0 && !p.OnDemand {
+		return 0, errors.New("select at least one category, all channels or On Demand")
 	}
 	err := s.withTx(ctx, func(tx *sql.Tx) error {
 		if p.ID == 0 {
-			res, err := tx.ExecContext(ctx, `INSERT INTO packages(name, all_channels) VALUES(?, ?)`, p.Name, p.AllChannels)
+			res, err := tx.ExecContext(ctx, `INSERT INTO packages(name, all_channels, on_demand) VALUES(?, ?, ?)`,
+				p.Name, p.AllChannels, p.OnDemand)
 			if err != nil {
 				return uniqueErr(err, "package already exists")
 			}
 			p.ID, _ = res.LastInsertId()
 		} else {
-			res, err := tx.ExecContext(ctx, `UPDATE packages SET name = ?, all_channels = ? WHERE id = ?`,
-				p.Name, p.AllChannels, p.ID)
+			res, err := tx.ExecContext(ctx, `UPDATE packages SET name = ?, all_channels = ?, on_demand = ? WHERE id = ?`,
+				p.Name, p.AllChannels, p.OnDemand, p.ID)
 			if err != nil {
 				return uniqueErr(err, "package already exists")
 			}
@@ -432,6 +436,16 @@ func (s *Store) UserChannels(ctx context.Context, userID int64) ([]Channel, erro
 		out = append(out, c)
 	}
 	return out, rows.Err()
+}
+
+// UserOnDemand reports whether one of the user's packages includes On
+// Demand.
+func (s *Store) UserOnDemand(ctx context.Context, userID int64) (bool, error) {
+	var ok bool
+	err := s.db.QueryRowContext(ctx,
+		`SELECT EXISTS (SELECT 1 FROM user_packages up JOIN packages p ON p.id = up.package_id
+		 WHERE up.user_id = ? AND p.on_demand = 1)`, userID).Scan(&ok)
+	return ok, err
 }
 
 // authCache remembers recently verified (user, password) pairs.

@@ -271,6 +271,7 @@ func (h *Handler) packageSave(w http.ResponseWriter, r *http.Request, sess store
 		Name:        r.FormValue("name"),
 		AllChannels: r.FormValue("all_channels") == "on",
 		CategoryIDs: formIDs(r, "category"),
+		OnDemand:    r.FormValue("on_demand") == "on",
 	}
 	if id, ok := pathID(r); ok {
 		p.ID = id

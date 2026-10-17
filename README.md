@@ -2,9 +2,11 @@
 
 A lightweight portal that collects individual, publicly available m3u8 streams (for example from local broadcasters) in one place. Users add the portal to their TV box or IPTV app (such as MyTVOnline on a Formuler) and get all channels and, where available, the program guide.
 
-The portal is only an index: TV boxes connect directly to the broadcaster's stream. No video passes through the server.
+The portal is only an index: TV boxes connect directly to the broadcaster's stream. No live TV passes through the server.
 
-> **Status:** in development. Channel management, users and invitations, the Xtream Codes API, M3U playlists, the program guide, the installers and updating from the admin panel work.
+It can also offer the movies and series of your own **Jellyfin** or **Plex** server as On Demand.
+
+> **Status:** in development. Channel management, users and invitations, the Xtream Codes API, M3U playlists, the program guide, On Demand from Jellyfin and Plex, the installers and updating from the admin panel work.
 
 ![Dashboard](docs/screenshots/dashboard.png)
 
@@ -148,7 +150,7 @@ The installed version, the latest release and the release notes of every version
 
 | Component | Default port | Purpose |
 |---|---|---|
-| Admin panel | 8080 | Manage channels, categories, imports (M3U and iptv-org) and settings |
+| Admin panel | 8080 | Manage channels, categories, imports (M3U and iptv-org), On Demand media servers and settings |
 | Portal | 80 | The address users enter on their TV box |
 
 Both ports, the portal name and the public URL can be changed under **Settings** in the admin panel. After a port change, that component restarts on the new port right away.
@@ -197,7 +199,7 @@ systemctl restart iptv-portal
 
 ## Users, packages and invitations
 
-- A **package** is a set of channels: either all channels, or the channels in selected categories.
+- A **package** is a set of channels: either all channels, or the channels in selected categories. A package can also include **On Demand** (movies and series from your media servers).
 - A **user** is an account an IPTV player logs in with. Each user gets one or more packages, and can have an expiry date.
 - An **invitation** is a link you send to someone. They open it, choose their own username and password, and see the details to set up their TV box. You choose which packages the account gets, how many times the link can be used, how long the account stays valid and until when the link works.
 
@@ -237,6 +239,19 @@ Apps that only take a playlist can use:
 ```
 
 Streams are not proxied. A player asks the portal for `/live/USER/PASS/ID.m3u8` (or `.ts`) and is redirected to the broadcaster's own m3u8 address. Disabling or expiring a user takes effect on their next channel switch.
+
+## On Demand from Jellyfin or Plex
+
+Under **On Demand** you add a Jellyfin or Plex server: its address as seen from the portal (for example `http://192.168.1.10:8096` or `http://192.168.1.10:32400`) and a Jellyfin API key (*Dashboard → API Keys*) or a Plex token (`X-Plex-Token`). The portal lists the movie and series libraries and offers all of them; untick the ones you do not want to share. Then tick **On Demand** in the packages that should get it.
+
+TV boxes see each movie library as a category under *Movies* (VOD) and each series library under *Series*, with posters, descriptions, ratings, seasons and episodes. The libraries are read again every hour, or straight away with **Refresh now**. Item ids stay the same between refreshes, so favourites and resume points on the box keep working.
+
+Playback has two modes per server:
+
+- **Through the portal** (default): the box plays `/movie/USER/PASS/ID.mkv` or `/series/...` from the portal, which streams the original file from the media server, with seeking. The token never reaches the boxes and the media server does not have to be reachable from the internet, but the video does pass through the portal. Behind Nginx, add `proxy_buffering off;` (see [docs/installation.md](docs/installation.md)).
+- **Directly**: the box is redirected to the media server, like live channels. The server address must then be reachable from the boxes, and the token is part of the stream address the box sees, so use this only on a trusted network.
+
+Files are sent as they are (no transcoding), which the Formuler and most IPTV apps play fine. Posters are always served through the portal.
 
 ## Program guide (EPG)
 

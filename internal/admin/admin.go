@@ -1,5 +1,5 @@
 // Package admin serves the admin panel: login, channel and category
-// management, playlist import and settings.
+// management, playlist import, media servers and settings.
 package admin
 
 import (
@@ -20,6 +20,7 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/activity"
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
 	"github.com/rhisijmuiden/iptv-portal/internal/iptvorg"
+	"github.com/rhisijmuiden/iptv-portal/internal/media"
 	"github.com/rhisijmuiden/iptv-portal/internal/server"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 	"github.com/rhisijmuiden/iptv-portal/internal/update"
@@ -41,18 +42,20 @@ type Listeners interface {
 
 // Handler is the admin panel HTTP handler.
 type Handler struct {
-	store     *store.Store
-	listeners Listeners
-	log       *slog.Logger
-	pages     map[string]*template.Template
-	mux       *http.ServeMux
-	limiter   *web.Limiter
-	guide     *epg.Guide
-	refresh   chan<- struct{}
-	updater   *update.Updater
-	restart   func()
-	iptvorg   *iptvorg.Client
-	activity  *activity.Tracker
+	store        *store.Store
+	listeners    Listeners
+	log          *slog.Logger
+	pages        map[string]*template.Template
+	mux          *http.ServeMux
+	limiter      *web.Limiter
+	guide        *epg.Guide
+	refresh      chan<- struct{}
+	updater      *update.Updater
+	restart      func()
+	iptvorg      *iptvorg.Client
+	media        *media.Catalog
+	refreshMedia chan<- struct{}
+	activity     *activity.Tracker
 }
 
 // Config holds what the admin panel needs from the rest of the program.
@@ -67,6 +70,10 @@ type Config struct {
 	Restart func()
 	// IPTVOrg reads the iptv-org channel list; nil uses the public API.
 	IPTVOrg *iptvorg.Client
+	// Media is the On Demand catalog; RefreshMedia receives a value when
+	// it should reload.
+	Media        *media.Catalog
+	RefreshMedia chan<- struct{}
 	// Activity is where the portal records player requests; nil shows none.
 	Activity *activity.Tracker
 	Log      *slog.Logger
@@ -76,12 +83,15 @@ type Config struct {
 func New(c Config) (*Handler, error) {
 	h := &Handler{store: c.Store, listeners: c.Listeners, log: c.Log, limiter: web.NewLimiter(10, 15*time.Minute),
 		guide: c.Guide, refresh: c.RefreshGuide, updater: c.Updater, restart: c.Restart, iptvorg: c.IPTVOrg,
-		activity: c.Activity}
+		media: c.Media, refreshMedia: c.RefreshMedia, activity: c.Activity}
 	if h.activity == nil {
 		h.activity = activity.New()
 	}
 	if h.iptvorg == nil {
 		h.iptvorg = iptvorg.NewClient()
+	}
+	if h.media == nil {
+		h.media = media.NewCatalog(c.Store, c.Log)
 	}
 	if err := h.parseTemplates(); err != nil {
 		return nil, err
@@ -190,6 +200,13 @@ func (h *Handler) routes() {
 	auth("POST /invites", h.inviteCreate)
 	auth("POST /invites/{id}/revoke", h.inviteRevoke)
 	auth("POST /invites/{id}/delete", h.inviteDelete)
+	auth("GET /media", h.mediaList)
+	auth("GET /media/new", h.mediaForm)
+	auth("POST /media/new", h.mediaSave)
+	auth("GET /media/{id}", h.mediaForm)
+	auth("POST /media/{id}", h.mediaSave)
+	auth("POST /media/{id}/delete", h.mediaDelete)
+	auth("POST /media/refresh", h.mediaRefresh)
 	auth("GET /epg", h.epgPage)
 	auth("POST /epg", h.epgSave)
 	auth("POST /epg/refresh", h.epgRefresh)

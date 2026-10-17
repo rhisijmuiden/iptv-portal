@@ -15,6 +15,7 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/activity"
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
 	"github.com/rhisijmuiden/iptv-portal/internal/mail"
+	"github.com/rhisijmuiden/iptv-portal/internal/media"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 	"github.com/rhisijmuiden/iptv-portal/internal/web"
 )
@@ -33,11 +34,13 @@ type Handler struct {
 	authLimiter *web.Limiter
 	guide       *epg.Guide
 	activity    *activity.Tracker
+	// vod serves On Demand; nil turns it off.
+	vod *media.Catalog
 }
 
 // New builds the client portal. Player requests are recorded in tracker.
-func New(st *store.Store, guide *epg.Guide, tracker *activity.Tracker, log *slog.Logger) (*Handler, error) {
-	h := &Handler{store: st, log: log, mux: http.NewServeMux(), guide: guide, activity: tracker,
+func New(st *store.Store, guide *epg.Guide, tracker *activity.Tracker, vod *media.Catalog, log *slog.Logger) (*Handler, error) {
+	h := &Handler{store: st, log: log, mux: http.NewServeMux(), guide: guide, activity: tracker, vod: vod,
 		limiter: web.NewLimiter(20, 15*time.Minute), authLimiter: web.NewLimiter(30, 15*time.Minute)}
 	h.pages = map[string]*template.Template{}
 	for _, name := range []string{"invite", "welcome"} {
@@ -58,6 +61,9 @@ func New(st *store.Store, guide *epg.Guide, tracker *activity.Tracker, log *slog
 	h.mux.HandleFunc("/get.php", h.getPlaylist)
 	h.mux.HandleFunc("/xmltv.php", h.xmltv)
 	h.mux.HandleFunc("GET /live/{user}/{pass}/{file}", h.liveRedirect)
+	h.mux.HandleFunc("GET /movie/{user}/{pass}/{file}", h.vodPlay(media.Movie))
+	h.mux.HandleFunc("GET /series/{user}/{pass}/{file}", h.vodPlay(media.Episode))
+	h.mux.HandleFunc("GET /vod-image/{id}/{kind}", h.vodImage)
 	return h, nil
 }
 
