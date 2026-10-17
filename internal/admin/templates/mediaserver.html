@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$d := .Data}}
 {{$s := $d.Server}}
-<a class="back" href="/media">&larr; On Demand</a>
+<a class="back" href="{{base}}/media">&larr; On Demand</a>
 <h1>{{.Title}}</h1>
 <section class="card">
 <form method="post" action="{{if $s.ID}}/media/{{$s.ID}}{{else}}/media/new{{end}}" class="stack">
@@ -44,9 +44,9 @@
   <label class="check"><input type="checkbox" name="enabled" {{if $s.Enabled}}checked{{end}}> Enabled</label>
   <div class="form-actions">
     <button>{{if $s.ID}}Save{{else}}Connect and add{{end}}</button>
-    <a class="button secondary" href="/media">Cancel</a>
+    <a class="button secondary" href="{{base}}/media">Cancel</a>
   </div>
 </form>
 </section>
-<p class="muted">Which users see On Demand is set per <a href="/packages">package</a>.</p>
+<p class="muted">Which users see On Demand is set per <a href="{{base}}/packages">package</a>.</p>
 {{end}}

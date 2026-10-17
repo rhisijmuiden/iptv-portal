@@ -5,11 +5,11 @@
     <p class="subtitle">The streams your users see. Click a status to switch a channel on or off.</p>
   </div>
   <div class="buttons">
-    <a class="button secondary" href="/import">{{icon "upload"}}Import</a>
-    <a class="button" href="/channels/new">{{icon "plus"}}Add channel</a>
+    <a class="button secondary" href="{{base}}/import">{{icon "upload"}}Import</a>
+    <a class="button" href="{{base}}/channels/new">{{icon "plus"}}Add channel</a>
   </div>
 </div>
-<form method="get" action="/channels" class="filters">
+<form method="get" action="{{base}}/channels" class="filters">
   <input type="search" name="q" value="{{.Data.Filter.Search}}" placeholder="Search by name or URL">
   <select name="category" onchange="this.form.submit()">
     <option value="0">All categories</option>
@@ -26,11 +26,11 @@
   {{range .Data.Channels}}
   <tr>
     <td class="logo">{{if .LogoURL}}<img src="{{.LogoURL}}" alt="" loading="lazy" referrerpolicy="no-referrer">{{end}}</td>
-    <td><a class="name" href="/channels/{{.ID}}">{{.Name}}</a><div class="muted url">{{.StreamURL}}</div></td>
+    <td><a class="name" href="{{base}}/channels/{{.ID}}">{{.Name}}</a><div class="muted url">{{.StreamURL}}</div></td>
     <td>{{if .Category}}{{.Category}}{{else}}<span class="muted">none</span>{{end}}</td>
     <td>{{if .EPGID}}<code>{{.EPGID}}</code>{{else}}<span class="muted">none</span>{{end}}</td>
     <td>
-      <form method="post" action="/channels/{{.ID}}/toggle">
+      <form method="post" action="{{base}}/channels/{{.ID}}/toggle">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
         <input type="hidden" name="back" value="{{$.Data.Back}}">
         {{if .Enabled}}<input type="hidden" name="enabled" value="0"><button class="badge on" title="Disable">enabled</button>
@@ -38,8 +38,8 @@
       </form>
     </td>
     <td class="actions">
-      <a class="button secondary sm" href="/channels/{{.ID}}" title="Edit">{{icon "edit"}}<span class="label">Edit</span></a>
-      <form method="post" action="/channels/{{.ID}}/delete" onsubmit="return confirm('Delete this channel?')">
+      <a class="button secondary sm" href="{{base}}/channels/{{.ID}}" title="Edit">{{icon "edit"}}<span class="label">Edit</span></a>
+      <form method="post" action="{{base}}/channels/{{.ID}}/delete" onsubmit="return confirm('Delete this channel?')">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
         <button class="danger sm" title="Delete">{{icon "trash"}}<span class="label">Delete</span></button>
       </form>
@@ -52,7 +52,7 @@
 {{else}}
 <section class="card empty">
   <p>No channels{{if or .Data.Filter.Search .Data.Filter.CategoryID}} match this filter{{else}} yet{{end}}.</p>
-  <p><a href="/channels/new">Add a channel</a> or <a href="/import">import an M3U playlist</a>.</p>
+  <p><a href="{{base}}/channels/new">Add a channel</a> or <a href="{{base}}/import">import an M3U playlist</a>.</p>
 </section>
 {{end}}
 {{end}}

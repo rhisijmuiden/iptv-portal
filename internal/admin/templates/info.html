@@ -5,7 +5,7 @@
     <h1>Info &amp; updates</h1>
     <p class="subtitle">The installed version, updates and what changed in each release.</p>
   </div>
-  <form method="post" action="/info/check">
+  <form method="post" action="{{base}}/info/check">
     <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
     <button class="secondary">{{icon "refresh"}}Check for updates</button>
   </form>
@@ -20,7 +20,7 @@
   {{if $d.Status.Available}}
   <div class="flash ok update">
     <p><strong>Version {{$d.Status.Latest.Tag}} is available.</strong> Updating downloads it from GitHub, checks it and restarts the portal. TV boxes reconnect by themselves; the previous version is kept as a backup.</p>
-    <form method="post" action="/info/install" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='Updating…'">
+    <form method="post" action="{{base}}/info/install" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='Updating…'">
       <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
       <input type="hidden" name="tag" value="{{$d.Status.Latest.Tag}}">
       <button>{{icon "download"}}Update to {{$d.Status.Latest.Tag}}</button>
@@ -28,7 +28,7 @@
   </div>
   {{end}}
   <div class="buttons wrap">
-    <form method="post" action="/info/auto" class="inline">
+    <form method="post" action="{{base}}/info/auto" class="inline">
       <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
       <label class="check"><input type="checkbox" name="auto" {{if $d.AutoCheck}}checked{{end}} onchange="this.form.submit()"> Check automatically every 24 hours</label>
       <noscript><button class="secondary">Save</button></noscript>

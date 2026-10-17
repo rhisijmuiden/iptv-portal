@@ -10,13 +10,13 @@
   <h2>Result</h2>
   <p>{{.Added}} channels added, {{.Updated}} updated{{if .Skipped}}, {{len .Skipped}} skipped{{end}}.</p>
   {{if .Skipped}}<ul class="muted">{{range .Skipped}}<li>{{.}}</li>{{end}}</ul>{{end}}
-  {{if .EPGAdded}}<p>The playlist announces a program guide, which was added as a <a href="/epg">guide source</a>:</p>
+  {{if .EPGAdded}}<p>The playlist announces a program guide, which was added as a <a href="{{base}}/epg">guide source</a>:</p>
   <ul>{{range .EPGAdded}}<li><code>{{.}}</code></li>{{end}}</ul>{{end}}
-  <p><a href="/channels">View channels</a></p>
+  <p><a href="{{base}}/channels">View channels</a></p>
 </section>
 {{end}}
 <section class="card">
-  <form method="post" action="/import" enctype="multipart/form-data" class="stack">
+  <form method="post" action="{{base}}/import" enctype="multipart/form-data" class="stack">
     <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
     <label>Upload a file <input type="file" name="file" accept=".m3u,.m3u8,audio/x-mpegurl,application/vnd.apple.mpegurl,text/plain"></label>
     <label>or paste a playlist <textarea name="text" rows="8" placeholder="#EXTM3U&#10;#EXTINF:-1 tvg-id=&quot;…&quot; group-title=&quot;…&quot;,Name&#10;https://…/index.m3u8"></textarea></label>

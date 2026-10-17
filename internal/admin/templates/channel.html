@@ -1,6 +1,6 @@
 {{define "content"}}
 {{$c := .Data.Channel}}
-<a class="back" href="/channels">&larr; Channels</a>
+<a class="back" href="{{base}}/channels">&larr; Channels</a>
 <h1>{{.Title}}</h1>
 <section class="card">
 <form method="post" action="{{if $c.ID}}/channels/{{$c.ID}}{{else}}/channels/new{{end}}" class="stack">
@@ -28,7 +28,7 @@
   <label class="check"><input type="checkbox" name="enabled" {{if $c.Enabled}}checked{{end}}> Enabled</label>
   <div class="form-actions">
     <button>Save</button>
-    <a class="button secondary" href="/channels">Cancel</a>
+    <a class="button secondary" href="{{base}}/channels">Cancel</a>
   </div>
 </form>
 </section>

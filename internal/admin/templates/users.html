@@ -5,11 +5,11 @@
     <p class="subtitle">Accounts that can log in on a TV box. Invite people to let them choose their own login.</p>
   </div>
   <div class="buttons">
-    <a class="button secondary" href="/invites">{{icon "mail"}}Invite someone</a>
-    <a class="button" href="/users/new">{{icon "plus"}}Add user</a>
+    <a class="button secondary" href="{{base}}/invites">{{icon "mail"}}Invite someone</a>
+    <a class="button" href="{{base}}/users/new">{{icon "plus"}}Add user</a>
   </div>
 </div>
-<form method="get" action="/users" class="filters">
+<form method="get" action="{{base}}/users" class="filters">
   <input type="search" name="q" value="{{.Data.Search}}" placeholder="Search by username, email or note">
   <button class="secondary">{{icon "search"}}Search</button>
 </form>
@@ -20,13 +20,13 @@
   <tbody>
   {{range .Data.Users}}
   <tr>
-    <td><a class="name" href="/users/{{.ID}}">{{.Username}}</a>{{if .Email}}<div class="muted url">{{.Email}}</div>{{end}}{{if .Note}}<div class="muted url">{{.Note}}</div>{{end}}</td>
+    <td><a class="name" href="{{base}}/users/{{.ID}}">{{.Username}}</a>{{if .Email}}<div class="muted url">{{.Email}}</div>{{end}}{{if .Note}}<div class="muted url">{{.Note}}</div>{{end}}</td>
     <td>{{range $i, $p := .Packages}}{{if $i}}, {{end}}{{$p}}{{else}}<span class="muted">none</span>{{end}}</td>
     <td>{{with .ExpiresAt}}{{date .}}{{else}}<span class="muted">never</span>{{end}}</td>
     <td>{{with .LastSeenAt}}{{datetime .}}{{else}}<span class="muted">never</span>{{end}}</td>
     <td>
       {{if .Expired}}<span class="badge off">expired</span>{{else}}
-      <form method="post" action="/users/{{.ID}}/toggle">
+      <form method="post" action="{{base}}/users/{{.ID}}/toggle">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
         <input type="hidden" name="back" value="{{$.Data.Back}}">
         {{if .Enabled}}<input type="hidden" name="enabled" value="0"><button class="badge on" title="Disable">enabled</button>
@@ -35,8 +35,8 @@
       {{end}}
     </td>
     <td class="actions">
-      <a class="button secondary sm" href="/users/{{.ID}}" title="Edit">{{icon "edit"}}<span class="label">Edit</span></a>
-      <form method="post" action="/users/{{.ID}}/delete" onsubmit="return confirm('Delete this user?')">
+      <a class="button secondary sm" href="{{base}}/users/{{.ID}}" title="Edit">{{icon "edit"}}<span class="label">Edit</span></a>
+      <form method="post" action="{{base}}/users/{{.ID}}/delete" onsubmit="return confirm('Delete this user?')">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
         <button class="danger sm" title="Delete">{{icon "trash"}}<span class="label">Delete</span></button>
       </form>
@@ -49,7 +49,7 @@
 {{else}}
 <section class="card empty">
   <p>No users{{if .Data.Search}} match this search{{else}} yet{{end}}.</p>
-  <p><a href="/invites">Send an invitation</a> or <a href="/users/new">add a user</a>.</p>
+  <p><a href="{{base}}/invites">Send an invitation</a> or <a href="{{base}}/users/new">add a user</a>.</p>
 </section>
 {{end}}
 {{end}}

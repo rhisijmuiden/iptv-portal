@@ -56,6 +56,8 @@ type Handler struct {
 	media        *media.Catalog
 	refreshMedia chan<- struct{}
 	activity     *activity.Tracker
+	// base is the path the admin panel is served under ("" for the root).
+	base string
 }
 
 // Config holds what the admin panel needs from the rest of the program.
@@ -76,6 +78,9 @@ type Config struct {
 	RefreshMedia chan<- struct{}
 	// Activity is where the portal records player requests; nil shows none.
 	Activity *activity.Tracker
+	// BasePath serves the panel under this path, e.g. "/portal-admin"; it
+	// must be clean (see store.CleanBasePath). Empty means the root.
+	BasePath string
 	Log      *slog.Logger
 }
 
@@ -83,7 +88,7 @@ type Config struct {
 func New(c Config) (*Handler, error) {
 	h := &Handler{store: c.Store, listeners: c.Listeners, log: c.Log, limiter: web.NewLimiter(10, 15*time.Minute),
 		guide: c.Guide, refresh: c.RefreshGuide, updater: c.Updater, restart: c.Restart, iptvorg: c.IPTVOrg,
-		media: c.Media, refreshMedia: c.RefreshMedia, activity: c.Activity}
+		media: c.Media, refreshMedia: c.RefreshMedia, activity: c.Activity, base: c.BasePath}
 	if h.activity == nil {
 		h.activity = activity.New()
 	}
@@ -103,9 +108,13 @@ func New(c Config) (*Handler, error) {
 func (h *Handler) parseTemplates() error {
 	funcs := template.FuncMap{
 		"version": func() string { return version.Version },
+		// base is the path the panel is served under; every link starts
+		// with it.
+		"base": func() string { return h.base },
 		// icon draws a symbol from /static/icons.svg.
 		"icon": func(name string) template.HTML {
-			return template.HTML(`<svg class="icon" aria-hidden="true"><use href="/static/icons.svg#` + template.HTMLEscapeString(name) + `"/></svg>`)
+			return template.HTML(`<svg class="icon" aria-hidden="true"><use href="` + template.HTMLEscapeString(h.base) +
+				`/static/icons.svg#` + template.HTMLEscapeString(name) + `"/></svg>`)
 		},
 		"has": func(ids []int64, id int64) bool {
 			for _, v := range ids {
@@ -158,6 +167,7 @@ func (h *Handler) parseTemplates() error {
 func (h *Handler) routes() {
 	m := http.NewServeMux()
 	m.Handle("GET /static/", web.Static())
+	m.HandleFunc("GET /healthz", web.Health)
 	m.HandleFunc("GET /login", h.loginForm)
 	m.HandleFunc("POST /login", h.login)
 
@@ -220,6 +230,14 @@ func (h *Handler) routes() {
 	auth("POST /settings/mail/test", h.mailTest)
 	auth("POST /users/{id}/send-login", h.userSendLogin)
 	auth("POST /invites/{id}/send", h.inviteSend)
+
+	api := func(pattern string, fn http.HandlerFunc) {
+		m.Handle(pattern, h.requireToken(fn))
+	}
+	api("GET /api/v1/channels", h.apiChannelList)
+	api("POST /api/v1/channels", h.apiChannelCreate)
+	api("PUT /api/v1/channels/{id}", h.apiChannelUpdate)
+	api("DELETE /api/v1/channels/{id}", h.apiChannelDelete)
 	h.mux = m
 }
 
@@ -228,7 +246,55 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Frame-Options", "DENY")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "same-origin")
-	h.mux.ServeHTTP(w, r)
+	if h.base == "" {
+		h.mux.ServeHTTP(w, r)
+		return
+	}
+	// Under a base path the reverse proxy forwards the full path, so the
+	// prefix is stripped here and added again to every redirect.
+	switch {
+	case r.URL.Path == "/healthz":
+		web.Health(w, r)
+	case r.URL.Path == h.base:
+		target := h.base + "/"
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, target, http.StatusMovedPermanently)
+	case strings.HasPrefix(r.URL.Path, h.base+"/"):
+		http.StripPrefix(h.base, h.mux).ServeHTTP(&baseWriter{ResponseWriter: w, base: h.base}, r)
+	default:
+		http.NotFound(w, r)
+	}
+}
+
+// baseWriter adds the base path to local redirects.
+type baseWriter struct {
+	http.ResponseWriter
+	base string
+}
+
+func (w *baseWriter) WriteHeader(code int) {
+	if loc := w.Header().Get("Location"); strings.HasPrefix(loc, "/") && !strings.HasPrefix(loc, "//") {
+		w.Header().Set("Location", w.base+loc)
+	}
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *baseWriter) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+func (w *baseWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+
+// cookiePath is the path the session cookie is valid for.
+func (h *Handler) cookiePath() string {
+	if h.base == "" {
+		return "/"
+	}
+	return h.base
 }
 
 // requireSession checks the login cookie and, for POST requests, the CSRF
@@ -346,7 +412,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.SetCookie(w, &http.Cookie{
-		Name: sessionCookie, Value: sess.Token, Path: "/",
+		Name: sessionCookie, Value: sess.Token, Path: h.cookiePath(),
 		HttpOnly: true, Secure: web.IsHTTPS(r), SameSite: http.SameSiteLaxMode,
 		MaxAge: int(store.SessionTTL.Seconds()),
 	})
@@ -355,7 +421,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request, sess store.Session) {
 	h.store.DeleteSession(r.Context(), sess.Token)
-	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Path: "/", MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Path: h.cookiePath(), MaxAge: -1})
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
@@ -519,7 +585,7 @@ func (h *Handler) settingsSave(w http.ResponseWriter, r *http.Request, sess stor
 		if strings.Contains(host, ":") {
 			host = "[" + host + "]"
 		}
-		newAdmin = "http://" + host + ":" + strconv.Itoa(st.AdminPort) + "/"
+		newAdmin = "http://" + host + ":" + strconv.Itoa(st.AdminPort) + h.base + "/"
 	}
 	h.render(w, r, "restarted", page{Title: "Settings saved", Nav: "settings", Session: &sess,
 		Data: map[string]any{"Settings": st, "NewAdminURL": newAdmin}})

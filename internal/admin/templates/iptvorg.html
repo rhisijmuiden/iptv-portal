@@ -5,7 +5,7 @@
     <p class="subtitle">Pick channels from the public <a href="https://iptv-org.github.io/" target="_blank" rel="noopener">iptv-org</a> database and add them to the portal. Clients connect to the streams directly, so check that a stream plays before you hand it out.</p>
   </div>
   {{with .Data}}
-  <form method="post" action="/iptv-org/reload">
+  <form method="post" action="{{base}}/iptv-org/reload">
     <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
     <input type="hidden" name="back" value="{{.Back}}">
     <button class="secondary" title="Loaded {{datetime (ptr .Loaded)}}">{{icon "refresh"}}Reload list</button>
@@ -13,7 +13,7 @@
   {{end}}
 </div>
 {{with .Data}}
-<form method="get" action="/iptv-org" class="filters">
+<form method="get" action="{{base}}/iptv-org" class="filters">
   <input type="search" name="q" value="{{.Filter.Search}}" placeholder="Search by name">
   <select name="country" onchange="this.form.submit()">
     <option value="">All countries</option>
@@ -26,7 +26,7 @@
   <button class="secondary">{{icon "search"}}Filter</button>
 </form>
 {{if .Rows}}
-<form method="post" action="/iptv-org/add">
+<form method="post" action="{{base}}/iptv-org/add">
 <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
 <input type="hidden" name="back" value="{{.Back}}">
 <div class="card flush">

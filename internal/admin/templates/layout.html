@@ -4,39 +4,39 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{.Title}} · {{.PortalName}}</title>
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="{{base}}/static/style.css">
 </head>
 {{if and .Session (not .Session.Admin.MustChangePassword)}}
 <body class="app">
 <input type="checkbox" id="nav-open" class="nav-toggle" aria-hidden="true">
 <header class="mobilebar">
   <label for="nav-open" class="icon-button" title="Menu">{{icon "menu"}}</label>
-  <a class="brand" href="/"><span class="brand-mark">{{icon "tv"}}</span>{{.PortalName}}</a>
+  <a class="brand" href="{{base}}/"><span class="brand-mark">{{icon "tv"}}</span>{{.PortalName}}</a>
 </header>
 <label for="nav-open" class="scrim" aria-hidden="true"></label>
 <aside class="sidebar">
-  <a class="brand" href="/"><span class="brand-mark">{{icon "tv"}}</span><span>{{.PortalName}}<small>Admin panel</small></span></a>
+  <a class="brand" href="{{base}}/"><span class="brand-mark">{{icon "tv"}}</span><span>{{.PortalName}}<small>Admin panel</small></span></a>
   <nav>
-    <a href="/" {{if eq .Nav "dashboard"}}class="active"{{end}}>{{icon "dashboard"}}Dashboard</a>
+    <a href="{{base}}/" {{if eq .Nav "dashboard"}}class="active"{{end}}>{{icon "dashboard"}}Dashboard</a>
     <p class="nav-group">Channels</p>
-    <a href="/channels" {{if eq .Nav "channels"}}class="active"{{end}}>{{icon "tv"}}Channels</a>
-    <a href="/categories" {{if eq .Nav "categories"}}class="active"{{end}}>{{icon "tag"}}Categories</a>
-    <a href="/epg" {{if eq .Nav "epg"}}class="active"{{end}}>{{icon "guide"}}TV guide</a>
-    <a href="/media" {{if eq .Nav "media"}}class="active"{{end}}>{{icon "film"}}On Demand</a>
+    <a href="{{base}}/channels" {{if eq .Nav "channels"}}class="active"{{end}}>{{icon "tv"}}Channels</a>
+    <a href="{{base}}/categories" {{if eq .Nav "categories"}}class="active"{{end}}>{{icon "tag"}}Categories</a>
+    <a href="{{base}}/epg" {{if eq .Nav "epg"}}class="active"{{end}}>{{icon "guide"}}TV guide</a>
+    <a href="{{base}}/media" {{if eq .Nav "media"}}class="active"{{end}}>{{icon "film"}}On Demand</a>
     <p class="nav-group">Add channels</p>
-    <a href="/import" {{if eq .Nav "import"}}class="active"{{end}}>{{icon "upload"}}Import playlist</a>
-    <a href="/iptv-org" {{if eq .Nav "iptvorg"}}class="active"{{end}}>{{icon "globe"}}Browse iptv-org</a>
+    <a href="{{base}}/import" {{if eq .Nav "import"}}class="active"{{end}}>{{icon "upload"}}Import playlist</a>
+    <a href="{{base}}/iptv-org" {{if eq .Nav "iptvorg"}}class="active"{{end}}>{{icon "globe"}}Browse iptv-org</a>
     <p class="nav-group">Subscribers</p>
-    <a href="/users" {{if eq .Nav "users"}}class="active"{{end}}>{{icon "users"}}Users</a>
-    <a href="/packages" {{if eq .Nav "packages"}}class="active"{{end}}>{{icon "package"}}Packages</a>
-    <a href="/invites" {{if eq .Nav "invites"}}class="active"{{end}}>{{icon "mail"}}Invitations</a>
+    <a href="{{base}}/users" {{if eq .Nav "users"}}class="active"{{end}}>{{icon "users"}}Users</a>
+    <a href="{{base}}/packages" {{if eq .Nav "packages"}}class="active"{{end}}>{{icon "package"}}Packages</a>
+    <a href="{{base}}/invites" {{if eq .Nav "invites"}}class="active"{{end}}>{{icon "mail"}}Invitations</a>
     <p class="nav-group">System</p>
-    <a href="/settings" {{if eq .Nav "settings"}}class="active"{{end}}>{{icon "settings"}}Settings</a>
-    <a href="/info" {{if eq .Nav "info"}}class="active"{{end}}>{{icon "info"}}Info &amp; updates</a>
+    <a href="{{base}}/settings" {{if eq .Nav "settings"}}class="active"{{end}}>{{icon "settings"}}Settings</a>
+    <a href="{{base}}/info" {{if eq .Nav "info"}}class="active"{{end}}>{{icon "info"}}Info &amp; updates</a>
   </nav>
   <div class="account">
-    <a href="/password" title="Change password">{{icon "user"}}<span>{{.Session.Admin.Username}}</span></a>
-    <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.Session.CSRF}}"><button class="icon-button" title="Log out">{{icon "logout"}}</button></form>
+    <a href="{{base}}/password" title="Change password">{{icon "user"}}<span>{{.Session.Admin.Username}}</span></a>
+    <form method="post" action="{{base}}/logout"><input type="hidden" name="csrf" value="{{.Session.CSRF}}"><button class="icon-button" title="Log out">{{icon "logout"}}</button></form>
   </div>
   <footer>IPTV Portal {{version}}</footer>
 </aside>

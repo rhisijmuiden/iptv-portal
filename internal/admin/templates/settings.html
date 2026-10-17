@@ -5,7 +5,7 @@
     <p class="subtitle">How the portal presents itself, which ports it listens on and how it sends email.</p>
   </div>
 </div>
-<form method="post" action="/settings" class="stack">
+<form method="post" action="{{base}}/settings" class="stack">
   <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
   <section class="card stack-card">
     <h2>General</h2>
@@ -26,7 +26,7 @@
   <div class="form-actions"><button>Save settings</button></div>
 </form>
 {{with .Data.Mail}}
-<form method="post" action="/settings/mail" class="stack spaced" id="mail">
+<form method="post" action="{{base}}/settings/mail" class="stack spaced" id="mail">
   <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
   <section class="card stack-card">
     <h2>Mail server</h2>
@@ -58,7 +58,7 @@
 {{if .Configured}}
 <section class="card stack-card spaced">
   <h2>Send a test email</h2>
-  <form method="post" action="/settings/mail/test" class="inline">
+  <form method="post" action="{{base}}/settings/mail/test" class="inline">
     <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
     <input type="email" name="to" placeholder="you@example.com" required>
     <button class="secondary">{{icon "mail"}}Send test email</button>

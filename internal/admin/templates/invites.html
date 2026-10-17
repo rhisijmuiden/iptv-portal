@@ -14,7 +14,7 @@
     <button type="button" class="secondary" onclick="navigator.clipboard.writeText(document.getElementById('new-invite').value).then(()=>this.lastChild.textContent='Copied')">{{icon "copy"}}<span>Copy</span></button>
   </div>
   {{if $.Data.MailOn}}
-  <form method="post" action="/invites/{{.ID}}/send" class="inline spaced">
+  <form method="post" action="{{base}}/invites/{{.ID}}/send" class="inline spaced">
     <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
     <input type="email" name="email" placeholder="Email the link to…" required>
     <button class="secondary">{{icon "mail"}}Send by email</button>
@@ -25,7 +25,7 @@
 <section class="card">
   <h2>New invitation</h2>
   {{if .Data.Packages}}
-  <form method="post" action="/invites" class="stack">
+  <form method="post" action="{{base}}/invites" class="stack">
     <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
     <fieldset>
       <legend>Packages the new account gets</legend>
@@ -47,7 +47,7 @@
     <button>{{icon "link"}}Create invitation</button>
   </form>
   {{else}}
-  <p class="muted">Create a <a href="/packages/new">package</a> first, so invited users get channels.</p>
+  <p class="muted">Create a <a href="{{base}}/packages/new">package</a> first, so invited users get channels.</p>
   {{end}}
 </section>
 {{if .Data.Invites}}
@@ -66,12 +66,12 @@
     <td><span class="badge {{if .Usable}}on{{else}}off{{end}}">{{.Status}}</span>{{with .ExpiresAt}}<div class="muted url">until {{date .}}</div>{{end}}</td>
     <td class="actions">
       {{if .Usable}}
-      <form method="post" action="/invites/{{.ID}}/revoke">
+      <form method="post" action="{{base}}/invites/{{.ID}}/revoke">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
         <button class="danger sm">{{icon "ban"}}<span class="label">Revoke</span></button>
       </form>
       {{else}}
-      <form method="post" action="/invites/{{.ID}}/delete">
+      <form method="post" action="{{base}}/invites/{{.ID}}/delete">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
         <button class="danger sm" title="Delete">{{icon "trash"}}<span class="label">Delete</span></button>
       </form>

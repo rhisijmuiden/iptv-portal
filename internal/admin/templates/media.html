@@ -7,16 +7,16 @@
   </div>
   <div class="buttons">
     {{if $d.Servers}}
-    <form method="post" action="/media/refresh">
+    <form method="post" action="{{base}}/media/refresh">
       <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
       <button class="secondary" {{if $d.Refreshing}}disabled{{end}}>{{icon "refresh"}}{{if $d.Refreshing}}Refreshing…{{else}}Refresh now{{end}}</button>
     </form>
     {{end}}
-    <a class="button" href="/media/new">{{icon "plus"}}Add media server</a>
+    <a class="button" href="{{base}}/media/new">{{icon "plus"}}Add media server</a>
   </div>
 </div>
 {{if and $d.Servers (not $d.Packages)}}
-<p class="flash warn">No package includes On Demand yet, so nobody can see the movies and series. Tick On Demand in a <a href="/packages">package</a>.</p>
+<p class="flash warn">No package includes On Demand yet, so nobody can see the movies and series. Tick On Demand in a <a href="{{base}}/packages">package</a>.</p>
 {{end}}
 {{if $d.Servers}}
 <div class="card flush">
@@ -25,7 +25,7 @@
   <tbody>
   {{range $d.Servers}}
   <tr>
-    <td><a class="name" href="/media/{{.Server.ID}}">{{.Server.Name}}</a></td>
+    <td><a class="name" href="{{base}}/media/{{.Server.ID}}">{{.Server.Name}}</a></td>
     <td>{{.Server.KindName}} <span class="muted url">{{.Server.URL}}</span></td>
     <td>{{if .Server.Direct}}direct{{else}}through the portal{{end}}</td>
     <td>{{.Status.Movies}}</td>
@@ -38,8 +38,8 @@
       {{else}}<span class="badge on">ok</span> <span class="muted">{{datetime (ptr .Status.UpdatedAt)}}</span>{{end}}
     </td>
     <td class="actions">
-      <a class="button secondary sm" href="/media/{{.Server.ID}}" title="Edit">{{icon "edit"}}<span class="label">Edit</span></a>
-      <form method="post" action="/media/{{.Server.ID}}/delete" onsubmit="return confirm('Delete this media server? Its movies and series disappear from the boxes.')">
+      <a class="button secondary sm" href="{{base}}/media/{{.Server.ID}}" title="Edit">{{icon "edit"}}<span class="label">Edit</span></a>
+      <form method="post" action="{{base}}/media/{{.Server.ID}}/delete" onsubmit="return confirm('Delete this media server? Its movies and series disappear from the boxes.')">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
         <button class="danger sm" title="Delete">{{icon "trash"}}<span class="label">Delete</span></button>
       </form>
@@ -50,6 +50,6 @@
 </table>
 </div>
 {{else}}
-<section class="card empty"><p>No media servers yet. <a href="/media/new">Add your Jellyfin or Plex server</a>.</p></section>
+<section class="card empty"><p>No media servers yet. <a href="{{base}}/media/new">Add your Jellyfin or Plex server</a>.</p></section>
 {{end}}
 {{end}}
