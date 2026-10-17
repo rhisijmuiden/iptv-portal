@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rhisijmuiden/iptv-portal/internal/activity"
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 )
@@ -22,6 +23,7 @@ type fixture struct {
 	store *store.Store
 	nh    int64 // channel in the user's package
 	gld   int64 // channel outside it
+	act   *activity.Tracker
 }
 
 func setup(t *testing.T) fixture {
@@ -76,7 +78,8 @@ func setup(t *testing.T) fixture {
 		t.Fatal(err)
 	}
 
-	h, err := New(st, guide, slog.New(slog.DiscardHandler))
+	f.act = activity.New()
+	h, err := New(st, guide, f.act, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,6 +186,11 @@ func TestLiveRedirect(t *testing.T) {
 	}
 	if resp := f.get(t, fmt.Sprintf("/live/jan/wrong1/%d.ts", f.nh)); resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("wrong password = %d", resp.StatusCode)
+	}
+	snap := f.act.Snapshot()
+	if snap.OnlineUsers != 1 || snap.Watching != 1 || len(snap.Connections) != 1 ||
+		snap.Connections[0].Username != "jan" || snap.Connections[0].Channel != "NH" {
+		t.Fatalf("activity = %+v", snap)
 	}
 
 	// Disabling the user stops playback right away.

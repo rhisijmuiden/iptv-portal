@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rhisijmuiden/iptv-portal/internal/activity"
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
 	"github.com/rhisijmuiden/iptv-portal/internal/iptvorg"
 	"github.com/rhisijmuiden/iptv-portal/internal/server"
@@ -51,6 +52,7 @@ type Handler struct {
 	updater   *update.Updater
 	restart   func()
 	iptvorg   *iptvorg.Client
+	activity  *activity.Tracker
 }
 
 // Config holds what the admin panel needs from the rest of the program.
@@ -65,13 +67,19 @@ type Config struct {
 	Restart func()
 	// IPTVOrg reads the iptv-org channel list; nil uses the public API.
 	IPTVOrg *iptvorg.Client
-	Log     *slog.Logger
+	// Activity is where the portal records player requests; nil shows none.
+	Activity *activity.Tracker
+	Log      *slog.Logger
 }
 
 // New builds the admin panel.
 func New(c Config) (*Handler, error) {
 	h := &Handler{store: c.Store, listeners: c.Listeners, log: c.Log, limiter: web.NewLimiter(10, 15*time.Minute),
-		guide: c.Guide, refresh: c.RefreshGuide, updater: c.Updater, restart: c.Restart, iptvorg: c.IPTVOrg}
+		guide: c.Guide, refresh: c.RefreshGuide, updater: c.Updater, restart: c.Restart, iptvorg: c.IPTVOrg,
+		activity: c.Activity}
+	if h.activity == nil {
+		h.activity = activity.New()
+	}
 	if h.iptvorg == nil {
 		h.iptvorg = iptvorg.NewClient()
 	}
@@ -112,6 +120,7 @@ func (h *Handler) parseTemplates() error {
 			}
 			return t.Local().Format("2006-01-02 15:04")
 		},
+		"ago": ago,
 	}
 	layout, err := template.New("layout.html").Funcs(funcs).ParseFS(templateFS, "templates/layout.html")
 	if err != nil {
@@ -359,6 +368,8 @@ type dashboardData struct {
 	Listeners  []server.Status
 	PortalURL  string
 	Update     *update.Release // newer release, if one was found
+	Activity   activity.Snapshot
+	Window     int // minutes a request counts as online
 }
 
 func (h *Handler) dashboard(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -383,7 +394,8 @@ func (h *Handler) dashboard(w http.ResponseWriter, r *http.Request, sess store.S
 		return
 	}
 	d := dashboardData{Channels: len(chs), Categories: len(cats), Users: total, Active: active,
-		Listeners: h.listeners.Status(), PortalURL: PortalURL(st, r)}
+		Listeners: h.listeners.Status(), PortalURL: PortalURL(st, r),
+		Activity: h.activity.Snapshot(), Window: int(activity.OnlineWindow / time.Minute)}
 	if us := h.updater.Status(); us.Available() {
 		d.Update = us.Latest()
 	}
@@ -393,6 +405,20 @@ func (h *Handler) dashboard(w http.ResponseWriter, r *http.Request, sess store.S
 		}
 	}
 	h.render(w, r, "dashboard", page{Title: "Dashboard", Nav: "dashboard", Session: &sess, Data: d})
+}
+
+// ago describes how long before now t was, e.g. "3 min ago".
+func ago(now, t time.Time) string {
+	d := now.Sub(t)
+	switch {
+	case d < time.Minute:
+		return "just now"
+	case d < time.Hour:
+		return strconv.Itoa(int(d/time.Minute)) + " min ago"
+	case d < 24*time.Hour:
+		return strconv.Itoa(int(d/time.Hour)) + " h ago"
+	}
+	return t.Local().Format("2006-01-02 15:04")
 }
 
 // PortalURL is the address clients enter in their player. It is the public
