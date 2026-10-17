@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rhisijmuiden/iptv-portal/internal/activity"
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
 	"github.com/rhisijmuiden/iptv-portal/internal/media"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
@@ -84,11 +85,12 @@ func vodSetup(t *testing.T, direct bool) (fixture, *httptest.Server) {
 	log := slog.New(slog.DiscardHandler)
 	vod := media.NewCatalog(st, log)
 	vod.Refresh(ctx)
-	h, err := New(st, epg.New(log, t.TempDir()), vod, log)
+	act := activity.New()
+	h, err := New(st, epg.New(log, t.TempDir()), act, vod, log)
 	if err != nil {
 		t.Fatal(err)
 	}
-	f := fixture{srv: httptest.NewServer(h), store: st}
+	f := fixture{srv: httptest.NewServer(h), store: st, act: act}
 	t.Cleanup(f.srv.Close)
 	return f, jf
 }
@@ -164,6 +166,9 @@ func TestVODAPI(t *testing.T) {
 	resp = f.get(t, fmt.Sprintf("/series/piet/secret2/%s.%s", ep["id"], ep["container_extension"]))
 	if b, _ := io.ReadAll(resp.Body); string(b) != "episode" {
 		t.Errorf("episode = %q", b)
+	}
+	if c := f.act.Snapshot().Connections; len(c) == 0 || c[0].Channel != "Show S02E01" {
+		t.Errorf("dashboard activity = %+v", c)
 	}
 	// A movie id is not an episode.
 	if resp := f.get(t, fmt.Sprintf("/series/piet/secret2/%d.mkv", id)); resp.StatusCode != http.StatusNotFound {

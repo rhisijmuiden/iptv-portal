@@ -46,6 +46,7 @@ func (h *Handler) auth(w http.ResponseWriter, r *http.Request, username, passwor
 		return u, false
 	}
 	h.authLimiter.Reset(ip)
+	h.activity.Seen(u.ID, u.Username, ip, r.UserAgent())
 	return u, true
 }
 
@@ -77,6 +78,9 @@ func (h *Handler) playerAPI(w http.ResponseWriter, r *http.Request) {
 	}
 	h.authLimiter.Reset(ip)
 	active := err == nil
+	if active {
+		h.activity.Seen(u.ID, u.Username, ip, r.UserAgent())
+	}
 
 	action := r.FormValue("action")
 	if action == "" {
@@ -337,6 +341,7 @@ func (h *Handler) liveRedirect(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	h.activity.Play(u.ID, u.Username, web.ClientIP(r), r.UserAgent(), c.ID, c.Name)
 	w.Header().Set("Cache-Control", "no-store")
 	http.Redirect(w, r, c.StreamURL, http.StatusFound)
 }

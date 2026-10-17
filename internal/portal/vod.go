@@ -319,6 +319,7 @@ func (h *Handler) vodPlay(t media.ItemType) http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
+		h.activity.Play(u.ID, u.Username, web.ClientIP(r), r.UserAgent(), 0, h.vodTitle(it))
 		target, direct := h.vod.URL(it, it.Stream)
 		if target == "" {
 			http.NotFound(w, r)
@@ -331,6 +332,18 @@ func (h *Handler) vodPlay(t media.ItemType) http.HandlerFunc {
 		}
 		h.proxy(w, r, target)
 	}
+}
+
+// vodTitle names a movie or episode for the dashboard.
+func (h *Handler) vodTitle(it *media.Item) string {
+	if it.Type != media.Episode {
+		return it.Title
+	}
+	show := "Series"
+	if s, ok := h.vod.Item(it.ShowID, media.Show); ok {
+		show = s.Title
+	}
+	return fmt.Sprintf("%s S%02dE%02d", show, it.Season, it.Number)
 }
 
 // vodImage serves posters and backdrops. Players load images without
