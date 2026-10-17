@@ -6,6 +6,21 @@ The portal is only an index: TV boxes connect directly to the broadcaster's stre
 
 > **Status:** in development. Channel management, users and invitations, the Xtream Codes API, M3U playlists, the program guide, the installers and updating from the admin panel work.
 
+![Dashboard](docs/screenshots/dashboard.png)
+
+## Features
+
+- **Channels as an index, not a proxy.** Store the m3u8 address, logo, category and EPG ID of each channel. Players are redirected to the source, so the server needs almost no bandwidth.
+- **Imports** from an M3U file, pasted text or a URL, and a built-in browser for the public [iptv-org](https://github.com/iptv-org/iptv) channel database.
+- **Users, packages and invitations.** Decide per user which channels they see, set expiry dates, switch accounts off, and send invitation links so people create their own login.
+- **Xtream Codes API, M3U and XMLTV.** Works with MyTVOnline (Formuler), TiviMate, IPTV Smarters and most other players.
+- **Program guide** merged from your own XMLTV sources and filtered per user.
+- **Settings in the browser**: portal name, public URL and both ports, ready for a reverse proxy.
+- **Updates from the admin panel** with release notes, an optional daily check and automatic rollback.
+- **Simple to host**: one Go binary with SQLite, an installer for any systemd Linux and a script for Proxmox VE LXC.
+
+See [The admin panel](#the-admin-panel) below for a page-by-page tour.
+
 ## Installation
 
 On a dedicated server or VPS (Debian, Ubuntu or another systemd-based Linux):
@@ -21,6 +36,113 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/rhisijmuiden/iptv-portal
 ```
 
 Both print the admin panel address, the username and a one-time password at the end. See [docs/installation.md](docs/installation.md) for options, reverse proxy examples (Nginx, Caddy, Nginx Proxy Manager, Traefik), updating and troubleshooting.
+
+## The admin panel
+
+The admin panel runs on port 8080 by default. On the first start you log in with `admin` and the one-time password from the installer (or the log) and choose a new password. The screenshots below use sample data.
+
+### Dashboard
+
+The [dashboard](docs/screenshots/dashboard.png) (shown at the top) counts channels, categories and active users, shows the address users enter on their TV box, and whether the admin panel and the portal are running. When the daily update check finds a new release, a banner appears here.
+
+### Channels
+
+All channels with their logo, stream address, category, EPG ID and status. Search by name or URL, filter by category, switch a channel off without deleting it, or add one by hand.
+
+![Channels](docs/screenshots/channels.png)
+
+Each channel has a name, stream URL, logo URL, EPG ID, category (or a new one typed in place), sort order and an enabled switch.
+
+<details>
+<summary>Editing a channel</summary>
+
+![Edit channel](docs/screenshots/channel-edit.png)
+</details>
+
+### Categories
+
+Categories group channels in the player and are the building blocks of packages. Rename them, change their order or delete them; channels in a deleted category are kept without a category.
+
+<details>
+<summary>Screenshot</summary>
+
+![Categories](docs/screenshots/categories.png)
+</details>
+
+### Import
+
+Upload an M3U playlist, paste one, or have it downloaded from a URL. `tvg-id`, `tvg-logo` and `group-title` are kept, or you put everything in one category. Channels whose stream URL already exists are updated instead of added twice. See [Importing channels](#importing-channels).
+
+<details>
+<summary>Screenshot</summary>
+
+![Import](docs/screenshots/import.png)
+</details>
+
+### iptv-org
+
+Browse the public iptv-org channel database, filtered by country (the Netherlands by default), category or name. Tick the streams you want, choose their category and, optionally, the packages that get it. See [From iptv-org](#from-iptv-org).
+
+![iptv-org browser](docs/screenshots/iptv-org.png)
+
+### Guide
+
+Add XMLTV sources and see, per channel, whether the guide has data for it. The guide refreshes every 6 hours or with **Refresh now**. See [Program guide (EPG)](#program-guide-epg).
+
+![Program guide](docs/screenshots/guide.png)
+
+### Users
+
+The accounts players log in with: packages, expiry date, last time the player connected, and a note. Expired and disabled accounts are marked and lose access on their next channel switch.
+
+![Users](docs/screenshots/users.png)
+
+<details>
+<summary>Editing a user</summary>
+
+![Edit user](docs/screenshots/user-edit.png)
+</details>
+
+### Packages
+
+A package is either every channel (including channels added later) or a selection of categories. Users get one or more packages.
+
+<details>
+<summary>Screenshots</summary>
+
+![Packages](docs/screenshots/packages.png)
+
+![Edit package](docs/screenshots/package-edit.png)
+</details>
+
+### Invitations
+
+Create a link that lets someone choose their own username and password. You set the packages, how many people can use the link, how long the account stays valid and until when the link works. Revoke a link at any time. See [Users, packages and invitations](#users-packages-and-invitations).
+
+![Invitations](docs/screenshots/invitations.png)
+
+The link opens on the portal, not the admin panel. After signing up, the new user sees the details for their TV box:
+
+<p>
+<img src="docs/screenshots/portal-invite.png" alt="Invitation page" width="49%">
+<img src="docs/screenshots/portal-welcome.png" alt="Account ready page" width="49%">
+</p>
+
+### Settings
+
+Portal name, public URL (for a reverse proxy or your own domain), and the ports of the admin panel and the portal. A port change takes effect right away. See [Components](#components).
+
+<details>
+<summary>Screenshot</summary>
+
+![Settings](docs/screenshots/settings.png)
+</details>
+
+### Info
+
+The installed version, the latest release and the release notes of every version. Check for updates by hand or every 24 hours, and update with one click. See [Updates](#updates).
+
+![Info](docs/screenshots/info.png)
 
 ## Components
 

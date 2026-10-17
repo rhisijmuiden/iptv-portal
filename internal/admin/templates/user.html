@@ -1,5 +1,6 @@
 {{define "content"}}
 {{$u := .Data.User}}
+<a class="back" href="/users">&larr; Users</a>
 <h1>{{.Title}}</h1>
 <section class="card">
 <form method="post" action="{{if $u.ID}}/users/{{$u.ID}}{{else}}/users/new{{end}}" class="stack">
@@ -36,7 +37,7 @@
     <label>Note <input name="note" value="{{$u.Note}}" placeholder="For example who this account is for"></label>
   </div>
   <label class="check"><input type="checkbox" name="enabled" {{if $u.Enabled}}checked{{end}}> Enabled</label>
-  <div class="buttons">
+  <div class="form-actions">
     <button>Save</button>
     <a class="button secondary" href="/users">Cancel</a>
   </div>
@@ -55,7 +56,7 @@
   {{if and .Data.MailOn $u.Email}}
   <form method="post" action="/users/{{$u.ID}}/send-login" onsubmit="return confirm('This replaces the current password with a new one and emails it to {{$u.Email}}. The old password stops working. Continue?')">
     <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
-    <button class="secondary">Email new password to {{$u.Email}}</button>
+    <button class="secondary">{{icon "mail"}}Email new password to {{$u.Email}}</button>
   </form>
   {{end}}
 </section>

@@ -1,6 +1,15 @@
 {{define "content"}}
 {{$d := .Data}}
-<h1>Info</h1>
+<div class="titlebar">
+  <div>
+    <h1>Info &amp; updates</h1>
+    <p class="subtitle">The installed version, updates and what changed in each release.</p>
+  </div>
+  <form method="post" action="/info/check">
+    <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+    <button class="secondary">{{icon "refresh"}}Check for updates</button>
+  </form>
+</div>
 <section class="card">
   <h2>Version</h2>
   <table class="details">
@@ -14,15 +23,11 @@
     <form method="post" action="/info/install" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='Updating…'">
       <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
       <input type="hidden" name="tag" value="{{$d.Status.Latest.Tag}}">
-      <button>Update to {{$d.Status.Latest.Tag}}</button>
+      <button>{{icon "download"}}Update to {{$d.Status.Latest.Tag}}</button>
     </form>
   </div>
   {{end}}
   <div class="buttons wrap">
-    <form method="post" action="/info/check">
-      <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
-      <button class="secondary">Check for updates</button>
-    </form>
     <form method="post" action="/info/auto" class="inline">
       <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
       <label class="check"><input type="checkbox" name="auto" {{if $d.AutoCheck}}checked{{end}} onchange="this.form.submit()"> Check automatically every 24 hours</label>
@@ -30,10 +35,10 @@
     </form>
   </div>
 </section>
-<h2>Release notes</h2>
+<h2 class="section-title">Release notes</h2>
 {{range $d.Status.Releases}}
 <section class="card release">
-  <div class="titlebar">
+  <div class="card-head">
     <h2>{{if .Name}}{{.Name}}{{else}}{{.Tag}}{{end}} {{if eq .Tag $d.Version}}<span class="badge on">installed</span>{{end}}</h2>
     <span class="muted">{{date (ptr .PublishedAt)}} · <a href="{{.URL}}" target="_blank" rel="noopener">on GitHub</a></span>
   </div>

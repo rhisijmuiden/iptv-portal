@@ -1,5 +1,10 @@
 {{define "content"}}
-<h1>Import</h1>
+<div class="titlebar">
+  <div>
+    <h1>Import playlist</h1>
+    <p class="subtitle">Add channels from an M3U playlist. A channel whose stream URL already exists is updated instead of added twice. Categories are created from <code>group-title</code>.</p>
+  </div>
+</div>
 {{with .Data}}
 <section class="card">
   <h2>Result</h2>
@@ -11,14 +16,13 @@
 </section>
 {{end}}
 <section class="card">
-  <p>Import channels from an M3U playlist. A channel whose stream URL already exists is updated instead of added twice. Categories are created from <code>group-title</code>.</p>
   <form method="post" action="/import" enctype="multipart/form-data" class="stack">
     <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
     <label>Upload a file <input type="file" name="file" accept=".m3u,.m3u8,audio/x-mpegurl,application/vnd.apple.mpegurl,text/plain"></label>
     <label>or paste a playlist <textarea name="text" rows="8" placeholder="#EXTM3U&#10;#EXTINF:-1 tvg-id=&quot;…&quot; group-title=&quot;…&quot;,Name&#10;https://…/index.m3u8"></textarea></label>
     <label>or download a playlist from a URL <input type="url" name="url" placeholder="https://…/playlist.m3u"></label>
     <label>Put everything in this category <input name="category" placeholder="Optional, leave empty to use group-title"></label>
-    <button>Import</button>
+    <button>{{icon "upload"}}Import</button>
   </form>
 </section>
 {{end}}

@@ -1,18 +1,23 @@
 {{define "content"}}
-<h1>Invitations</h1>
+<div class="titlebar">
+  <div>
+    <h1>Invitations</h1>
+    <p class="subtitle">Create a link that lets someone set up their own account with the packages you choose.</p>
+  </div>
+</div>
 {{with .Data.New}}
 <section class="card highlight">
   <h2>Invitation created</h2>
   <p>Send this link to the person you are inviting. They choose their own username and password and get the setup details for their TV box.</p>
   <div class="copy">
     <input id="new-invite" readonly value="{{$.Data.PortalURL}}/invite/{{.Token}}" onclick="this.select()">
-    <button type="button" class="secondary" onclick="navigator.clipboard.writeText(document.getElementById('new-invite').value).then(()=>this.textContent='Copied')">Copy</button>
+    <button type="button" class="secondary" onclick="navigator.clipboard.writeText(document.getElementById('new-invite').value).then(()=>this.lastChild.textContent='Copied')">{{icon "copy"}}<span>Copy</span></button>
   </div>
   {{if $.Data.MailOn}}
   <form method="post" action="/invites/{{.ID}}/send" class="inline spaced">
     <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
     <input type="email" name="email" placeholder="Email the link to…" required>
-    <button class="secondary">Send by email</button>
+    <button class="secondary">{{icon "mail"}}Send by email</button>
   </form>
   {{end}}
 </section>
@@ -39,13 +44,14 @@
       <label>Email the link to <input type="email" name="email" placeholder="Optional"><small>Leave empty to copy and send the link yourself.</small></label>
       {{end}}
     </div>
-    <button>Create invitation</button>
+    <button>{{icon "link"}}Create invitation</button>
   </form>
   {{else}}
   <p class="muted">Create a <a href="/packages/new">package</a> first, so invited users get channels.</p>
   {{end}}
 </section>
 {{if .Data.Invites}}
+<h2 class="section-title">Invitation links</h2>
 <div class="card flush">
 <table>
   <thead><tr><th>Link</th><th>Packages</th><th>Uses</th><th>Account validity</th><th>Status</th><th></th></tr></thead>
@@ -62,12 +68,12 @@
       {{if .Usable}}
       <form method="post" action="/invites/{{.ID}}/revoke">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
-        <button class="link danger">Revoke</button>
+        <button class="danger sm">{{icon "ban"}}<span class="label">Revoke</span></button>
       </form>
       {{else}}
       <form method="post" action="/invites/{{.ID}}/delete">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
-        <button class="link danger">Delete</button>
+        <button class="danger sm" title="Delete">{{icon "trash"}}<span class="label">Delete</span></button>
       </form>
       {{end}}
     </td>

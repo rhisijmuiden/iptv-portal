@@ -1,5 +1,6 @@
 {{define "content"}}
 {{$p := .Data.Package}}
+<a class="back" href="/packages">&larr; Packages</a>
 <h1>{{.Title}}</h1>
 <section class="card">
 <form method="post" action="{{if $p.ID}}/packages/{{$p.ID}}{{else}}/packages/new{{end}}" class="stack">
@@ -14,7 +15,7 @@
     <p class="muted">There are no categories yet. <a href="/categories">Add categories</a> first.</p>
     {{end}}
   </fieldset>
-  <div class="buttons">
+  <div class="form-actions">
     <button>Save</button>
     <a class="button secondary" href="/packages">Cancel</a>
   </div>

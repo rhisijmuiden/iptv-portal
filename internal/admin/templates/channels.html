@@ -1,7 +1,13 @@
 {{define "content"}}
 <div class="titlebar">
-  <h1>Channels</h1>
-  <a class="button" href="/channels/new">Add channel</a>
+  <div>
+    <h1>Channels</h1>
+    <p class="subtitle">The streams your users see. Click a status to switch a channel on or off.</p>
+  </div>
+  <div class="buttons">
+    <a class="button secondary" href="/import">{{icon "upload"}}Import</a>
+    <a class="button" href="/channels/new">{{icon "plus"}}Add channel</a>
+  </div>
 </div>
 <form method="get" action="/channels" class="filters">
   <input type="search" name="q" value="{{.Data.Filter.Search}}" placeholder="Search by name or URL">
@@ -10,7 +16,7 @@
     <option value="-1" {{if eq .Data.Filter.CategoryID -1}}selected{{end}}>Uncategorized</option>
     {{range .Data.Categories}}<option value="{{.ID}}" {{if eq $.Data.Filter.CategoryID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
   </select>
-  <button class="secondary">Filter</button>
+  <button class="secondary">{{icon "search"}}Filter</button>
 </form>
 {{if .Data.Channels}}
 <div class="card flush">
@@ -20,7 +26,7 @@
   {{range .Data.Channels}}
   <tr>
     <td class="logo">{{if .LogoURL}}<img src="{{.LogoURL}}" alt="" loading="lazy" referrerpolicy="no-referrer">{{end}}</td>
-    <td><a href="/channels/{{.ID}}">{{.Name}}</a><div class="muted url">{{.StreamURL}}</div></td>
+    <td><a class="name" href="/channels/{{.ID}}">{{.Name}}</a><div class="muted url">{{.StreamURL}}</div></td>
     <td>{{if .Category}}{{.Category}}{{else}}<span class="muted">none</span>{{end}}</td>
     <td>{{if .EPGID}}<code>{{.EPGID}}</code>{{else}}<span class="muted">none</span>{{end}}</td>
     <td>
@@ -32,9 +38,10 @@
       </form>
     </td>
     <td class="actions">
+      <a class="button secondary sm" href="/channels/{{.ID}}" title="Edit">{{icon "edit"}}<span class="label">Edit</span></a>
       <form method="post" action="/channels/{{.ID}}/delete" onsubmit="return confirm('Delete this channel?')">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
-        <button class="link danger">Delete</button>
+        <button class="danger sm" title="Delete">{{icon "trash"}}<span class="label">Delete</span></button>
       </form>
     </td>
   </tr>
