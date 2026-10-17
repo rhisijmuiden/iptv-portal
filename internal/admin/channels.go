@@ -205,6 +205,11 @@ func (h *Handler) importForm(w http.ResponseWriter, r *http.Request, sess store.
 
 const maxPlaylistSize = 10 << 20
 
+type importData struct {
+	store.ImportResult
+	EPGAdded []string
+}
+
 func (h *Handler) importRun(w http.ResponseWriter, r *http.Request, sess store.Session) {
 	p := page{Title: "Import", Nav: "import", Session: &sess}
 	src, err := playlistSource(r)
@@ -214,7 +219,8 @@ func (h *Handler) importRun(w http.ResponseWriter, r *http.Request, sess store.S
 		return
 	}
 	defer src.Close()
-	entries, err := m3u.Parse(io.LimitReader(src, maxPlaylistSize))
+	pl, err := m3u.Parse(io.LimitReader(src, maxPlaylistSize))
+	entries := pl.Entries
 	if err != nil {
 		p.Error = "Could not read the playlist: " + err.Error()
 		h.render(w, r, "import", p)
@@ -238,7 +244,23 @@ func (h *Handler) importRun(w http.ResponseWriter, r *http.Request, sess store.S
 		h.serverError(w, err)
 		return
 	}
-	p.Data = res
+	data := importData{ImportResult: res}
+	// A playlist that announces its guide (x-tvg-url) has that guide added
+	// as a source, so the EPG works without extra setup.
+	for _, u := range pl.EPGURLs() {
+		added, err := h.store.AddEPGURL(r.Context(), u)
+		if err != nil {
+			h.log.Warn("adding guide from playlist", "url", u, "err", err)
+			continue
+		}
+		if added {
+			data.EPGAdded = append(data.EPGAdded, u)
+		}
+	}
+	if len(data.EPGAdded) > 0 {
+		h.refreshGuide()
+	}
+	p.Data = data
 	h.render(w, r, "import", p)
 }
 

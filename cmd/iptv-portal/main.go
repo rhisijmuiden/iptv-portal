@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/rhisijmuiden/iptv-portal/internal/admin"
+	"github.com/rhisijmuiden/iptv-portal/internal/epg"
 	"github.com/rhisijmuiden/iptv-portal/internal/portal"
 	"github.com/rhisijmuiden/iptv-portal/internal/server"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
@@ -110,12 +111,23 @@ func serve(args []string) error {
 	if err != nil {
 		return err
 	}
+	guide := epg.New(log, *data)
+	refresh := make(chan struct{}, 1)
+	go guide.Loop(ctx, 6*time.Hour, func() []string {
+		s, err := st.Settings(ctx)
+		if err != nil {
+			log.Warn("reading guide sources", "err", err)
+			return nil
+		}
+		return s.EPGURLs
+	}, refresh)
+
 	var mgr *server.Manager
-	adminHandler, err := admin.New(st, managerRef{&mgr}, log)
+	adminHandler, err := admin.New(st, managerRef{&mgr}, guide, refresh, log)
 	if err != nil {
 		return err
 	}
-	portalHandler, err := portal.New(st, log)
+	portalHandler, err := portal.New(st, guide, log)
 	if err != nil {
 		return err
 	}

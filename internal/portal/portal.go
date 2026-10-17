@@ -1,5 +1,6 @@
 // Package portal serves the client side: the address users enter in their
-// IPTV player, and the invitation pages where they create an account.
+// IPTV player (Xtream Codes API, M3U playlist, XMLTV guide) and the
+// invitation pages where they create an account.
 package portal
 
 import (
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/rhisijmuiden/iptv-portal/internal/epg"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 	"github.com/rhisijmuiden/iptv-portal/internal/web"
 )
@@ -24,11 +26,15 @@ type Handler struct {
 	mux     *http.ServeMux
 	pages   map[string]*template.Template
 	limiter *web.Limiter
+	// authLimiter slows down password guessing on the player endpoints.
+	authLimiter *web.Limiter
+	guide       *epg.Guide
 }
 
 // New builds the client portal.
-func New(st *store.Store, log *slog.Logger) (*Handler, error) {
-	h := &Handler{store: st, log: log, mux: http.NewServeMux(), limiter: web.NewLimiter(20, 15*time.Minute)}
+func New(st *store.Store, guide *epg.Guide, log *slog.Logger) (*Handler, error) {
+	h := &Handler{store: st, log: log, mux: http.NewServeMux(), guide: guide,
+		limiter: web.NewLimiter(20, 15*time.Minute), authLimiter: web.NewLimiter(30, 15*time.Minute)}
 	h.pages = map[string]*template.Template{}
 	for _, name := range []string{"invite", "welcome"} {
 		t, err := template.ParseFS(templateFS, "templates/layout.html", "templates/"+name+".html")
@@ -44,6 +50,10 @@ func New(st *store.Store, log *slog.Logger) (*Handler, error) {
 	h.mux.HandleFunc("GET /{$}", h.index)
 	h.mux.HandleFunc("GET /invite/{token}", h.inviteForm)
 	h.mux.HandleFunc("POST /invite/{token}", h.inviteRedeem)
+	h.mux.HandleFunc("/player_api.php", h.playerAPI)
+	h.mux.HandleFunc("/get.php", h.getPlaylist)
+	h.mux.HandleFunc("/xmltv.php", h.xmltv)
+	h.mux.HandleFunc("GET /live/{user}/{pass}/{file}", h.liveRedirect)
 	return h, nil
 }
 

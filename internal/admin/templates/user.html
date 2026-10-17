@@ -30,4 +30,16 @@
   </div>
 </form>
 </section>
+{{if $u.ID}}
+<section class="card">
+  <h2>Setup details</h2>
+  <p>Give these to the user for their TV box (Xtream Codes login):</p>
+  <table class="details">
+    <tr><th>Server / portal URL</th><td><code>{{.Data.PortalURL}}</code></td></tr>
+    <tr><th>Username</th><td><code>{{$u.Username}}</code></td></tr>
+    <tr><th>Password</th><td>The password set for this user</td></tr>
+  </table>
+  <p class="muted">M3U playlist: <code>{{.Data.PortalURL}}/get.php?username={{$u.Username}}&amp;password=PASSWORD&amp;type=m3u_plus&amp;output=m3u8</code></p>
+</section>
+{{end}}
 {{end}}

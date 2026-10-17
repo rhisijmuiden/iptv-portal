@@ -57,8 +57,9 @@ func (h *Handler) userList(w http.ResponseWriter, r *http.Request, sess store.Se
 }
 
 type userFormData struct {
-	User     store.User
-	Packages []store.Package
+	User      store.User
+	Packages  []store.Package
+	PortalURL string
 }
 
 func (h *Handler) userForm(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -87,12 +88,17 @@ func (h *Handler) renderUserForm(w http.ResponseWriter, r *http.Request, sess st
 		h.serverError(w, err)
 		return
 	}
+	st, err := h.store.Settings(r.Context())
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
 	title := "Add user"
 	if u.ID != 0 {
 		title = "Edit user"
 	}
 	h.render(w, r, "user", page{Title: title, Nav: "users", Session: &sess, Error: errMsg,
-		Data: userFormData{User: u, Packages: pkgs}})
+		Data: userFormData{User: u, Packages: pkgs, PortalURL: PortalURL(st, r)}})
 }
 
 func (h *Handler) userSave(w http.ResponseWriter, r *http.Request, sess store.Session) {

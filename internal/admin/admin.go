@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rhisijmuiden/iptv-portal/internal/epg"
 	"github.com/rhisijmuiden/iptv-portal/internal/server"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 	"github.com/rhisijmuiden/iptv-portal/internal/version"
@@ -43,11 +44,14 @@ type Handler struct {
 	pages     map[string]*template.Template
 	mux       *http.ServeMux
 	limiter   *web.Limiter
+	guide     *epg.Guide
+	refresh   chan<- struct{}
 }
 
-// New builds the admin panel.
-func New(st *store.Store, listeners Listeners, log *slog.Logger) (*Handler, error) {
-	h := &Handler{store: st, listeners: listeners, log: log, limiter: web.NewLimiter(10, 15*time.Minute)}
+// New builds the admin panel. A send on refresh asks the guide to reload.
+func New(st *store.Store, listeners Listeners, guide *epg.Guide, refresh chan<- struct{}, log *slog.Logger) (*Handler, error) {
+	h := &Handler{store: st, listeners: listeners, log: log, limiter: web.NewLimiter(10, 15*time.Minute),
+		guide: guide, refresh: refresh}
 	if err := h.parseTemplates(); err != nil {
 		return nil, err
 	}
@@ -73,6 +77,7 @@ func (h *Handler) parseTemplates() error {
 			}
 			return t.Local().Format("2006-01-02")
 		},
+		"ptr": func(t time.Time) *time.Time { return &t },
 		"datetime": func(t *time.Time) string {
 			if t == nil {
 				return ""
@@ -145,6 +150,9 @@ func (h *Handler) routes() {
 	auth("POST /invites", h.inviteCreate)
 	auth("POST /invites/{id}/revoke", h.inviteRevoke)
 	auth("POST /invites/{id}/delete", h.inviteDelete)
+	auth("GET /epg", h.epgPage)
+	auth("POST /epg", h.epgSave)
+	auth("POST /epg/refresh", h.epgRefresh)
 	auth("GET /settings", h.settingsForm)
 	auth("POST /settings", h.settingsSave)
 	h.mux = m
@@ -388,6 +396,7 @@ func (h *Handler) settingsSave(w http.ResponseWriter, r *http.Request, sess stor
 	st := store.Settings{
 		PortalName: r.FormValue("portal_name"),
 		PublicURL:  r.FormValue("public_url"),
+		EPGURLs:    old.EPGURLs,
 	}
 	st.AdminPort, _ = strconv.Atoi(r.FormValue("admin_port"))
 	st.PortalPort, _ = strconv.Atoi(r.FormValue("portal_port"))
