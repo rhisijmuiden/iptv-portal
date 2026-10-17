@@ -49,7 +49,7 @@ type iptvorgData struct {
 }
 
 func (h *Handler) iptvorgPage(w http.ResponseWriter, r *http.Request, sess store.Session) {
-	p := page{Title: "iptv-org", Nav: "iptvorg", Session: &sess}
+	p := page{Title: "Browse iptv-org", Nav: "iptvorg", Session: &sess}
 	q := r.URL.Query()
 	f := iptvorg.Filter{Country: defaultCountry, Category: q.Get("category"), Search: q.Get("q"), Limit: maxResults}
 	if q.Has("country") {
@@ -103,7 +103,7 @@ func (h *Handler) iptvorgReload(w http.ResponseWriter, r *http.Request, sess sto
 	defer cancel()
 	back := backTo(r, "/iptv-org")
 	if _, err := h.iptvorg.Catalog(ctx, true); err != nil {
-		h.render(w, r, "iptvorg", page{Title: "iptv-org", Nav: "iptvorg", Session: &sess,
+		h.render(w, r, "iptvorg", page{Title: "Browse iptv-org", Nav: "iptvorg", Session: &sess,
 			Error: "Could not load the iptv-org channel list: " + err.Error()})
 		return
 	}
