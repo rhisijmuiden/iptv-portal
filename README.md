@@ -214,6 +214,10 @@ Under **Settings → Mail server** you can enter your own SMTP server (host, por
 
 The SMTP password is stored in the portal database. Many providers (Gmail, Outlook) need an app password instead of your normal password.
 
+### Who is online
+
+The dashboard shows how many users are online and which channel each player opened last, with its IP address and player name. Streams go straight from the broadcaster to the player, so the portal only sees the player's own requests: a user counts as *online* after a request in the last 15 minutes, and as *watching* when they opened a channel in that time. The portal cannot tell when someone stops watching, and the list starts empty after a restart.
+
 ## Setting up a TV box
 
 Users add the portal as an **Xtream Codes** login (called *XC* in some apps) with:

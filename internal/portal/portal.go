@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/rhisijmuiden/iptv-portal/internal/activity"
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
 	"github.com/rhisijmuiden/iptv-portal/internal/mail"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
@@ -31,11 +32,12 @@ type Handler struct {
 	// authLimiter slows down password guessing on the player endpoints.
 	authLimiter *web.Limiter
 	guide       *epg.Guide
+	activity    *activity.Tracker
 }
 
-// New builds the client portal.
-func New(st *store.Store, guide *epg.Guide, log *slog.Logger) (*Handler, error) {
-	h := &Handler{store: st, log: log, mux: http.NewServeMux(), guide: guide,
+// New builds the client portal. Player requests are recorded in tracker.
+func New(st *store.Store, guide *epg.Guide, tracker *activity.Tracker, log *slog.Logger) (*Handler, error) {
+	h := &Handler{store: st, log: log, mux: http.NewServeMux(), guide: guide, activity: tracker,
 		limiter: web.NewLimiter(20, 15*time.Minute), authLimiter: web.NewLimiter(30, 15*time.Minute)}
 	h.pages = map[string]*template.Template{}
 	for _, name := range []string{"invite", "welcome"} {
