@@ -1,19 +1,28 @@
 {{define "content"}}
-<h1>Settings</h1>
-<section class="card">
+<div class="titlebar">
+  <div>
+    <h1>Settings</h1>
+    <p class="subtitle">How the portal presents itself and which ports it listens on.</p>
+  </div>
+</div>
 <form method="post" action="/settings" class="stack">
   <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
-  <label>Portal name <input name="portal_name" value="{{.Data.PortalName}}" required></label>
-  <label>Public URL
-    <input type="url" name="public_url" value="{{.Data.PublicURL}}" placeholder="https://tv.example.com">
-    <small>The address users reach the portal on, without a trailing <code>/</code>. Behind a reverse proxy, enter the proxy address here (for example with https). Leave empty to use the server address and the portal port.</small>
-  </label>
-  <div class="row">
-    <label>Admin panel port <input type="number" name="admin_port" min="1" max="65535" value="{{.Data.AdminPort}}" required></label>
-    <label>Portal port (TV boxes) <input type="number" name="portal_port" min="1" max="65535" value="{{.Data.PortalPort}}" required></label>
-  </div>
-  <p class="muted">After changing a port, that component restarts on the new port right away. Update your reverse proxy or firewall afterwards.</p>
-  <button>Save</button>
+  <section class="card stack-card">
+    <h2>General</h2>
+    <label>Portal name <input name="portal_name" value="{{.Data.PortalName}}" required></label>
+    <label>Public URL
+      <input type="url" name="public_url" value="{{.Data.PublicURL}}" placeholder="https://tv.example.com">
+      <small>The address users reach the portal on, without a trailing <code>/</code>. Behind a reverse proxy, enter the proxy address here (for example with https). Leave empty to use the server address and the portal port.</small>
+    </label>
+  </section>
+  <section class="card stack-card">
+    <h2>Network</h2>
+    <div class="row">
+      <label>Admin panel port <input type="number" name="admin_port" min="1" max="65535" value="{{.Data.AdminPort}}" required></label>
+      <label>Portal port (TV boxes) <input type="number" name="portal_port" min="1" max="65535" value="{{.Data.PortalPort}}" required></label>
+    </div>
+    <p class="muted"><small>After changing a port, that component restarts on the new port right away. Update your reverse proxy or firewall afterwards.</small></p>
+  </section>
+  <div class="form-actions"><button>Save settings</button></div>
 </form>
-</section>
 {{end}}

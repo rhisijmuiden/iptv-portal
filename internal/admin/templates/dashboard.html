@@ -1,22 +1,41 @@
 {{define "content"}}
-<h1>Dashboard</h1>
-{{with .Data.Update}}<p class="flash ok">Version {{.Tag}} is available. <a href="/info">See what's new and update</a>.</p>{{end}}
-<div class="stats">
-  <a class="card stat" href="/channels"><strong>{{.Data.Channels}}</strong><span>channels</span></a>
-  <a class="card stat" href="/channels"><strong>{{.Data.Enabled}}</strong><span>enabled</span></a>
-  <a class="card stat" href="/categories"><strong>{{.Data.Categories}}</strong><span>categories</span></a>
-  <a class="card stat" href="/users"><strong>{{.Data.Active}}</strong><span>active users{{if ne .Data.Active .Data.Users}} of {{.Data.Users}}{{end}}</span></a>
+<div class="titlebar">
+  <div>
+    <h1>Dashboard</h1>
+    <p class="subtitle">An overview of your channels, users and the portal itself.</p>
+  </div>
 </div>
-<section class="card">
-  <h2>Portal address</h2>
-  <p>Users enter this address on their TV box or in their IPTV app:</p>
-  <p><code class="big">{{.Data.PortalURL}}</code></p>
-  <p class="muted">Using a reverse proxy or your own domain? Set the public URL under <a href="/settings">Settings</a>.</p>
-</section>
-<section class="card">
-  <h2>Status</h2>
+{{with .Data.Update}}<p class="flash ok">Version {{.Tag}} is available. <a href="/info">See what's new and update</a></p>{{end}}
+<div class="stats">
+  <a class="card stat" href="/channels"><span class="stat-icon">{{icon "tv"}}</span><div><strong>{{.Data.Channels}}</strong><span>channels</span></div></a>
+  <a class="card stat" href="/channels"><span class="stat-icon">{{icon "check"}}</span><div><strong>{{.Data.Enabled}}</strong><span>enabled</span></div></a>
+  <a class="card stat" href="/categories"><span class="stat-icon">{{icon "tag"}}</span><div><strong>{{.Data.Categories}}</strong><span>categories</span></div></a>
+  <a class="card stat" href="/users"><span class="stat-icon">{{icon "users"}}</span><div><strong>{{.Data.Active}}</strong><span>active users{{if ne .Data.Active .Data.Users}} of {{.Data.Users}}{{end}}</span></div></a>
+</div>
+<div class="grid-2">
+  <section class="card">
+    <h2>Portal address</h2>
+    <p class="muted">Users enter this address on their TV box or in their IPTV app.</p>
+    <div class="copy">
+      <input id="portal-url" readonly value="{{.Data.PortalURL}}" onclick="this.select()">
+      <button type="button" class="secondary" onclick="navigator.clipboard.writeText(document.getElementById('portal-url').value).then(()=>this.lastChild.textContent='Copied')">{{icon "copy"}}<span>Copy</span></button>
+    </div>
+    <p class="muted"><small>Using a reverse proxy or your own domain? Set the public URL under <a href="/settings">Settings</a>.</small></p>
+  </section>
+  <section class="card">
+    <h2>Quick actions</h2>
+    <div class="actions-grid">
+      <a class="action" href="/channels/new">{{icon "plus"}}Add channel</a>
+      <a class="action" href="/import">{{icon "upload"}}Import playlist</a>
+      <a class="action" href="/iptv-org">{{icon "globe"}}Browse iptv-org</a>
+      <a class="action" href="/invites">{{icon "mail"}}Invite someone</a>
+    </div>
+  </section>
+</div>
+<h2 class="section-title">Services</h2>
+<section class="card flush">
   <table>
-    <thead><tr><th>Component</th><th>Port</th><th>Status</th></tr></thead>
+    <thead><tr><th>Service</th><th>Port</th><th>Status</th></tr></thead>
     <tbody>
     {{range .Data.Listeners}}
       <tr><td>{{.Name}}</td><td>{{.Port}}</td>

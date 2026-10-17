@@ -1,10 +1,13 @@
 {{define "content"}}
 {{$d := .Data}}
 <div class="titlebar">
-  <h1>Program guide</h1>
+  <div>
+    <h1>TV guide</h1>
+    <p class="subtitle">Programme information (EPG) for your channels, loaded from XMLTV sources.</p>
+  </div>
   <form method="post" action="/epg/refresh">
     <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
-    <button class="secondary" {{if $d.Status.Refreshing}}disabled{{end}}>{{if $d.Status.Refreshing}}Refreshing…{{else}}Refresh now{{end}}</button>
+    <button class="secondary" {{if $d.Status.Refreshing}}disabled{{end}}>{{icon "refresh"}}{{if $d.Status.Refreshing}}Refreshing…{{else}}Refresh now{{end}}</button>
   </form>
 </div>
 <section class="card">
@@ -41,7 +44,7 @@
     <thead><tr><th>Channel</th><th>EPG ID</th><th>Guide</th></tr></thead>
     <tbody>
     {{range $d.Channels}}
-    <tr><td><a href="/channels/{{.Channel.ID}}">{{.Channel.Name}}</a></td>
+    <tr><td><a class="name" href="/channels/{{.Channel.ID}}">{{.Channel.Name}}</a></td>
       <td>{{if .Channel.EPGID}}<code>{{.Channel.EPGID}}</code>{{else}}<span class="muted">none</span>{{end}}</td>
       <td>{{if .HasEPG}}<span class="badge on">found</span>{{else if .Channel.EPGID}}<span class="badge off">not in sources</span>{{else}}<span class="muted">none</span>{{end}}</td></tr>
     {{end}}

@@ -200,7 +200,7 @@ func (h *Handler) categoryDelete(w http.ResponseWriter, r *http.Request, sess st
 // ---- import ----
 
 func (h *Handler) importForm(w http.ResponseWriter, r *http.Request, sess store.Session) {
-	h.render(w, r, "import", page{Title: "Import", Nav: "import", Session: &sess})
+	h.render(w, r, "import", page{Title: "Import playlist", Nav: "import", Session: &sess})
 }
 
 const maxPlaylistSize = 10 << 20
@@ -211,7 +211,7 @@ type importData struct {
 }
 
 func (h *Handler) importRun(w http.ResponseWriter, r *http.Request, sess store.Session) {
-	p := page{Title: "Import", Nav: "import", Session: &sess}
+	p := page{Title: "Import playlist", Nav: "import", Session: &sess}
 	src, err := playlistSource(r)
 	if err != nil {
 		p.Error = err.Error()

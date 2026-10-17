@@ -30,7 +30,7 @@ func (h *Handler) renderInfo(w http.ResponseWriter, r *http.Request, sess store.
 	if errMsg == "" {
 		errMsg = us.Error
 	}
-	h.render(w, r, "info", page{Title: "Info", Nav: "info", Session: &sess, Error: errMsg, Data: infoData{
+	h.render(w, r, "info", page{Title: "Info & updates", Nav: "info", Session: &sess, Error: errMsg, Data: infoData{
 		Version:   version.Version,
 		Status:    us,
 		AutoCheck: st.AutoUpdateCheck,

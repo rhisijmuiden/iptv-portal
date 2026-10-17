@@ -1,5 +1,6 @@
 {{define "content"}}
 {{$u := .Data.User}}
+<a class="back" href="/users">&larr; Users</a>
 <h1>{{.Title}}</h1>
 <section class="card">
 <form method="post" action="{{if $u.ID}}/users/{{$u.ID}}{{else}}/users/new{{end}}" class="stack">
@@ -24,7 +25,7 @@
     <label>Note <input name="note" value="{{$u.Note}}" placeholder="For example who this account is for"></label>
   </div>
   <label class="check"><input type="checkbox" name="enabled" {{if $u.Enabled}}checked{{end}}> Enabled</label>
-  <div class="buttons">
+  <div class="form-actions">
     <button>Save</button>
     <a class="button secondary" href="/users">Cancel</a>
   </div>

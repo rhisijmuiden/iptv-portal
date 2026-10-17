@@ -1,12 +1,17 @@
 {{define "content"}}
-<h1>Categories</h1>
+<div class="titlebar">
+  <div>
+    <h1>Categories</h1>
+    <p class="subtitle">Groups of channels, shown as folders on the TV box. Lower order numbers come first.</p>
+  </div>
+</div>
 <section class="card">
   <h2>New category</h2>
   <form method="post" action="/categories" class="inline">
     <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
     <input name="name" placeholder="For example North Holland" required>
     <input type="number" name="sort_order" value="0" title="Order" class="small">
-    <button>Add</button>
+    <button>{{icon "plus"}}Add</button>
   </form>
 </section>
 {{if .Data}}
@@ -22,14 +27,14 @@
         <input type="hidden" name="id" value="{{.ID}}">
         <input name="name" value="{{.Name}}" required>
         <input type="number" name="sort_order" value="{{.SortOrder}}" class="small">
-        <button class="secondary">Save</button>
+        <button class="secondary sm">Save</button>
       </form>
     </td>
     <td><a href="/channels?category={{.ID}}">{{.ChannelCount}}</a></td>
     <td class="actions">
       <form method="post" action="/categories/{{.ID}}/delete" onsubmit="return confirm('Delete this category? Its channels are kept.')">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
-        <button class="link danger">Delete</button>
+        <button class="danger sm" title="Delete">{{icon "trash"}}<span class="label">Delete</span></button>
       </form>
     </td>
   </tr>
