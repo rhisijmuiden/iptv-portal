@@ -8,6 +8,13 @@
     <input id="new-invite" readonly value="{{$.Data.PortalURL}}/invite/{{.Token}}" onclick="this.select()">
     <button type="button" class="secondary" onclick="navigator.clipboard.writeText(document.getElementById('new-invite').value).then(()=>this.textContent='Copied')">Copy</button>
   </div>
+  {{if $.Data.MailOn}}
+  <form method="post" action="/invites/{{.ID}}/send" class="inline spaced">
+    <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+    <input type="email" name="email" placeholder="Email the link to…" required>
+    <button class="secondary">Send by email</button>
+  </form>
+  {{end}}
 </section>
 {{end}}
 <section class="card">
@@ -26,7 +33,12 @@
       <label>Account valid for (days) <input type="number" name="valid_days" value="0" min="0"><small>Counted from sign-up. 0 = no expiry.</small></label>
       <label>Link valid until <input type="date" name="expires"><small>Leave empty to keep the link valid.</small></label>
     </div>
-    <label>Note <input name="note" placeholder="For example who this is for; copied to the account"></label>
+    <div class="row">
+      <label>Note <input name="note" placeholder="For example who this is for; copied to the account"></label>
+      {{if .Data.MailOn}}
+      <label>Email the link to <input type="email" name="email" placeholder="Optional"><small>Leave empty to copy and send the link yourself.</small></label>
+      {{end}}
+    </div>
     <button>Create invitation</button>
   </form>
   {{else}}

@@ -20,6 +20,18 @@
     {{end}}
   </fieldset>
   <div class="row">
+    <label>Email <input type="email" name="email" value="{{$u.Email}}" autocomplete="off" placeholder="Optional">
+      <small>Where login details are sent to.</small></label>
+    <div class="beside-label">
+    {{if .Data.MailOn}}
+      <label class="check"><input type="checkbox" name="send_login" {{if .Data.SendLogin}}checked{{end}}> Email the login details to the user</label>
+      <small>{{if $u.ID}}Only possible when you enter a new password above.{{else}}Sends the portal URL, username and password.{{end}}</small>
+    {{else}}
+      <small>To email login details, set up a <a href="/settings#mail">mail server</a> first.</small>
+    {{end}}
+    </div>
+  </div>
+  <div class="row">
     <label>Expires on <input type="date" name="expires" value="{{date $u.ExpiresAt}}"><small>Leave empty for no expiry.</small></label>
     <label>Note <input name="note" value="{{$u.Note}}" placeholder="For example who this account is for"></label>
   </div>
@@ -40,6 +52,12 @@
     <tr><th>Password</th><td>The password set for this user</td></tr>
   </table>
   <p class="muted">M3U playlist: <code>{{.Data.PortalURL}}/get.php?username={{$u.Username}}&amp;password=PASSWORD&amp;type=m3u_plus&amp;output=m3u8</code></p>
+  {{if and .Data.MailOn $u.Email}}
+  <form method="post" action="/users/{{$u.ID}}/send-login" onsubmit="return confirm('This replaces the current password with a new one and emails it to {{$u.Email}}. The old password stops working. Continue?')">
+    <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+    <button class="secondary">Email new password to {{$u.Email}}</button>
+  </form>
+  {{end}}
 </section>
 {{end}}
 {{end}}

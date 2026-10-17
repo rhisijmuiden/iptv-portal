@@ -16,4 +16,43 @@
   <button>Save</button>
 </form>
 </section>
+{{with .Data.Mail}}
+<section class="card" id="mail">
+  <h2>Mail server</h2>
+  <p class="muted">Used to email users their login details and to send invitations. Leave the server empty to switch sending email off.</p>
+  <form method="post" action="/settings/mail" class="stack">
+    <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+    <div class="row">
+      <label>SMTP server <input name="smtp_host" value="{{.Host}}" placeholder="smtp.example.com" autocomplete="off"></label>
+      <label>Security
+        <select name="smtp_security">
+          <option value="starttls" {{if eq .Security "starttls"}}selected{{end}}>STARTTLS (usually port 587)</option>
+          <option value="tls" {{if eq .Security "tls"}}selected{{end}}>TLS (usually port 465)</option>
+          <option value="none" {{if eq .Security "none"}}selected{{end}}>None (local relay only)</option>
+        </select>
+      </label>
+      <label>Port <input type="number" name="smtp_port" min="1" max="65535" value="{{if .Port}}{{.Port}}{{end}}" placeholder="587"></label>
+    </div>
+    <div class="row">
+      <label>Username <input name="smtp_username" value="{{.Username}}" autocomplete="off"><small>Leave empty if the server does not need a login.</small></label>
+      <label>Password <input type="password" name="smtp_password" autocomplete="new-password" {{if .Password}}placeholder="unchanged"{{end}}>
+        <small>{{if .Password}}Leave empty to keep the stored password.{{else}}For example an app password from your mail provider.{{end}}</small></label>
+    </div>
+    {{if .Password}}<label class="check"><input type="checkbox" name="smtp_clear_password"> Remove the stored password</label>{{end}}
+    <div class="row">
+      <label>Sender address <input type="email" name="smtp_from" value="{{.From}}" placeholder="tv@example.com"><small>Most providers only accept the address of the account you log in with.</small></label>
+      <label>Sender name <input name="smtp_from_name" value="{{.FromName}}" placeholder="{{$.PortalName}}"></label>
+    </div>
+    <button>Save mail settings</button>
+  </form>
+  {{if .Configured}}
+  <h2 class="spaced">Send a test email</h2>
+  <form method="post" action="/settings/mail/test" class="inline">
+    <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+    <input type="email" name="to" placeholder="you@example.com" required>
+    <button class="secondary">Send test email</button>
+  </form>
+  {{end}}
+</section>
+{{end}}
 {{end}}

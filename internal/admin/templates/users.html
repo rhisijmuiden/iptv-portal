@@ -7,7 +7,7 @@
   </div>
 </div>
 <form method="get" action="/users" class="filters">
-  <input type="search" name="q" value="{{.Data.Search}}" placeholder="Search by username or note">
+  <input type="search" name="q" value="{{.Data.Search}}" placeholder="Search by username, email or note">
   <button class="secondary">Search</button>
 </form>
 {{if .Data.Users}}
@@ -17,7 +17,7 @@
   <tbody>
   {{range .Data.Users}}
   <tr>
-    <td><a href="/users/{{.ID}}">{{.Username}}</a>{{if .Note}}<div class="muted url">{{.Note}}</div>{{end}}</td>
+    <td><a href="/users/{{.ID}}">{{.Username}}</a>{{if .Email}}<div class="muted url">{{.Email}}</div>{{end}}{{if .Note}}<div class="muted url">{{.Note}}</div>{{end}}</td>
     <td>{{range $i, $p := .Packages}}{{if $i}}, {{end}}{{$p}}{{else}}<span class="muted">none</span>{{end}}</td>
     <td>{{with .ExpiresAt}}{{date .}}{{else}}<span class="muted">never</span>{{end}}</td>
     <td>{{with .LastSeenAt}}{{datetime .}}{{else}}<span class="muted">never</span>{{end}}</td>

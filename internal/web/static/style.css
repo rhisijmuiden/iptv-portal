@@ -125,3 +125,5 @@ label.check.stream input { margin-top: .25rem; }
 @media (min-width: 900px) and (min-height: 820px) {
   .add-bar { position: sticky; bottom: 0; box-shadow: 0 -4px 12px rgba(0,0,0,.08); }
 }
+.spaced { margin-top: 1.25rem; }
+.beside-label { padding-top: 1.9rem; }

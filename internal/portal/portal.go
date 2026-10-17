@@ -4,6 +4,7 @@
 package portal
 
 import (
+	"context"
 	"embed"
 	"errors"
 	"html/template"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
+	"github.com/rhisijmuiden/iptv-portal/internal/mail"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 	"github.com/rhisijmuiden/iptv-portal/internal/web"
 )
@@ -85,8 +87,11 @@ type invitePage struct {
 	Error      string
 	Usable     bool
 	Username   string
+	Email      string
 	Base       string
 	ExpiresAt  string
+	MailOn     bool   // a mail server is configured
+	MailedTo   string // the address the login details are being sent to
 }
 
 func (h *Handler) render(w http.ResponseWriter, r *http.Request, name string, status int, p invitePage) {
@@ -97,6 +102,7 @@ func (h *Handler) render(w http.ResponseWriter, r *http.Request, name string, st
 	}
 	p.PortalName = st.PortalName
 	p.Base = web.BaseURL(st.PublicURL, r)
+	p.MailOn = st.Mail.Configured()
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Referrer-Policy", "no-referrer") // keep the invite token out of referrers
@@ -122,7 +128,7 @@ func (h *Handler) inviteForm(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) inviteRedeem(w http.ResponseWriter, r *http.Request) {
 	ip := web.ClientIP(r)
-	p := invitePage{Title: "Invitation", Usable: true, Username: r.FormValue("username")}
+	p := invitePage{Title: "Invitation", Usable: true, Username: r.FormValue("username"), Email: r.FormValue("email")}
 	if !h.limiter.Allow(ip) {
 		p.Error = "Too many attempts, try again in 15 minutes."
 		h.render(w, r, "invite", http.StatusTooManyRequests, p)
@@ -133,7 +139,8 @@ func (h *Handler) inviteRedeem(w http.ResponseWriter, r *http.Request) {
 		h.render(w, r, "invite", http.StatusBadRequest, p)
 		return
 	}
-	u, err := h.store.RedeemInvite(r.Context(), r.PathValue("token"), r.FormValue("username"), r.FormValue("password"))
+	password := r.FormValue("password")
+	u, err := h.store.RedeemInvite(r.Context(), r.PathValue("token"), r.FormValue("username"), password, r.FormValue("email"))
 	if errors.Is(err, store.ErrInviteUnusable) {
 		h.limiter.Fail(ip) // slows down guessing of tokens
 		h.render(w, r, "invite", http.StatusNotFound, invitePage{Title: "Invitation"})
@@ -149,6 +156,21 @@ func (h *Handler) inviteRedeem(w http.ResponseWriter, r *http.Request) {
 	page := invitePage{Title: "Welcome", Username: u.Username}
 	if u.ExpiresAt != nil {
 		page.ExpiresAt = u.ExpiresAt.Local().Format("2 January 2006")
+	}
+	if u.Email != "" {
+		st, err := h.store.Settings(r.Context())
+		if err == nil && st.Mail.Configured() {
+			page.MailedTo = u.Email
+			// Sent in the background so a slow mail server does not hold
+			// up the welcome page; failures only end up in the log.
+			msg := mail.LoginMessage(u.Email, mail.Login{PortalName: st.PortalName,
+				PortalURL: web.BaseURL(st.PublicURL, r), Username: u.Username, Password: password, ExpiresAt: u.ExpiresAt})
+			go func() {
+				if err := mail.Send(context.Background(), st.Mail, msg); err != nil {
+					h.log.Warn("emailing login details", "username", u.Username, "err", err)
+				}
+			}()
+		}
 	}
 	h.render(w, r, "welcome", http.StatusOK, page)
 }

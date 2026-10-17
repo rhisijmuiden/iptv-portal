@@ -81,6 +81,17 @@ systemctl restart iptv-portal
 
 Invitation links point to the portal (port 80 by default), not the admin panel, so the admin panel does not have to be reachable from the internet.
 
+### Sending login details by email
+
+Under **Settings → Mail server** you can enter your own SMTP server (host, port, STARTTLS/TLS/none, login and sender address) and send a test email. Once it is set up:
+
+- When adding a user or setting a new password, tick **Email the login details to the user** to send the portal URL, username, password and playlist links to the user's email address.
+- **Email new password** on a user's page generates a new password and emails it. Passwords are stored as hashes, so an existing password can't be sent again.
+- Invitations can be emailed when you create them, or from the "Invitation created" box.
+- People signing up through an invitation can enter their email address and get their login details by email.
+
+The SMTP password is stored in the portal database. Many providers (Gmail, Outlook) need an app password instead of your normal password.
+
 ## Setting up a TV box
 
 Users add the portal as an **Xtream Codes** login (called *XC* in some apps) with:
