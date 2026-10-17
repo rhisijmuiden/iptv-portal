@@ -18,6 +18,7 @@ import (
 
 	"github.com/rhisijmuiden/iptv-portal/internal/admin"
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
+	"github.com/rhisijmuiden/iptv-portal/internal/iptvorg"
 	"github.com/rhisijmuiden/iptv-portal/internal/portal"
 	"github.com/rhisijmuiden/iptv-portal/internal/server"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
@@ -125,6 +126,8 @@ func serve(args []string) error {
 	}, refresh)
 
 	updater := update.New(envOr("IPTV_PORTAL_RELEASES_API", update.DefaultAPI), version.Version)
+	iptvOrg := iptvorg.NewClient()
+	iptvOrg.BaseURL = envOr("IPTV_PORTAL_IPTVORG_API", iptvorg.DefaultBaseURL)
 	go updater.Loop(ctx, 24*time.Hour, func() bool {
 		s, err := st.Settings(ctx)
 		return err == nil && s.AutoUpdateCheck
@@ -133,7 +136,7 @@ func serve(args []string) error {
 	var mgr *server.Manager
 	adminHandler, err := admin.New(admin.Config{
 		Store: st, Listeners: managerRef{&mgr}, Guide: guide, RefreshGuide: refresh,
-		Updater: updater, Log: log,
+		Updater: updater, IPTVOrg: iptvOrg, Log: log,
 		Restart: func() {
 			restart = true
 			stop()

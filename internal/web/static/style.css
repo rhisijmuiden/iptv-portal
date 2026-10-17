@@ -118,3 +118,10 @@ table.details th, table.details td { padding: .45rem .5rem; }
 .notes h4 { font-size: .95rem; margin: .6rem 0 .3rem; }
 .notes ul { margin: 0 0 .5rem; padding-left: 1.25rem; }
 .notes p { margin: .4rem 0; }
+table.iptvorg td { vertical-align: top; }
+table.iptvorg th label.check { font-weight: 600; }
+label.check.stream { align-items: flex-start; font-weight: 400; margin: .2rem 0; }
+label.check.stream input { margin-top: .25rem; }
+@media (min-width: 900px) and (min-height: 820px) {
+  .add-bar { position: sticky; bottom: 0; box-shadow: 0 -4px 12px rgba(0,0,0,.08); }
+}

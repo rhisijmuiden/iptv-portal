@@ -26,7 +26,7 @@ Both print the admin panel address, the username and a one-time password at the 
 
 | Component | Default port | Purpose |
 |---|---|---|
-| Admin panel | 8080 | Manage channels, categories, imports and settings |
+| Admin panel | 8080 | Manage channels, categories, imports (M3U and iptv-org) and settings |
 | Portal | 80 | The address users enter on their TV box |
 
 Both ports, the portal name and the public URL can be changed under **Settings** in the admin panel. After a port change, that component restarts on the new port right away.
@@ -108,3 +108,9 @@ Under **Guide** you list XMLTV sources (plain or `.xml.gz`). They are downloaded
 ## Importing channels
 
 Under **Import** you can upload an M3U playlist, paste one, or have it downloaded from a URL. The `tvg-id` (EPG mapping), `tvg-logo` and `group-title` (category) attributes are kept. A channel whose stream URL already exists is updated instead of added twice.
+
+### From iptv-org
+
+Under **iptv-org** you browse the public channel database of [iptv-org](https://iptv-org.github.io/). It opens on the Netherlands; filter by country, category or name, tick the streams you want and choose where they go: the iptv-org category, the country name, one of your own categories or a new one. You can also add that category to one or more packages straight away, so the channels show up for the users who have those packages. Each channel keeps its name, logo and iptv-org id as EPG ID (for example `NPO1.nl@SD`). Labels such as *Geo-blocked* or *Not 24/7* and streams that need special headers are marked, because TV boxes connect to the stream directly.
+
+The list is downloaded from `https://iptv-org.github.io/api` and kept in memory for 12 hours; **Reload list** fetches it again. Set `IPTV_PORTAL_IPTVORG_API` to use a mirror.
