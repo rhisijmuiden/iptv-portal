@@ -76,7 +76,7 @@ func setup(t *testing.T) fixture {
 		t.Fatal(err)
 	}
 
-	h, err := New(st, guide, slog.New(slog.DiscardHandler))
+	h, err := New(st, guide, nil, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatal(err)
 	}

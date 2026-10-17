@@ -1,0 +1,52 @@
+{{define "content"}}
+{{$d := .Data}}
+<div class="titlebar">
+  <h1>On Demand</h1>
+  <div class="buttons">
+    {{if $d.Servers}}
+    <form method="post" action="/media/refresh">
+      <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+      <button class="secondary" {{if $d.Refreshing}}disabled{{end}}>{{if $d.Refreshing}}Refreshing…{{else}}Refresh now{{end}}</button>
+    </form>
+    {{end}}
+    <a class="button" href="/media/new">Add media server</a>
+  </div>
+</div>
+<p class="muted">Offer the movies and series of your Jellyfin or Plex server to the TV boxes. They appear under Movies (VOD) and Series in the player. The libraries are read again every hour.</p>
+{{if and $d.Servers (not $d.Packages)}}
+<p class="flash warn">No package includes On Demand yet, so nobody can see the movies and series. Tick On Demand in a <a href="/packages">package</a>.</p>
+{{end}}
+{{if $d.Servers}}
+<div class="card flush">
+<table>
+  <thead><tr><th>Name</th><th>Server</th><th>Playback</th><th>Movies</th><th>Series</th><th>Episodes</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {{range $d.Servers}}
+  <tr>
+    <td><a href="/media/{{.Server.ID}}">{{.Server.Name}}</a></td>
+    <td>{{.Server.KindName}} <span class="muted url">{{.Server.URL}}</span></td>
+    <td>{{if .Server.Direct}}direct{{else}}through the portal{{end}}</td>
+    <td>{{.Status.Movies}}</td>
+    <td>{{.Status.Shows}}</td>
+    <td>{{.Status.Episodes}}</td>
+    <td>
+      {{if not .Server.Enabled}}<span class="badge off">disabled</span>
+      {{else if .Status.Error}}<span class="badge off">failed</span> <span class="muted">{{.Status.Error}}</span>
+      {{else if .Status.UpdatedAt.IsZero}}<span class="muted">not read yet</span>
+      {{else}}<span class="badge on">ok</span> <span class="muted">{{datetime (ptr .Status.UpdatedAt)}}</span>{{end}}
+    </td>
+    <td class="actions">
+      <form method="post" action="/media/{{.Server.ID}}/delete" onsubmit="return confirm('Delete this media server? Its movies and series disappear from the boxes.')">
+        <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+        <button class="link danger">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+</div>
+{{else}}
+<section class="card empty"><p>No media servers yet. <a href="/media/new">Add your Jellyfin or Plex server</a>.</p></section>
+{{end}}
+{{end}}

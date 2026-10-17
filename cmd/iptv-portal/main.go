@@ -19,6 +19,7 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/admin"
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
 	"github.com/rhisijmuiden/iptv-portal/internal/iptvorg"
+	"github.com/rhisijmuiden/iptv-portal/internal/media"
 	"github.com/rhisijmuiden/iptv-portal/internal/portal"
 	"github.com/rhisijmuiden/iptv-portal/internal/server"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
@@ -125,6 +126,10 @@ func serve(args []string) error {
 		return s.EPGURLs
 	}, refresh)
 
+	vod := media.NewCatalog(st, log)
+	refreshVOD := make(chan struct{}, 1)
+	go vod.Loop(ctx, time.Hour, refreshVOD)
+
 	updater := update.New(envOr("IPTV_PORTAL_RELEASES_API", update.DefaultAPI), version.Version)
 	iptvOrg := iptvorg.NewClient()
 	iptvOrg.BaseURL = envOr("IPTV_PORTAL_IPTVORG_API", iptvorg.DefaultBaseURL)
@@ -136,7 +141,7 @@ func serve(args []string) error {
 	var mgr *server.Manager
 	adminHandler, err := admin.New(admin.Config{
 		Store: st, Listeners: managerRef{&mgr}, Guide: guide, RefreshGuide: refresh,
-		Updater: updater, IPTVOrg: iptvOrg, Log: log,
+		Updater: updater, IPTVOrg: iptvOrg, Media: vod, RefreshMedia: refreshVOD, Log: log,
 		Restart: func() {
 			restart = true
 			stop()
@@ -145,7 +150,7 @@ func serve(args []string) error {
 	if err != nil {
 		return err
 	}
-	portalHandler, err := portal.New(st, guide, log)
+	portalHandler, err := portal.New(st, guide, vod, log)
 	if err != nil {
 		return err
 	}
