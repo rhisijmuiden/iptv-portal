@@ -1,0 +1,38 @@
+name: Release
+
+# Push a tag like v1.2.0 to build the binaries and publish a GitHub release.
+# The release notes are generated from the merged pull requests; the admin
+# panel shows them under Info.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test ./...
+      - name: Build
+        run: |
+          mkdir -p dist
+          for arch in amd64 arm64; do
+            CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath \
+              -ldflags "-s -w -X github.com/rhisijmuiden/iptv-portal/internal/version.Version=${GITHUB_REF_NAME}" \
+              -o dist/iptv-portal ./cmd/iptv-portal
+            tar -C dist -czf dist/iptv-portal_linux_${arch}.tar.gz iptv-portal
+            rm dist/iptv-portal
+          done
+          (cd dist && sha256sum *.tar.gz > checksums.txt)
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --generate-notes --verify-tag

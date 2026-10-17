@@ -11,6 +11,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"syscall"
 	"time"
@@ -156,6 +157,7 @@ func adminReset(args []string) error {
 	fs, data := newFlags("admin-reset")
 	username := fs.String("username", "admin", "username")
 	fs.Parse(args)
+	defer fixOwnership(*data)
 
 	st, err := store.Open(*data)
 	if err != nil {
@@ -188,6 +190,7 @@ func setPort(args []string) error {
 	adminPort := fs.Int("admin", 0, "admin panel port")
 	portalPort := fs.Int("portal", 0, "portal port")
 	fs.Parse(args)
+	defer fixOwnership(*data)
 	if *adminPort == 0 && *portalPort == 0 {
 		return errors.New("specify -admin and/or -portal")
 	}
@@ -228,4 +231,25 @@ func adminURL(port int) string {
 		}
 	}
 	return "http://" + net.JoinHostPort(host, strconv.Itoa(port)) + "/"
+}
+
+// fixOwnership gives the database files back to the owner of the data
+// directory. Commands like admin-reset are usually run as root, while the
+// service runs as its own user; without this SQLite would leave root-owned
+// files the service cannot write.
+func fixOwnership(dataDir string) {
+	if os.Geteuid() != 0 {
+		return
+	}
+	info, err := os.Stat(dataDir)
+	if err != nil {
+		return
+	}
+	st, ok := info.Sys().(*syscall.Stat_t)
+	if !ok || st.Uid == 0 {
+		return
+	}
+	for _, name := range []string{"portal.db", "portal.db-wal", "portal.db-shm"} {
+		os.Lchown(filepath.Join(dataDir, name), int(st.Uid), int(st.Gid))
+	}
 }
