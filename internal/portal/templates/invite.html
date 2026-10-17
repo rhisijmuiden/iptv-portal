@@ -1,0 +1,18 @@
+{{define "content"}}
+<section class="card narrow">
+  <h1>{{.PortalName}}</h1>
+  {{if .Usable}}
+  <p>You have been invited. Choose a username and password for your IPTV player.</p>
+  <form method="post" class="stack">
+    <label>Username <input name="username" value="{{.Username}}" pattern="[A-Za-z0-9._\-]{3,32}" autocomplete="username" autocapitalize="none" required autofocus>
+      <small>3-32 characters: letters, digits, dot, dash or underscore.</small></label>
+    <label>Password <input type="password" name="password" autocomplete="new-password" minlength="6" maxlength="64" required>
+      <small>6-64 characters, no spaces or / ? # % &amp; \ " '. You will type it on your TV, so keep it simple to enter.</small></label>
+    <label>Repeat password <input type="password" name="confirm" autocomplete="new-password" minlength="6" maxlength="64" required></label>
+    <button>Create account</button>
+  </form>
+  {{else}}
+  <p>This invitation is no longer valid. Ask the person who invited you for a new link.</p>
+  {{end}}
+</section>
+{{end}}

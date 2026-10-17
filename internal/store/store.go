@@ -18,7 +18,8 @@ var ErrNotFound = errors.New("not found")
 
 // Store wraps the SQLite database.
 type Store struct {
-	db *sql.DB
+	db        *sql.DB
+	authCache authCache
 }
 
 // Open opens (and creates when needed) the database in dataDir and applies
@@ -28,7 +29,7 @@ func Open(dataDir string) (*Store, error) {
 		return nil, fmt.Errorf("creating data directory: %w", err)
 	}
 	dsn := "file:" + filepath.Join(dataDir, "portal.db") +
-		"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"
+		"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_time_format=sqlite"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, err
@@ -83,6 +84,49 @@ var migrations = []string{
 		created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
 	CREATE INDEX channels_category ON channels(category_id);`,
+
+	`CREATE TABLE packages (
+		id           INTEGER PRIMARY KEY,
+		name         TEXT NOT NULL UNIQUE COLLATE NOCASE,
+		all_channels INTEGER NOT NULL DEFAULT 0
+	);
+	CREATE TABLE package_categories (
+		package_id  INTEGER NOT NULL REFERENCES packages(id) ON DELETE CASCADE,
+		category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+		PRIMARY KEY (package_id, category_id)
+	);
+	CREATE TABLE users (
+		id            INTEGER PRIMARY KEY,
+		username      TEXT NOT NULL UNIQUE COLLATE NOCASE,
+		password_hash TEXT NOT NULL,
+		note          TEXT NOT NULL DEFAULT '',
+		enabled       INTEGER NOT NULL DEFAULT 1,
+		expires_at    DATETIME,
+		invite_id     INTEGER REFERENCES invites(id) ON DELETE SET NULL,
+		created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		last_seen_at  DATETIME
+	);
+	CREATE TABLE user_packages (
+		user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		package_id INTEGER NOT NULL REFERENCES packages(id) ON DELETE CASCADE,
+		PRIMARY KEY (user_id, package_id)
+	);
+	CREATE TABLE invites (
+		id          INTEGER PRIMARY KEY,
+		token       TEXT NOT NULL UNIQUE,
+		note        TEXT NOT NULL DEFAULT '',
+		max_uses    INTEGER NOT NULL DEFAULT 1,
+		uses        INTEGER NOT NULL DEFAULT 0,
+		valid_days  INTEGER NOT NULL DEFAULT 0,
+		expires_at  DATETIME,
+		revoked     INTEGER NOT NULL DEFAULT 0,
+		created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE TABLE invite_packages (
+		invite_id  INTEGER NOT NULL REFERENCES invites(id) ON DELETE CASCADE,
+		package_id INTEGER NOT NULL REFERENCES packages(id) ON DELETE CASCADE,
+		PRIMARY KEY (invite_id, package_id)
+	);`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

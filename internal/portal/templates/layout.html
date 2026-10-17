@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{{.Title}} · {{.PortalName}}</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main>
+  {{if .Error}}<p class="flash err">{{.Error}}</p>{{end}}
+  {{template "content" .}}
+</main>
+</body>
+</html>

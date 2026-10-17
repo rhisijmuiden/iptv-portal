@@ -115,7 +115,11 @@ func serve(args []string) error {
 	if err != nil {
 		return err
 	}
-	mgr = server.NewManager(log, adminHandler, portal.New(st, log))
+	portalHandler, err := portal.New(st, log)
+	if err != nil {
+		return err
+	}
+	mgr = server.NewManager(log, adminHandler, portalHandler)
 	log.Info("IPTV Portal starting", "version", version.Version, "data", *data)
 	mgr.Start(settings.AdminPort, settings.PortalPort)
 	go adminHandler.PurgeLoop(ctx)
