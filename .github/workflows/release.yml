@@ -1,11 +1,17 @@
 name: Release
 
-# Push a tag like v1.2.0 to build the binaries and publish a GitHub release.
-# The release notes are generated from the merged pull requests; the admin
-# panel shows them under Info.
+# Push a tag like v1.2.0, or run this workflow by hand with a version, to
+# build the binaries and publish a GitHub release. When run by hand, the tag
+# is created on the selected branch. The release notes are generated from the
+# merged pull requests; the admin panel shows them under Info.
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release, for example v1.2.0
+        required: true
 
 permissions:
   contents: write
@@ -13,7 +19,15 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.version || github.ref_name }}
     steps:
+      - name: Check version
+        run: |
+          if ! [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version must look like v1.2.0, got '$VERSION'"
+            exit 1
+          fi
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -26,7 +40,7 @@ jobs:
           mkdir -p dist
           for arch in amd64 arm64; do
             CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath \
-              -ldflags "-s -w -X github.com/rhisijmuiden/iptv-portal/internal/version.Version=${GITHUB_REF_NAME}" \
+              -ldflags "-s -w -X github.com/rhisijmuiden/iptv-portal/internal/version.Version=${VERSION}" \
               -o dist/iptv-portal ./cmd/iptv-portal
             tar -C dist -czf dist/iptv-portal_linux_${arch}.tar.gz iptv-portal
             rm dist/iptv-portal
@@ -35,4 +49,9 @@ jobs:
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --generate-notes --verify-tag
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            gh release create "$VERSION" dist/* --generate-notes --target "$GITHUB_SHA"
+          else
+            gh release create "$VERSION" dist/* --generate-notes --verify-tag
+          fi

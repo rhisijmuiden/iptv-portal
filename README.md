@@ -37,7 +37,7 @@ When the portal runs behind a reverse proxy, set **Settings → Public URL** to 
 
 ## Releases
 
-Pushing a tag such as `v0.1.0` builds the Linux binaries (amd64 and arm64) and publishes a GitHub release with generated release notes. The installers download the latest release.
+Pushing a tag such as `v0.1.0`, or running the **Release** workflow under *Actions* with a version, builds the Linux binaries (amd64 and arm64) and publishes a GitHub release with generated release notes. The installers download the latest release.
 
 ## Updates
 
