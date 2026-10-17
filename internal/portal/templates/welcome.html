@@ -2,6 +2,7 @@
 <section class="card narrow wide">
   <h1>Your account is ready</h1>
   <p>Add the portal to your TV box or IPTV app with these details.</p>
+  {{with .MailedTo}}<p class="muted">We are also sending these details to <strong>{{.}}</strong>.</p>{{end}}
 
   <h2>Xtream Codes login (recommended)</h2>
   <p class="muted">For MyTVOnline (Formuler), TiviMate, IPTV Smarters and most other apps.</p>

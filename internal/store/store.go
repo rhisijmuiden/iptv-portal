@@ -129,6 +129,8 @@ var migrations = []string{
 		PRIMARY KEY (invite_id, package_id)
 	);`,
 
+	`ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT '';`,
+
 	`ALTER TABLE packages ADD COLUMN on_demand INTEGER NOT NULL DEFAULT 0;
 	CREATE TABLE media_servers (
 		id         INTEGER PRIMARY KEY,

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rhisijmuiden/iptv-portal/internal/mail"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 )
 
@@ -60,6 +61,8 @@ type userFormData struct {
 	User      store.User
 	Packages  []store.Package
 	PortalURL string
+	MailOn    bool // a mail server is configured
+	SendLogin bool // the "email the login details" box is ticked
 }
 
 func (h *Handler) userForm(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -83,6 +86,10 @@ func (h *Handler) userForm(w http.ResponseWriter, r *http.Request, sess store.Se
 }
 
 func (h *Handler) renderUserForm(w http.ResponseWriter, r *http.Request, sess store.Session, u store.User, errMsg string) {
+	h.renderUserFormData(w, r, sess, userFormData{User: u}, errMsg)
+}
+
+func (h *Handler) renderUserFormData(w http.ResponseWriter, r *http.Request, sess store.Session, d userFormData, errMsg string) {
 	pkgs, err := h.store.Packages(r.Context())
 	if err != nil {
 		h.serverError(w, err)
@@ -94,17 +101,18 @@ func (h *Handler) renderUserForm(w http.ResponseWriter, r *http.Request, sess st
 		return
 	}
 	title := "Add user"
-	if u.ID != 0 {
+	if d.User.ID != 0 {
 		title = "Edit user"
 	}
-	h.render(w, r, "user", page{Title: title, Nav: "users", Session: &sess, Error: errMsg,
-		Data: userFormData{User: u, Packages: pkgs, PortalURL: PortalURL(st, r)}})
+	d.Packages, d.PortalURL, d.MailOn = pkgs, PortalURL(st, r), st.Mail.Configured()
+	h.render(w, r, "user", page{Title: title, Nav: "users", Session: &sess, Error: errMsg, Data: d})
 }
 
 func (h *Handler) userSave(w http.ResponseWriter, r *http.Request, sess store.Session) {
 	u := store.User{
 		Username:   r.FormValue("username"),
 		Note:       r.FormValue("note"),
+		Email:      r.FormValue("email"),
 		Enabled:    r.FormValue("enabled") == "on",
 		PackageIDs: formIDs(r, "package"),
 	}
@@ -114,21 +122,53 @@ func (h *Handler) userSave(w http.ResponseWriter, r *http.Request, sess store.Se
 		http.NotFound(w, r)
 		return
 	}
+	password := r.FormValue("password")
+	send := r.FormValue("send_login") == "on"
+	fail := func(msg string) {
+		h.renderUserFormData(w, r, sess, userFormData{User: u, SendLogin: send}, msg)
+	}
 	exp, err := formDate(r, "expires")
 	if err != nil {
-		h.renderUserForm(w, r, sess, u, err.Error())
+		fail(err.Error())
 		return
 	}
 	u.ExpiresAt = exp
-	if _, err := h.store.SaveUser(r.Context(), u, r.FormValue("password")); err != nil {
+	if send && strings.TrimSpace(u.Email) == "" {
+		fail("Enter an email address to send the login details to.")
+		return
+	}
+	if send && password == "" {
+		fail("Enter a new password to email it, or use \"Email new password\" to generate one.")
+		return
+	}
+	id, err := h.store.SaveUser(r.Context(), u, password)
+	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			http.NotFound(w, r)
 			return
 		}
-		h.renderUserForm(w, r, sess, u, err.Error())
+		fail(err.Error())
 		return
 	}
-	redirectFlash(w, r, "/users", fmt.Sprintf("User %q saved.", strings.TrimSpace(u.Username)))
+	msg := fmt.Sprintf("User %q saved.", strings.TrimSpace(u.Username))
+	if send {
+		saved, err := h.store.User(r.Context(), id)
+		if err != nil {
+			h.serverError(w, err)
+			return
+		}
+		st, err := h.store.Settings(r.Context())
+		if err != nil {
+			h.serverError(w, err)
+			return
+		}
+		if err := h.sendLogin(r, st, saved, password); err != nil {
+			h.renderUserForm(w, r, sess, saved, "The user was saved, but the login details could not be emailed: "+err.Error())
+			return
+		}
+		msg = fmt.Sprintf("User %q saved and the login details emailed to %s.", saved.Username, saved.Email)
+	}
+	redirectFlash(w, r, "/users", msg)
 }
 
 func (h *Handler) userToggle(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -270,6 +310,7 @@ type inviteListData struct {
 	Packages  []store.Package
 	PortalURL string
 	New       *store.Invite // the invite that was just created
+	MailOn    bool          // a mail server is configured
 }
 
 func (h *Handler) inviteList(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -293,7 +334,7 @@ func (h *Handler) renderInvites(w http.ResponseWriter, r *http.Request, sess sto
 		return
 	}
 	h.render(w, r, "invites", page{Title: "Invitations", Nav: "invites", Session: &sess, Error: errMsg,
-		Data: inviteListData{Invites: invs, Packages: pkgs, PortalURL: PortalURL(st, r), New: created}})
+		Data: inviteListData{Invites: invs, Packages: pkgs, PortalURL: PortalURL(st, r), New: created, MailOn: st.Mail.Configured()}})
 }
 
 func (h *Handler) inviteCreate(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -313,12 +354,27 @@ func (h *Handler) inviteCreate(w http.ResponseWriter, r *http.Request, sess stor
 		h.renderInvites(w, r, sess, nil, err.Error())
 		return
 	}
+	to := strings.TrimSpace(r.FormValue("email"))
+	if to != "" {
+		if _, err := mail.ParseAddress(to); err != nil {
+			h.renderInvites(w, r, sess, nil, "email address is not valid")
+			return
+		}
+	}
 	created, err := h.store.CreateInvite(r.Context(), inv)
 	if err != nil {
 		h.renderInvites(w, r, sess, nil, err.Error())
 		return
 	}
-	h.renderInvites(w, r, sess, &created, "")
+	if to == "" {
+		h.renderInvites(w, r, sess, &created, "")
+		return
+	}
+	if err := h.sendInvite(r, created, to); err != nil {
+		h.renderInvites(w, r, sess, &created, "The invitation was created, but could not be emailed: "+err.Error())
+		return
+	}
+	redirectFlash(w, r, "/invites", fmt.Sprintf("Invitation created and emailed to %s.", to))
 }
 
 func (h *Handler) inviteRevoke(w http.ResponseWriter, r *http.Request, sess store.Session) {

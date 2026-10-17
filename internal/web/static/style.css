@@ -224,6 +224,10 @@ label.check.stream input { margin-top: .25rem; }
 .brand-mark.big { width: 48px; height: 48px; border-radius: 12px; margin-bottom: 1rem; }
 .brand-mark.big .icon { width: 24px; height: 24px; }
 
+/* Mail */
+.spaced { margin-top: 1.25rem; }
+.beside-label { padding-top: 1.9rem; }
+
 /* Dashboard viewers */
 .badge.idle { background: var(--surface-2); color: var(--muted); }
 .section-link { float: right; display: inline-flex; align-items: center; gap: .3rem; font-size: .78rem; text-transform: none; letter-spacing: 0; font-weight: 500; }

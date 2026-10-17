@@ -1,6 +1,8 @@
 package store
 
 import (
+	"github.com/rhisijmuiden/iptv-portal/internal/mail"
+
 	"context"
 	"errors"
 	"testing"
@@ -46,6 +48,16 @@ func TestSettingsDefaultsAndValidation(t *testing.T) {
 	}
 	if err := s.SetEPGURLs(ctx, []string{"ftp://x"}); err == nil {
 		t.Fatal("ftp guide URL accepted")
+	}
+	m := mail.Config{Host: "smtp.example.com", Security: mail.TLS, Username: "u", Password: "p", From: "tv@example.com"}
+	if err := s.SetMail(ctx, m); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := s.Settings(ctx); got.Mail.Port != 465 || got.Mail.Password != "p" || !got.Mail.Configured() || got.AdminPort != 9000 {
+		t.Fatalf("after SetMail = %+v", got)
+	}
+	if err := s.SetMail(ctx, mail.Config{Host: "smtp.example.com"}); err == nil {
+		t.Fatal("mail server without sender accepted")
 	}
 	for _, bad := range []Settings{
 		{PortalName: "x", AdminPort: 80, PortalPort: 80},

@@ -97,7 +97,7 @@ func TestInvites(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	u, err := s.RedeemInvite(ctx, inv.Token, "piet", "secret1")
+	u, err := s.RedeemInvite(ctx, inv.Token, "piet", "secret1", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestInvites(t *testing.T) {
 		u.ExpiresAt.Before(time.Now().AddDate(0, 0, 29)) {
 		t.Fatalf("redeemed user = %+v", u)
 	}
-	if _, err := s.RedeemInvite(ctx, inv.Token, "klaas", "secret1"); !errors.Is(err, ErrInviteUnusable) {
+	if _, err := s.RedeemInvite(ctx, inv.Token, "klaas", "secret1", ""); !errors.Is(err, ErrInviteUnusable) {
 		t.Fatalf("second use err = %v", err)
 	}
 	got, _ := s.InviteByToken(ctx, inv.Token)
@@ -114,19 +114,51 @@ func TestInvites(t *testing.T) {
 	}
 
 	open, _ := s.CreateInvite(ctx, Invite{MaxUses: 0, PackageIDs: []int64{pkg}})
-	if _, err := s.RedeemInvite(ctx, open.Token, "piet", "secret1"); err == nil {
+	if _, err := s.RedeemInvite(ctx, open.Token, "piet", "secret1", ""); err == nil {
 		t.Fatal("duplicate username accepted")
 	}
-	if _, err := s.RedeemInvite(ctx, open.Token, "klaas", "secret1"); err != nil {
+	if _, err := s.RedeemInvite(ctx, open.Token, "klaas", "secret1", " klaas@example.com "); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.RevokeInvite(ctx, open.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.RedeemInvite(ctx, open.Token, "kees", "secret1"); !errors.Is(err, ErrInviteUnusable) {
+	if _, err := s.RedeemInvite(ctx, open.Token, "kees", "secret1", ""); !errors.Is(err, ErrInviteUnusable) {
 		t.Fatalf("revoked invite err = %v", err)
 	}
 	if _, err := s.CreateInvite(ctx, Invite{}); err == nil {
 		t.Fatal("invite without packages accepted")
+	}
+}
+
+func TestUserEmailAndPasswordReset(t *testing.T) {
+	ctx := context.Background()
+	s := openTest(t)
+	if _, err := s.SaveUser(ctx, User{Username: "jan", Email: "not an address", Enabled: true}, "secret1"); err == nil {
+		t.Fatal("invalid email accepted")
+	}
+	id, err := s.SaveUser(ctx, User{Username: "jan", Email: " jan@example.com ", Enabled: true}, "secret1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, _ := s.User(ctx, id)
+	if u.Email != "jan@example.com" {
+		t.Fatalf("email = %q", u.Email)
+	}
+	if found, _ := s.Users(ctx, "example.com"); len(found) != 1 {
+		t.Fatalf("search by email found %d users", len(found))
+	}
+	pw, err := s.ResetUserPassword(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateUserCredentials("jan", pw); err != nil {
+		t.Fatalf("generated password %q: %v", pw, err)
+	}
+	if _, err := s.AuthenticateUser(ctx, "jan", "secret1"); err == nil {
+		t.Fatal("old password still works")
+	}
+	if _, err := s.AuthenticateUser(ctx, "jan", pw); err != nil {
+		t.Fatalf("new password: %v", err)
 	}
 }
