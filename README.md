@@ -81,6 +81,10 @@ systemctl restart iptv-portal
 
 Invitation links point to the portal (port 80 by default), not the admin panel, so the admin panel does not have to be reachable from the internet.
 
+### Who is online
+
+The dashboard shows how many users are online and which channel each player opened last, with its IP address and player name. Streams go straight from the broadcaster to the player, so the portal only sees the player's own requests: a user counts as *online* after a request in the last 15 minutes, and as *watching* when they opened a channel in that time. The portal cannot tell when someone stops watching, and the list starts empty after a restart.
+
 ## Setting up a TV box
 
 Users add the portal as an **Xtream Codes** login (called *XC* in some apps) with:

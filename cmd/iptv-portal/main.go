@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rhisijmuiden/iptv-portal/internal/activity"
 	"github.com/rhisijmuiden/iptv-portal/internal/admin"
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
 	"github.com/rhisijmuiden/iptv-portal/internal/iptvorg"
@@ -132,11 +133,12 @@ func serve(args []string) error {
 		s, err := st.Settings(ctx)
 		return err == nil && s.AutoUpdateCheck
 	})
+	tracker := activity.New()
 	restart := false
 	var mgr *server.Manager
 	adminHandler, err := admin.New(admin.Config{
 		Store: st, Listeners: managerRef{&mgr}, Guide: guide, RefreshGuide: refresh,
-		Updater: updater, IPTVOrg: iptvOrg, Log: log,
+		Updater: updater, IPTVOrg: iptvOrg, Activity: tracker, Log: log,
 		Restart: func() {
 			restart = true
 			stop()
@@ -145,7 +147,7 @@ func serve(args []string) error {
 	if err != nil {
 		return err
 	}
-	portalHandler, err := portal.New(st, guide, log)
+	portalHandler, err := portal.New(st, guide, tracker, log)
 	if err != nil {
 		return err
 	}

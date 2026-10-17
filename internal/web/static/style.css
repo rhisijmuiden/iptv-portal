@@ -125,3 +125,6 @@ label.check.stream input { margin-top: .25rem; }
 @media (min-width: 900px) and (min-height: 820px) {
   .add-bar { position: sticky; bottom: 0; box-shadow: 0 -4px 12px rgba(0,0,0,.08); }
 }
+.badge:not(.on):not(.off) { background: var(--bg); color: var(--muted); }
+.small-link { font-size: .8rem; font-weight: 400; margin-left: .5rem; }
+.device { display: inline-block; max-width: 22rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; color: var(--muted); }
