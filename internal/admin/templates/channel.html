@@ -1,0 +1,34 @@
+{{define "content"}}
+{{$c := .Data.Channel}}
+<h1>{{.Title}}</h1>
+<section class="card">
+<form method="post" action="{{if $c.ID}}/channels/{{$c.ID}}{{else}}/channels/new{{end}}" class="stack">
+  <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+  <label>Naam <input name="name" value="{{$c.Name}}" required></label>
+  <label>Stream-URL (m3u8)
+    <input type="url" name="stream_url" value="{{$c.StreamURL}}" placeholder="https://…/index.m3u8" required>
+    <small>De tv-box maakt direct verbinding met dit adres.</small>
+  </label>
+  <label>Logo-URL <input type="url" name="logo_url" value="{{$c.LogoURL}}" placeholder="https://…/logo.png"></label>
+  <label>EPG-id (tvg-id)
+    <input name="epg_id" value="{{$c.EPGID}}">
+    <small>Optioneel. Hiermee wordt het kanaal gekoppeld aan de programmagids.</small>
+  </label>
+  <div class="row">
+    <label>Categorie
+      <select name="category_id">
+        <option value="0">Geen categorie</option>
+        {{range .Data.Categories}}<option value="{{.ID}}" {{if eq $c.CategoryID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
+      </select>
+    </label>
+    <label>of nieuwe categorie <input name="new_category" placeholder="Naam van nieuwe categorie"></label>
+  </div>
+  <label>Volgorde <input type="number" name="sort_order" value="{{$c.SortOrder}}"><small>Lagere nummers staan eerder in de lijst.</small></label>
+  <label class="check"><input type="checkbox" name="enabled" {{if $c.Enabled}}checked{{end}}> Actief</label>
+  <div class="buttons">
+    <button>Opslaan</button>
+    <a class="button secondary" href="/channels">Annuleren</a>
+  </div>
+</form>
+</section>
+{{end}}

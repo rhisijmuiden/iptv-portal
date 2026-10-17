@@ -1,0 +1,51 @@
+{{define "content"}}
+<div class="titlebar">
+  <h1>Kanalen</h1>
+  <a class="button" href="/channels/new">Kanaal toevoegen</a>
+</div>
+<form method="get" action="/channels" class="filters">
+  <input type="search" name="q" value="{{.Data.Filter.Search}}" placeholder="Zoek op naam of URL">
+  <select name="category" onchange="this.form.submit()">
+    <option value="0">Alle categorieën</option>
+    <option value="-1" {{if eq .Data.Filter.CategoryID -1}}selected{{end}}>Zonder categorie</option>
+    {{range .Data.Categories}}<option value="{{.ID}}" {{if eq $.Data.Filter.CategoryID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
+  </select>
+  <button class="secondary">Filter</button>
+</form>
+{{if .Data.Channels}}
+<div class="card flush">
+<table class="channels">
+  <thead><tr><th></th><th>Naam</th><th>Categorie</th><th>EPG-id</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {{range .Data.Channels}}
+  <tr>
+    <td class="logo">{{if .LogoURL}}<img src="{{.LogoURL}}" alt="" loading="lazy" referrerpolicy="no-referrer">{{end}}</td>
+    <td><a href="/channels/{{.ID}}">{{.Name}}</a><div class="muted url">{{.StreamURL}}</div></td>
+    <td>{{if .Category}}{{.Category}}{{else}}<span class="muted">geen</span>{{end}}</td>
+    <td>{{if .EPGID}}<code>{{.EPGID}}</code>{{else}}<span class="muted">geen</span>{{end}}</td>
+    <td>
+      <form method="post" action="/channels/{{.ID}}/toggle">
+        <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+        <input type="hidden" name="back" value="{{$.Data.Back}}">
+        {{if .Enabled}}<input type="hidden" name="enabled" value="0"><button class="badge on" title="Uitzetten">actief</button>
+        {{else}}<input type="hidden" name="enabled" value="1"><button class="badge off" title="Aanzetten">uit</button>{{end}}
+      </form>
+    </td>
+    <td class="actions">
+      <form method="post" action="/channels/{{.ID}}/delete" onsubmit="return confirm('Kanaal verwijderen?')">
+        <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+        <button class="link danger">Verwijderen</button>
+      </form>
+    </td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+</div>
+{{else}}
+<section class="card empty">
+  <p>Er zijn nog geen kanalen{{if or .Data.Filter.Search .Data.Filter.CategoryID}} die aan dit filter voldoen{{end}}.</p>
+  <p><a href="/channels/new">Voeg een kanaal toe</a> of <a href="/import">importeer een M3U-playlist</a>.</p>
+</section>
+{{end}}
+{{end}}

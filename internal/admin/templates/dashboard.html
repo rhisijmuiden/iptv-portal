@@ -1,0 +1,26 @@
+{{define "content"}}
+<h1>Overzicht</h1>
+<div class="stats">
+  <a class="card stat" href="/channels"><strong>{{.Data.Channels}}</strong><span>kanalen</span></a>
+  <a class="card stat" href="/channels"><strong>{{.Data.Enabled}}</strong><span>actief</span></a>
+  <a class="card stat" href="/categories"><strong>{{.Data.Categories}}</strong><span>categorieën</span></a>
+</div>
+<section class="card">
+  <h2>Portal-adres</h2>
+  <p>Dit adres vullen gebruikers straks in op hun tv-box of in hun IPTV-app:</p>
+  <p><code class="big">{{.Data.PortalURL}}</code></p>
+  <p class="muted">Gebruik je een reverse proxy of een eigen domein? Stel dan de publieke URL in onder <a href="/settings">Instellingen</a>.</p>
+</section>
+<section class="card">
+  <h2>Status</h2>
+  <table>
+    <thead><tr><th>Onderdeel</th><th>Poort</th><th>Status</th></tr></thead>
+    <tbody>
+    {{range .Data.Listeners}}
+      <tr><td>{{.Name}}</td><td>{{.Port}}</td>
+        <td>{{if .Running}}<span class="badge on">actief</span>{{else}}<span class="badge off">niet actief</span> <span class="muted">{{.Error}}</span>{{end}}</td></tr>
+    {{end}}
+    </tbody>
+  </table>
+</section>
+{{end}}
