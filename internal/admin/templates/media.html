@@ -1,18 +1,20 @@
 {{define "content"}}
 {{$d := .Data}}
 <div class="titlebar">
-  <h1>On Demand</h1>
+  <div>
+    <h1>On Demand</h1>
+    <p class="subtitle">Offer the movies and series of your Jellyfin or Plex server. They appear under Movies (VOD) and Series on the TV boxes and are read again every hour.</p>
+  </div>
   <div class="buttons">
     {{if $d.Servers}}
     <form method="post" action="/media/refresh">
       <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
-      <button class="secondary" {{if $d.Refreshing}}disabled{{end}}>{{if $d.Refreshing}}Refreshing…{{else}}Refresh now{{end}}</button>
+      <button class="secondary" {{if $d.Refreshing}}disabled{{end}}>{{icon "refresh"}}{{if $d.Refreshing}}Refreshing…{{else}}Refresh now{{end}}</button>
     </form>
     {{end}}
-    <a class="button" href="/media/new">Add media server</a>
+    <a class="button" href="/media/new">{{icon "plus"}}Add media server</a>
   </div>
 </div>
-<p class="muted">Offer the movies and series of your Jellyfin or Plex server to the TV boxes. They appear under Movies (VOD) and Series in the player. The libraries are read again every hour.</p>
 {{if and $d.Servers (not $d.Packages)}}
 <p class="flash warn">No package includes On Demand yet, so nobody can see the movies and series. Tick On Demand in a <a href="/packages">package</a>.</p>
 {{end}}
@@ -23,7 +25,7 @@
   <tbody>
   {{range $d.Servers}}
   <tr>
-    <td><a href="/media/{{.Server.ID}}">{{.Server.Name}}</a></td>
+    <td><a class="name" href="/media/{{.Server.ID}}">{{.Server.Name}}</a></td>
     <td>{{.Server.KindName}} <span class="muted url">{{.Server.URL}}</span></td>
     <td>{{if .Server.Direct}}direct{{else}}through the portal{{end}}</td>
     <td>{{.Status.Movies}}</td>
@@ -36,9 +38,10 @@
       {{else}}<span class="badge on">ok</span> <span class="muted">{{datetime (ptr .Status.UpdatedAt)}}</span>{{end}}
     </td>
     <td class="actions">
+      <a class="button secondary sm" href="/media/{{.Server.ID}}" title="Edit">{{icon "edit"}}<span class="label">Edit</span></a>
       <form method="post" action="/media/{{.Server.ID}}/delete" onsubmit="return confirm('Delete this media server? Its movies and series disappear from the boxes.')">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
-        <button class="link danger">Delete</button>
+        <button class="danger sm" title="Delete">{{icon "trash"}}<span class="label">Delete</span></button>
       </form>
     </td>
   </tr>

@@ -1,5 +1,6 @@
 {{define "content"}}
 {{$c := .Data.Channel}}
+<a class="back" href="/channels">&larr; Channels</a>
 <h1>{{.Title}}</h1>
 <section class="card">
 <form method="post" action="{{if $c.ID}}/channels/{{$c.ID}}{{else}}/channels/new{{end}}" class="stack">
@@ -25,7 +26,7 @@
   </div>
   <label>Order <input type="number" name="sort_order" value="{{$c.SortOrder}}"><small>Lower numbers come first.</small></label>
   <label class="check"><input type="checkbox" name="enabled" {{if $c.Enabled}}checked{{end}}> Enabled</label>
-  <div class="buttons">
+  <div class="form-actions">
     <button>Save</button>
     <a class="button secondary" href="/channels">Cancel</a>
   </div>

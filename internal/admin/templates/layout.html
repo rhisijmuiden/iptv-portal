@@ -6,35 +6,53 @@
 <title>{{.Title}} · {{.PortalName}}</title>
 <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
 {{if and .Session (not .Session.Admin.MustChangePassword)}}
-<header class="top">
-  <a class="brand" href="/">{{.PortalName}}</a>
-  <nav>
-    <a href="/" {{if eq .Nav "dashboard"}}class="active"{{end}}>Dashboard</a>
-    <a href="/channels" {{if eq .Nav "channels"}}class="active"{{end}}>Channels</a>
-    <a href="/categories" {{if eq .Nav "categories"}}class="active"{{end}}>Categories</a>
-    <a href="/import" {{if eq .Nav "import"}}class="active"{{end}}>Import</a>
-    <a href="/iptv-org" {{if eq .Nav "iptvorg"}}class="active"{{end}}>iptv-org</a>
-    <a href="/epg" {{if eq .Nav "epg"}}class="active"{{end}}>Guide</a>
-    <a href="/media" {{if eq .Nav "media"}}class="active"{{end}}>On Demand</a>
-    <a href="/users" {{if eq .Nav "users"}}class="active"{{end}}>Users</a>
-    <a href="/packages" {{if eq .Nav "packages"}}class="active"{{end}}>Packages</a>
-    <a href="/invites" {{if eq .Nav "invites"}}class="active"{{end}}>Invitations</a>
-    <a href="/settings" {{if eq .Nav "settings"}}class="active"{{end}}>Settings</a>
-    <a href="/info" {{if eq .Nav "info"}}class="active"{{end}}>Info</a>
-  </nav>
-  <div class="user">
-    <a href="/password">{{.Session.Admin.Username}}</a>
-    <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.Session.CSRF}}"><button class="link">Log out</button></form>
-  </div>
+<body class="app">
+<input type="checkbox" id="nav-open" class="nav-toggle" aria-hidden="true">
+<header class="mobilebar">
+  <label for="nav-open" class="icon-button" title="Menu">{{icon "menu"}}</label>
+  <a class="brand" href="/"><span class="brand-mark">{{icon "tv"}}</span>{{.PortalName}}</a>
 </header>
-{{end}}
+<label for="nav-open" class="scrim" aria-hidden="true"></label>
+<aside class="sidebar">
+  <a class="brand" href="/"><span class="brand-mark">{{icon "tv"}}</span><span>{{.PortalName}}<small>Admin panel</small></span></a>
+  <nav>
+    <a href="/" {{if eq .Nav "dashboard"}}class="active"{{end}}>{{icon "dashboard"}}Dashboard</a>
+    <p class="nav-group">Channels</p>
+    <a href="/channels" {{if eq .Nav "channels"}}class="active"{{end}}>{{icon "tv"}}Channels</a>
+    <a href="/categories" {{if eq .Nav "categories"}}class="active"{{end}}>{{icon "tag"}}Categories</a>
+    <a href="/epg" {{if eq .Nav "epg"}}class="active"{{end}}>{{icon "guide"}}TV guide</a>
+    <a href="/media" {{if eq .Nav "media"}}class="active"{{end}}>{{icon "film"}}On Demand</a>
+    <p class="nav-group">Add channels</p>
+    <a href="/import" {{if eq .Nav "import"}}class="active"{{end}}>{{icon "upload"}}Import playlist</a>
+    <a href="/iptv-org" {{if eq .Nav "iptvorg"}}class="active"{{end}}>{{icon "globe"}}Browse iptv-org</a>
+    <p class="nav-group">Subscribers</p>
+    <a href="/users" {{if eq .Nav "users"}}class="active"{{end}}>{{icon "users"}}Users</a>
+    <a href="/packages" {{if eq .Nav "packages"}}class="active"{{end}}>{{icon "package"}}Packages</a>
+    <a href="/invites" {{if eq .Nav "invites"}}class="active"{{end}}>{{icon "mail"}}Invitations</a>
+    <p class="nav-group">System</p>
+    <a href="/settings" {{if eq .Nav "settings"}}class="active"{{end}}>{{icon "settings"}}Settings</a>
+    <a href="/info" {{if eq .Nav "info"}}class="active"{{end}}>{{icon "info"}}Info &amp; updates</a>
+  </nav>
+  <div class="account">
+    <a href="/password" title="Change password">{{icon "user"}}<span>{{.Session.Admin.Username}}</span></a>
+    <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.Session.CSRF}}"><button class="icon-button" title="Log out">{{icon "logout"}}</button></form>
+  </div>
+  <footer>IPTV Portal {{version}}</footer>
+</aside>
+<main>
+  {{if .Flash}}<p class="flash ok">{{.Flash}}</p>{{end}}
+  {{if .Error}}<p class="flash err">{{.Error}}</p>{{end}}
+  {{template "content" .}}
+</main>
+{{else}}
+<body class="plain">
 <main>
   {{if .Flash}}<p class="flash ok">{{.Flash}}</p>{{end}}
   {{if .Error}}<p class="flash err">{{.Error}}</p>{{end}}
   {{template "content" .}}
 </main>
 <footer>IPTV Portal {{version}}</footer>
+{{end}}
 </body>
 </html>

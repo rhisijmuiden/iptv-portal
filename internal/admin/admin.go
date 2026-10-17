@@ -96,6 +96,10 @@ func New(c Config) (*Handler, error) {
 func (h *Handler) parseTemplates() error {
 	funcs := template.FuncMap{
 		"version": func() string { return version.Version },
+		// icon draws a symbol from /static/icons.svg.
+		"icon": func(name string) template.HTML {
+			return template.HTML(`<svg class="icon" aria-hidden="true"><use href="/static/icons.svg#` + template.HTMLEscapeString(name) + `"/></svg>`)
+		},
 		"has": func(ids []int64, id int64) bool {
 			for _, v := range ids {
 				if v == id {

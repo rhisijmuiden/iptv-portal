@@ -1,5 +1,6 @@
 {{define "content"}}
 {{$p := .Data.Package}}
+<a class="back" href="/packages">&larr; Packages</a>
 <h1>{{.Title}}</h1>
 <section class="card">
 <form method="post" action="{{if $p.ID}}/packages/{{$p.ID}}{{else}}/packages/new{{end}}" class="stack">
@@ -18,7 +19,7 @@
     <legend>On Demand</legend>
     <label class="check"><input type="checkbox" name="on_demand" {{if $p.OnDemand}}checked{{end}}> Movies and series from the <a href="/media">media servers</a></label>
   </fieldset>
-  <div class="buttons">
+  <div class="form-actions">
     <button>Save</button>
     <a class="button secondary" href="/packages">Cancel</a>
   </div>

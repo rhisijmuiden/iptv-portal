@@ -58,7 +58,7 @@ func (h *Handler) renderEPG(w http.ResponseWriter, r *http.Request, sess store.S
 		}
 		d.Channels = append(d.Channels, ec)
 	}
-	h.render(w, r, "epg", page{Title: "Program guide", Nav: "epg", Session: &sess, Error: errMsg, Data: d})
+	h.render(w, r, "epg", page{Title: "TV guide", Nav: "epg", Session: &sess, Error: errMsg, Data: d})
 }
 
 func (h *Handler) epgSave(w http.ResponseWriter, r *http.Request, sess store.Session) {
