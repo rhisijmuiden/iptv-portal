@@ -51,9 +51,7 @@ func New(st *store.Store, guide *epg.Guide, tracker *activity.Tracker, vod *medi
 		h.pages[name] = t
 	}
 	h.mux.Handle("GET /static/", web.Static())
-	h.mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("ok\n"))
-	})
+	h.mux.HandleFunc("GET /healthz", web.Health)
 	h.mux.HandleFunc("GET /{$}", h.index)
 	h.mux.HandleFunc("GET /invite/{token}", h.inviteForm)
 	h.mux.HandleFunc("POST /invite/{token}", h.inviteRedeem)

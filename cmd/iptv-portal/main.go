@@ -26,6 +26,7 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 	"github.com/rhisijmuiden/iptv-portal/internal/update"
 	"github.com/rhisijmuiden/iptv-portal/internal/version"
+	"github.com/rhisijmuiden/iptv-portal/internal/web"
 )
 
 const usage = `Usage: iptv-portal [command] [options]
@@ -36,6 +37,9 @@ Commands:
   set-port [-admin P] [-portal P]
                               Change the ports (for example when you locked
                               yourself out); restart the service afterwards
+  station [--reset-admin]     Apply the Build My TV Station settings from the
+                              STATION_* environment, restart the service and
+                              print station.json (run as root)
   version                     Print the version
 
 Common option:
@@ -57,6 +61,8 @@ func main() {
 		err = adminReset(args)
 	case "set-port":
 		err = setPort(args)
+	case "station":
+		err = station(args, os.Stdout, os.Stderr)
 	case "version":
 		fmt.Println(version.Version)
 	case "help", "-h", "--help":
@@ -116,6 +122,15 @@ func serve(args []string) error {
 	if err != nil {
 		return err
 	}
+	var proxies []*net.IPNet
+	for _, p := range settings.TrustedProxies {
+		n, err := store.ParseProxy(p)
+		if err != nil {
+			return err
+		}
+		proxies = append(proxies, n)
+	}
+	web.SetTrustedProxies(proxies)
 	guide := epg.New(log, *data)
 	refresh := make(chan struct{}, 1)
 	go guide.Loop(ctx, 6*time.Hour, func() []string {
@@ -144,7 +159,7 @@ func serve(args []string) error {
 	adminHandler, err := admin.New(admin.Config{
 		Store: st, Listeners: managerRef{&mgr}, Guide: guide, RefreshGuide: refresh,
 		Updater: updater, IPTVOrg: iptvOrg, Media: vod, RefreshMedia: refreshVOD,
-		Activity: tracker, Log: log,
+		Activity: tracker, BasePath: settings.BasePath, Log: log,
 		Restart: func() {
 			restart = true
 			stop()
@@ -159,6 +174,9 @@ func serve(args []string) error {
 	}
 	mgr = server.NewManager(log, adminHandler, portalHandler)
 	log.Info("IPTV Portal starting", "version", version.Version, "data", *data)
+	if settings.BasePath != "" {
+		log.Info("admin panel served under a base path", "path", settings.BasePath)
+	}
 	mgr.Start(settings.AdminPort, settings.PortalPort)
 	go adminHandler.PurgeLoop(ctx)
 
@@ -216,11 +234,7 @@ func adminReset(args []string) error {
 	defer st.Close()
 	ctx := context.Background()
 
-	pw := store.GeneratePassword()
-	err = st.SetAdminPassword(ctx, *username, pw, true)
-	if errors.Is(err, store.ErrNotFound) {
-		_, err = st.CreateAdmin(ctx, *username, pw, true)
-	}
+	pw, err := resetAdmin(ctx, st, *username)
 	if err != nil {
 		return err
 	}
@@ -228,11 +242,22 @@ func adminReset(args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Admin panel:        %s\n", adminURL(settings.AdminPort))
+	fmt.Printf("Admin panel:        %s\n", adminURL(settings.AdminPort, settings.BasePath))
 	fmt.Printf("Username:           %s\n", *username)
 	fmt.Printf("One-time password:  %s\n", pw)
 	fmt.Println("You must change this password after your first login.")
 	return nil
+}
+
+// resetAdmin gives the admin username a new one-time password, creating
+// the account when it does not exist, and returns the password.
+func resetAdmin(ctx context.Context, st *store.Store, username string) (string, error) {
+	pw := store.GeneratePassword()
+	err := st.SetAdminPassword(ctx, username, pw, true)
+	if errors.Is(err, store.ErrNotFound) {
+		_, err = st.CreateAdmin(ctx, username, pw, true)
+	}
+	return pw, err
 }
 
 func setPort(args []string) error {
@@ -270,7 +295,7 @@ func setPort(args []string) error {
 
 // adminURL guesses the admin panel address from the first non-loopback
 // IPv4 address of this machine.
-func adminURL(port int) string {
+func adminURL(port int, basePath string) string {
 	host := "localhost"
 	if addrs, err := net.InterfaceAddrs(); err == nil {
 		for _, a := range addrs {
@@ -280,7 +305,7 @@ func adminURL(port int) string {
 			}
 		}
 	}
-	return "http://" + net.JoinHostPort(host, strconv.Itoa(port)) + "/"
+	return "http://" + net.JoinHostPort(host, strconv.Itoa(port)) + basePath + "/"
 }
 
 // fixOwnership gives the database files back to the owner of the data

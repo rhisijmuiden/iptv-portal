@@ -112,6 +112,18 @@ func (s *Store) DeleteCategory(ctx context.Context, id int64) error {
 	return mustAffect(res)
 }
 
+// EnsureCategory returns the id of the named category, creating it when it
+// does not exist yet. An empty name returns 0 (no category).
+func (s *Store) EnsureCategory(ctx context.Context, name string) (int64, error) {
+	var id int64
+	err := s.withTx(ctx, func(tx *sql.Tx) error {
+		var err error
+		id, err = categoryID(ctx, tx, name)
+		return err
+	})
+	return id, err
+}
+
 // categoryID returns the id of the named category, creating it when needed.
 func categoryID(ctx context.Context, tx *sql.Tx, name string) (int64, error) {
 	name = strings.TrimSpace(name)

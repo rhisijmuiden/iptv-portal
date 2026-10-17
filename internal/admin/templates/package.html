@@ -1,6 +1,6 @@
 {{define "content"}}
 {{$p := .Data.Package}}
-<a class="back" href="/packages">&larr; Packages</a>
+<a class="back" href="{{base}}/packages">&larr; Packages</a>
 <h1>{{.Title}}</h1>
 <section class="card">
 <form method="post" action="{{if $p.ID}}/packages/{{$p.ID}}{{else}}/packages/new{{end}}" class="stack">
@@ -12,16 +12,16 @@
     {{range .Data.Categories}}
     <label class="check"><input type="checkbox" name="category" value="{{.ID}}" {{if has $p.CategoryIDs .ID}}checked{{end}}> {{.Name}} <span class="muted">({{.ChannelCount}})</span></label>
     {{else}}
-    <p class="muted">There are no categories yet. <a href="/categories">Add categories</a> first.</p>
+    <p class="muted">There are no categories yet. <a href="{{base}}/categories">Add categories</a> first.</p>
     {{end}}
   </fieldset>
   <fieldset>
     <legend>On Demand</legend>
-    <label class="check"><input type="checkbox" name="on_demand" {{if $p.OnDemand}}checked{{end}}> Movies and series from the <a href="/media">media servers</a></label>
+    <label class="check"><input type="checkbox" name="on_demand" {{if $p.OnDemand}}checked{{end}}> Movies and series from the <a href="{{base}}/media">media servers</a></label>
   </fieldset>
   <div class="form-actions">
     <button>Save</button>
-    <a class="button secondary" href="/packages">Cancel</a>
+    <a class="button secondary" href="{{base}}/packages">Cancel</a>
   </div>
 </form>
 </section>

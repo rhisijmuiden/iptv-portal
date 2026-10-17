@@ -1,6 +1,6 @@
 {{define "content"}}
 {{$u := .Data.User}}
-<a class="back" href="/users">&larr; Users</a>
+<a class="back" href="{{base}}/users">&larr; Users</a>
 <h1>{{.Title}}</h1>
 <section class="card">
 <form method="post" action="{{if $u.ID}}/users/{{$u.ID}}{{else}}/users/new{{end}}" class="stack">
@@ -17,7 +17,7 @@
     {{range .Data.Packages}}
     <label class="check"><input type="checkbox" name="package" value="{{.ID}}" {{if has $u.PackageIDs .ID}}checked{{end}}> {{.Name}}{{if .AllChannels}} <span class="muted">(all channels)</span>{{end}}</label>
     {{else}}
-    <p class="muted">There are no packages yet. <a href="/packages/new">Create a package</a> to give this user channels.</p>
+    <p class="muted">There are no packages yet. <a href="{{base}}/packages/new">Create a package</a> to give this user channels.</p>
     {{end}}
   </fieldset>
   <div class="row">
@@ -28,7 +28,7 @@
       <label class="check"><input type="checkbox" name="send_login" {{if .Data.SendLogin}}checked{{end}}> Email the login details to the user</label>
       <small>{{if $u.ID}}Only possible when you enter a new password above.{{else}}Sends the portal URL, username and password.{{end}}</small>
     {{else}}
-      <small>To email login details, set up a <a href="/settings#mail">mail server</a> first.</small>
+      <small>To email login details, set up a <a href="{{base}}/settings#mail">mail server</a> first.</small>
     {{end}}
     </div>
   </div>
@@ -39,7 +39,7 @@
   <label class="check"><input type="checkbox" name="enabled" {{if $u.Enabled}}checked{{end}}> Enabled</label>
   <div class="form-actions">
     <button>Save</button>
-    <a class="button secondary" href="/users">Cancel</a>
+    <a class="button secondary" href="{{base}}/users">Cancel</a>
   </div>
 </form>
 </section>
@@ -54,7 +54,7 @@
   </table>
   <p class="muted">M3U playlist: <code>{{.Data.PortalURL}}/get.php?username={{$u.Username}}&amp;password=PASSWORD&amp;type=m3u_plus&amp;output=m3u8</code></p>
   {{if and .Data.MailOn $u.Email}}
-  <form method="post" action="/users/{{$u.ID}}/send-login" onsubmit="return confirm('This replaces the current password with a new one and emails it to {{$u.Email}}. The old password stops working. Continue?')">
+  <form method="post" action="{{base}}/users/{{$u.ID}}/send-login" onsubmit="return confirm('This replaces the current password with a new one and emails it to {{$u.Email}}. The old password stops working. Continue?')">
     <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
     <button class="secondary">{{icon "mail"}}Email new password to {{$u.Email}}</button>
   </form>

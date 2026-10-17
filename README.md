@@ -185,6 +185,7 @@ iptv-portal serve                         Start the portal
 iptv-portal admin-reset [-username N]     Create an admin or set a new one-time password
 iptv-portal set-port [-admin P] [-portal P]
                                           Change the ports from the command line
+iptv-portal station [--reset-admin]       Apply the Build My TV Station settings (see below)
 iptv-portal version                       Print the version
 ```
 
@@ -196,6 +197,16 @@ Locked out after changing the admin panel port? Reset it and restart the service
 iptv-portal set-port -admin 8080
 systemctl restart iptv-portal
 ```
+
+## Running as part of Build My TV Station
+
+[Build My TV Station](https://github.com/rhisijmuiden/BulldMyTVStation) can deploy the portal as one part of a station. It follows the [station contract](https://github.com/rhisijmuiden/BulldMyTVStation/blob/main/docs/station-contract.md) (version 1); a standalone install is not affected by any of this.
+
+- `GET /healthz` answers on both ports with `{"status":"ok","app":"iptv-portal","version":"…","contract":1}`.
+- `iptv-portal station [--reset-admin]`, run as root, reads `STATION_SERVICE_TOKEN`, `STATION_BASE_PATH`, `STATION_PUBLIC_URL` (stored as the public URL) and `STATION_TRUSTED_PROXIES`, stores them in the settings, restarts `iptv-portal.service` when something changed, waits for `/healthz` and writes `/var/lib/iptv-portal/station.json`. It prints the same JSON on stdout, with `initialPassword` added after `--reset-admin`. A variable that is not set keeps its setting; an empty one clears it.
+- With a service token, `Authorization: Bearer <token>` gives access to a JSON API on the admin port: `GET` and `POST /api/v1/channels`, `PUT` and `DELETE /api/v1/channels/{id}`. A channel has `name`, `streamUrl`, `logoUrl`, `category` (a name, created when missing), `epgId`, `sortOrder` and `enabled`.
+- The base path (for example `/portal-admin`) applies to the admin panel only; the portal TV boxes use stays at `/`. The reverse proxy forwards the full path unchanged.
+- With trusted proxies set, `X-Forwarded-For`, `-Proto` and `-Host` are only believed from those addresses.
 
 ## Users, packages and invitations
 

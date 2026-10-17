@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"strconv"
 	"strings"
@@ -34,7 +35,24 @@ type Settings struct {
 	// Mail is the SMTP server used to email users their login details and
 	// invitations. An empty host means mail is off.
 	Mail mail.Config
+
+	// The settings below are set by the "station" command when the portal
+	// runs as part of Build My TV Station; a standalone install leaves them
+	// empty.
+
+	// BasePath serves the admin panel under a path such as "/portal-admin"
+	// instead of the root. The portal itself always stays at the root.
+	BasePath string
+	// TrustedProxies are the IPs or CIDRs of the reverse proxy. When set,
+	// X-Forwarded-* headers are only believed from these addresses.
+	TrustedProxies []string
+	// ServiceToken lets the station panel use the admin API with
+	// "Authorization: Bearer <token>". Empty means no token.
+	ServiceToken string
 }
+
+// MinServiceTokenLength is the shortest service token accepted.
+const MinServiceTokenLength = 32
 
 // DefaultSettings are used for every key that has not been stored yet.
 var DefaultSettings = Settings{
@@ -60,6 +78,10 @@ const (
 	keySMTPPassword = "smtp_password"
 	keySMTPFrom     = "smtp_from"
 	keySMTPFromName = "smtp_from_name"
+
+	keyBasePath       = "base_path"
+	keyTrustedProxies = "trusted_proxies"
+	keyServiceToken   = "service_token"
 )
 
 // Settings returns the current settings, falling back to defaults.
@@ -108,6 +130,12 @@ func (s *Store) Settings(ctx context.Context) (Settings, error) {
 			out.Mail.From = v
 		case keySMTPFromName:
 			out.Mail.FromName = v
+		case keyBasePath:
+			out.BasePath = v
+		case keyTrustedProxies:
+			out.TrustedProxies = strings.Fields(v)
+		case keyServiceToken:
+			out.ServiceToken = v
 		}
 	}
 	return out, rows.Err()
@@ -148,7 +176,66 @@ func (st *Settings) Validate() error {
 		urls = append(urls, u)
 	}
 	st.EPGURLs = urls
+	base, err := CleanBasePath(st.BasePath)
+	if err != nil {
+		return err
+	}
+	st.BasePath = base
+	var proxies []string
+	for _, p := range st.TrustedProxies {
+		for _, p := range strings.Split(p, ",") {
+			if p = strings.TrimSpace(p); p == "" {
+				continue
+			}
+			if _, err := ParseProxy(p); err != nil {
+				return err
+			}
+			proxies = append(proxies, p)
+		}
+	}
+	st.TrustedProxies = proxies
+	st.ServiceToken = strings.TrimSpace(st.ServiceToken)
+	if st.ServiceToken != "" && len(st.ServiceToken) < MinServiceTokenLength {
+		return fmt.Errorf("service token must be at least %d characters", MinServiceTokenLength)
+	}
 	return st.Mail.Validate()
+}
+
+// CleanBasePath normalises an admin panel base path: "" and "/" mean the
+// root (returned as ""), anything else becomes "/a/b" without a trailing
+// slash.
+func CleanBasePath(p string) (string, error) {
+	p = strings.Trim(strings.TrimSpace(p), "/")
+	if p == "" {
+		return "", nil
+	}
+	for _, seg := range strings.Split(p, "/") {
+		if seg == "" || seg == "." || seg == ".." {
+			return "", fmt.Errorf("base path %q is invalid", "/"+p)
+		}
+		for _, r := range seg {
+			if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("-._~", r)) {
+				return "", fmt.Errorf("base path %q may only contain letters, digits and - . _ ~", "/"+p)
+			}
+		}
+	}
+	return "/" + p, nil
+}
+
+// ParseProxy reads a trusted proxy entry: an IP address or a CIDR range.
+func ParseProxy(s string) (*net.IPNet, error) {
+	if _, n, err := net.ParseCIDR(s); err == nil {
+		return n, nil
+	}
+	ip := net.ParseIP(s)
+	if ip == nil {
+		return nil, fmt.Errorf("trusted proxy %q is not an IP address or CIDR range", s)
+	}
+	bits := 128
+	if ip4 := ip.To4(); ip4 != nil {
+		ip, bits = ip4, 32
+	}
+	return &net.IPNet{IP: ip, Mask: net.CIDRMask(bits, bits)}, nil
 }
 
 // SaveSettings validates and stores the settings.
@@ -171,6 +258,10 @@ func (s *Store) SaveSettings(ctx context.Context, st Settings) error {
 		keySMTPPassword: st.Mail.Password,
 		keySMTPFrom:     st.Mail.From,
 		keySMTPFromName: st.Mail.FromName,
+
+		keyBasePath:       st.BasePath,
+		keyTrustedProxies: strings.Join(st.TrustedProxies, "\n"),
+		keyServiceToken:   st.ServiceToken,
 	}
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		for k, v := range values {
