@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/rhisijmuiden/iptv-portal/internal/mail"
 )
 
 // Package is a set of channels that can be given to users: either every
@@ -29,6 +31,7 @@ type User struct {
 	ID         int64
 	Username   string
 	Note       string
+	Email      string // optional; where login details are mailed to
 	Enabled    bool
 	ExpiresAt  *time.Time // nil = never
 	CreatedAt  time.Time
@@ -188,13 +191,25 @@ func ValidateUserCredentials(username, password string) error {
 	return nil
 }
 
-const userSelect = `SELECT u.id, u.username, u.note, u.enabled, u.expires_at, u.created_at, u.last_seen_at
+// normalizeEmail trims an optional email address and checks it.
+func normalizeEmail(s string) (string, error) {
+	if strings.TrimSpace(s) == "" {
+		return "", nil
+	}
+	a, err := mail.ParseAddress(s)
+	if err != nil {
+		return "", errors.New("email address is not valid")
+	}
+	return a, nil
+}
+
+const userSelect = `SELECT u.id, u.username, u.note, u.email, u.enabled, u.expires_at, u.created_at, u.last_seen_at
 	FROM users u`
 
 func scanUser(sc interface{ Scan(...any) error }) (User, error) {
 	var u User
 	var exp, seen sql.NullTime
-	err := sc.Scan(&u.ID, &u.Username, &u.Note, &u.Enabled, &exp, &u.CreatedAt, &seen)
+	err := sc.Scan(&u.ID, &u.Username, &u.Note, &u.Email, &u.Enabled, &exp, &u.CreatedAt, &seen)
 	if exp.Valid {
 		t := exp.Time
 		u.ExpiresAt = &t
@@ -233,8 +248,8 @@ func (s *Store) Users(ctx context.Context, search string) ([]User, error) {
 	var args []any
 	if search = strings.TrimSpace(search); search != "" {
 		like := "%" + escapeLike(search) + "%"
-		q += ` WHERE u.username LIKE ? ESCAPE '\' OR u.note LIKE ? ESCAPE '\'`
-		args = append(args, like, like)
+		q += ` WHERE u.username LIKE ? ESCAPE '\' OR u.note LIKE ? ESCAPE '\' OR u.email LIKE ? ESCAPE '\'`
+		args = append(args, like, like, like)
 	}
 	q += ` ORDER BY u.username`
 	rows, err := s.db.QueryContext(ctx, q, args...)
@@ -286,26 +301,29 @@ func (s *Store) SaveUser(ctx context.Context, u User, password string) (int64, e
 	if err := ValidateUserCredentials(u.Username, check); err != nil {
 		return 0, err
 	}
+	var err error
+	if u.Email, err = normalizeEmail(u.Email); err != nil {
+		return 0, err
+	}
 	var hash []byte
 	if password != "" {
-		var err error
 		if hash, err = bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost); err != nil {
 			return 0, err
 		}
 	}
-	err := s.withTx(ctx, func(tx *sql.Tx) error {
+	err = s.withTx(ctx, func(tx *sql.Tx) error {
 		if u.ID == 0 {
 			res, err := tx.ExecContext(ctx,
-				`INSERT INTO users(username, password_hash, note, enabled, expires_at) VALUES(?, ?, ?, ?, ?)`,
-				u.Username, string(hash), u.Note, u.Enabled, utcPtr(u.ExpiresAt))
+				`INSERT INTO users(username, password_hash, note, email, enabled, expires_at) VALUES(?, ?, ?, ?, ?, ?)`,
+				u.Username, string(hash), u.Note, u.Email, u.Enabled, utcPtr(u.ExpiresAt))
 			if err != nil {
 				return uniqueErr(err, "username already exists")
 			}
 			u.ID, _ = res.LastInsertId()
 		} else {
 			res, err := tx.ExecContext(ctx,
-				`UPDATE users SET username = ?, note = ?, enabled = ?, expires_at = ? WHERE id = ?`,
-				u.Username, u.Note, u.Enabled, utcPtr(u.ExpiresAt), u.ID)
+				`UPDATE users SET username = ?, note = ?, email = ?, enabled = ?, expires_at = ? WHERE id = ?`,
+				u.Username, u.Note, u.Email, u.Enabled, utcPtr(u.ExpiresAt), u.ID)
 			if err != nil {
 				return uniqueErr(err, "username already exists")
 			}
@@ -553,6 +571,18 @@ func (s *Store) Invites(ctx context.Context) ([]Invite, error) {
 	return out, nil
 }
 
+// Invite returns one invite.
+func (s *Store) Invite(ctx context.Context, id int64) (Invite, error) {
+	i, err := scanInvite(s.db.QueryRowContext(ctx, inviteSelect+` WHERE id = ?`, id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return i, ErrNotFound
+	}
+	if err != nil {
+		return i, err
+	}
+	return i, s.fillInvitePackages(ctx, &i)
+}
+
 // InviteByToken returns the invite for a link token.
 func (s *Store) InviteByToken(ctx context.Context, token string) (Invite, error) {
 	i, err := scanInvite(s.db.QueryRowContext(ctx, inviteSelect+` WHERE token = ?`, token))
@@ -610,9 +640,14 @@ func (s *Store) DeleteInvite(ctx context.Context, id int64) error {
 var ErrInviteUnusable = errors.New("this invitation is no longer valid")
 
 // RedeemInvite creates a user account from an invite.
-func (s *Store) RedeemInvite(ctx context.Context, token, username, password string) (User, error) {
+// The email address is optional.
+func (s *Store) RedeemInvite(ctx context.Context, token, username, password, email string) (User, error) {
 	username = strings.TrimSpace(username)
 	if err := ValidateUserCredentials(username, password); err != nil {
+		return User{}, err
+	}
+	email, err := normalizeEmail(email)
+	if err != nil {
 		return User{}, err
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -637,8 +672,8 @@ func (s *Store) RedeemInvite(ctx context.Context, token, username, password stri
 			exp = &t
 		}
 		res, err := tx.ExecContext(ctx,
-			`INSERT INTO users(username, password_hash, enabled, expires_at, invite_id, note)
-			 VALUES(?, ?, 1, ?, ?, ?)`, username, string(hash), utcPtr(exp), inv.ID, inv.Note)
+			`INSERT INTO users(username, password_hash, enabled, expires_at, invite_id, note, email)
+			 VALUES(?, ?, 1, ?, ?, ?, ?)`, username, string(hash), utcPtr(exp), inv.ID, inv.Note, email)
 		if err != nil {
 			return uniqueErr(err, "this username is already taken")
 		}
@@ -668,4 +703,19 @@ func (s *Store) CountActiveUsers(ctx context.Context) (active, total int, err er
 		return 0, 0, fmt.Errorf("counting users: %w", err)
 	}
 	return active, total, nil
+}
+
+// ResetUserPassword gives a user a new random password and returns it.
+func (s *Store) ResetUserPassword(ctx context.Context, id int64) (string, error) {
+	password := GeneratePassword()
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	res, err := s.db.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, string(hash), id)
+	if err != nil {
+		return "", err
+	}
+	s.authCache.forget(id)
+	return password, mustAffect(res)
 }

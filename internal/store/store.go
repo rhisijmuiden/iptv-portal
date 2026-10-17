@@ -127,6 +127,8 @@ var migrations = []string{
 		package_id INTEGER NOT NULL REFERENCES packages(id) ON DELETE CASCADE,
 		PRIMARY KEY (invite_id, package_id)
 	);`,
+
+	`ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT '';`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

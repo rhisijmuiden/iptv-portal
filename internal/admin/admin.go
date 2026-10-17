@@ -199,6 +199,10 @@ func (h *Handler) routes() {
 	auth("POST /info/install", h.infoInstall)
 	auth("GET /settings", h.settingsForm)
 	auth("POST /settings", h.settingsSave)
+	auth("POST /settings/mail", h.mailSave)
+	auth("POST /settings/mail/test", h.mailTest)
+	auth("POST /users/{id}/send-login", h.userSendLogin)
+	auth("POST /invites/{id}/send", h.inviteSend)
 	h.mux = m
 }
 
@@ -458,13 +462,9 @@ func (h *Handler) settingsSave(w http.ResponseWriter, r *http.Request, sess stor
 		h.serverError(w, err)
 		return
 	}
-	st := store.Settings{
-		PortalName: r.FormValue("portal_name"),
-		PublicURL:  r.FormValue("public_url"),
-		EPGURLs:    old.EPGURLs,
-
-		AutoUpdateCheck: old.AutoUpdateCheck,
-	}
+	st := old
+	st.PortalName = r.FormValue("portal_name")
+	st.PublicURL = r.FormValue("public_url")
 	st.AdminPort, _ = strconv.Atoi(r.FormValue("admin_port"))
 	st.PortalPort, _ = strconv.Atoi(r.FormValue("portal_port"))
 	p := page{Title: "Settings", Nav: "settings", Session: &sess, Data: st}

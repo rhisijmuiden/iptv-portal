@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/rhisijmuiden/iptv-portal/internal/mail"
 )
 
 // Settings are the values an admin can change from the admin panel.
@@ -29,6 +31,9 @@ type Settings struct {
 	// AutoUpdateCheck makes the portal look for new releases once a day.
 	// It only checks; installing is always started by an admin.
 	AutoUpdateCheck bool
+	// Mail is the SMTP server used to email users their login details and
+	// invitations. An empty host means mail is off.
+	Mail mail.Config
 }
 
 // DefaultSettings are used for every key that has not been stored yet.
@@ -37,6 +42,7 @@ var DefaultSettings = Settings{
 	AdminPort:       8080,
 	PortalPort:      80,
 	AutoUpdateCheck: true,
+	Mail:            mail.Config{Port: 587, Security: mail.StartTLS},
 }
 
 const (
@@ -46,6 +52,14 @@ const (
 	keyPortalPort = "portal_port"
 	keyEPGURLs    = "epg_urls"
 	keyAutoUpdate = "auto_update_check"
+
+	keySMTPHost     = "smtp_host"
+	keySMTPPort     = "smtp_port"
+	keySMTPSecurity = "smtp_security"
+	keySMTPUser     = "smtp_username"
+	keySMTPPassword = "smtp_password"
+	keySMTPFrom     = "smtp_from"
+	keySMTPFromName = "smtp_from_name"
 )
 
 // Settings returns the current settings, falling back to defaults.
@@ -78,6 +92,22 @@ func (s *Store) Settings(ctx context.Context) (Settings, error) {
 			out.EPGURLs = strings.Fields(v)
 		case keyAutoUpdate:
 			out.AutoUpdateCheck = v == "1"
+		case keySMTPHost:
+			out.Mail.Host = v
+		case keySMTPPort:
+			if p, err := strconv.Atoi(v); err == nil {
+				out.Mail.Port = p
+			}
+		case keySMTPSecurity:
+			out.Mail.Security = mail.Security(v)
+		case keySMTPUser:
+			out.Mail.Username = v
+		case keySMTPPassword:
+			out.Mail.Password = v
+		case keySMTPFrom:
+			out.Mail.From = v
+		case keySMTPFromName:
+			out.Mail.FromName = v
 		}
 	}
 	return out, rows.Err()
@@ -118,7 +148,7 @@ func (st *Settings) Validate() error {
 		urls = append(urls, u)
 	}
 	st.EPGURLs = urls
-	return nil
+	return st.Mail.Validate()
 }
 
 // SaveSettings validates and stores the settings.
@@ -133,6 +163,14 @@ func (s *Store) SaveSettings(ctx context.Context, st Settings) error {
 		keyPortalPort: strconv.Itoa(st.PortalPort),
 		keyEPGURLs:    strings.Join(st.EPGURLs, "\n"),
 		keyAutoUpdate: boolString(st.AutoUpdateCheck),
+
+		keySMTPHost:     st.Mail.Host,
+		keySMTPPort:     strconv.Itoa(st.Mail.Port),
+		keySMTPSecurity: string(st.Mail.Security),
+		keySMTPUser:     st.Mail.Username,
+		keySMTPPassword: st.Mail.Password,
+		keySMTPFrom:     st.Mail.From,
+		keySMTPFromName: st.Mail.FromName,
 	}
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		for k, v := range values {
@@ -198,5 +236,15 @@ func (s *Store) SetAutoUpdateCheck(ctx context.Context, on bool) error {
 		return err
 	}
 	st.AutoUpdateCheck = on
+	return s.SaveSettings(ctx, st)
+}
+
+// SetMail replaces the mail server settings.
+func (s *Store) SetMail(ctx context.Context, m mail.Config) error {
+	st, err := s.Settings(ctx)
+	if err != nil {
+		return err
+	}
+	st.Mail = m
 	return s.SaveSettings(ctx, st)
 }
