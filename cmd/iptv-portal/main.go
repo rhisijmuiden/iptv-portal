@@ -22,18 +22,18 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/version"
 )
 
-const usage = `Gebruik: iptv-portal [opdracht] [opties]
+const usage = `Usage: iptv-portal [command] [options]
 
-Opdrachten:
-  serve                       Start de portal (standaard)
-  admin-reset [-username N]   Maak een admin aan of zet een eenmalig wachtwoord
+Commands:
+  serve                       Start the portal (default)
+  admin-reset [-username N]   Create an admin or set a new one-time password
   set-port [-admin P] [-portal P]
-                              Wijzig de poorten (bijvoorbeeld als je jezelf
-                              hebt buitengesloten); herstart daarna de service
-  version                     Toon de versie
+                              Change the ports (for example when you locked
+                              yourself out); restart the service afterwards
+  version                     Print the version
 
-Algemene optie:
-  -data DIR   Map voor de database (standaard $IPTV_PORTAL_DATA of
+Common option:
+  -data DIR   Database directory (default $IPTV_PORTAL_DATA or
               /var/lib/iptv-portal)
 `
 
@@ -56,11 +56,11 @@ func main() {
 	case "help", "-h", "--help":
 		fmt.Print(usage)
 	default:
-		fmt.Fprintf(os.Stderr, "onbekende opdracht %q\n\n%s", cmd, usage)
+		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", cmd, usage)
 		os.Exit(2)
 	}
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "fout:", err)
+		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
 }
@@ -75,7 +75,7 @@ func defaultDataDir() string {
 func newFlags(name string) (*flag.FlagSet, *string) {
 	fs := flag.NewFlagSet(name, flag.ExitOnError)
 	fs.Usage = func() { fmt.Fprint(os.Stderr, usage) }
-	data := fs.String("data", defaultDataDir(), "map voor de database")
+	data := fs.String("data", defaultDataDir(), "directory for the database")
 	return fs, data
 }
 
@@ -102,8 +102,8 @@ func serve(args []string) error {
 		if _, err := st.CreateAdmin(ctx, "admin", pw, true); err != nil {
 			return err
 		}
-		log.Warn("admin-account aangemaakt met eenmalig wachtwoord; wijzig het na het inloggen",
-			"gebruiker", "admin", "wachtwoord", pw)
+		log.Warn("admin account created with a one-time password; change it after logging in",
+			"username", "admin", "password", pw)
 	}
 
 	settings, err := st.Settings(ctx)
@@ -116,12 +116,12 @@ func serve(args []string) error {
 		return err
 	}
 	mgr = server.NewManager(log, adminHandler, portal.New(st, log))
-	log.Info("IPTV Portal start", "versie", version.Version, "data", *data)
+	log.Info("IPTV Portal starting", "version", version.Version, "data", *data)
 	mgr.Start(settings.AdminPort, settings.PortalPort)
 	go adminHandler.PurgeLoop(ctx)
 
 	<-ctx.Done()
-	log.Info("stoppen")
+	log.Info("shutting down")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	mgr.Shutdown(shutdownCtx)
@@ -138,7 +138,7 @@ func (r managerRef) PortAvailable(port int) error { return (*r.m).PortAvailable(
 
 func adminReset(args []string) error {
 	fs, data := newFlags("admin-reset")
-	username := fs.String("username", "admin", "gebruikersnaam")
+	username := fs.String("username", "admin", "username")
 	fs.Parse(args)
 
 	st, err := store.Open(*data)
@@ -160,20 +160,20 @@ func adminReset(args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Beheerpaneel:        %s\n", adminURL(settings.AdminPort))
-	fmt.Printf("Gebruikersnaam:      %s\n", *username)
-	fmt.Printf("Eenmalig wachtwoord: %s\n", pw)
-	fmt.Println("Je moet dit wachtwoord wijzigen na de eerste keer inloggen.")
+	fmt.Printf("Admin panel:        %s\n", adminURL(settings.AdminPort))
+	fmt.Printf("Username:           %s\n", *username)
+	fmt.Printf("One-time password:  %s\n", pw)
+	fmt.Println("You must change this password after your first login.")
 	return nil
 }
 
 func setPort(args []string) error {
 	fs, data := newFlags("set-port")
-	adminPort := fs.Int("admin", 0, "poort voor het beheerpaneel")
-	portalPort := fs.Int("portal", 0, "poort voor de portal")
+	adminPort := fs.Int("admin", 0, "admin panel port")
+	portalPort := fs.Int("portal", 0, "portal port")
 	fs.Parse(args)
 	if *adminPort == 0 && *portalPort == 0 {
-		return errors.New("geef -admin en/of -portal op")
+		return errors.New("specify -admin and/or -portal")
 	}
 	st, err := store.Open(*data)
 	if err != nil {
@@ -194,8 +194,8 @@ func setPort(args []string) error {
 	if err := st.SaveSettings(ctx, settings); err != nil {
 		return err
 	}
-	fmt.Printf("Opgeslagen: beheerpaneel op poort %d, portal op poort %d.\n", settings.AdminPort, settings.PortalPort)
-	fmt.Println("Herstart de service om dit toe te passen: systemctl restart iptv-portal")
+	fmt.Printf("Saved: admin panel on port %d, portal on port %d.\n", settings.AdminPort, settings.PortalPort)
+	fmt.Println("Restart the service to apply: systemctl restart iptv-portal")
 	return nil
 }
 

@@ -1,19 +1,19 @@
 {{define "content"}}
-<h1>Instellingen</h1>
+<h1>Settings</h1>
 <section class="card">
 <form method="post" action="/settings" class="stack">
   <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
-  <label>Naam van de portal <input name="portal_name" value="{{.Data.PortalName}}" required></label>
-  <label>Publieke URL
+  <label>Portal name <input name="portal_name" value="{{.Data.PortalName}}" required></label>
+  <label>Public URL
     <input type="url" name="public_url" value="{{.Data.PublicURL}}" placeholder="https://tv.example.com">
-    <small>Het adres waarop gebruikers de portal bereiken, zonder <code>/</code> aan het einde. Gebruik je een reverse proxy, vul dan hier het adres van de proxy in (bijvoorbeeld met https). Leeg laten betekent dat het adres van de server en de portal-poort gebruikt worden.</small>
+    <small>The address users reach the portal on, without a trailing <code>/</code>. Behind a reverse proxy, enter the proxy address here (for example with https). Leave empty to use the server address and the portal port.</small>
   </label>
   <div class="row">
-    <label>Poort beheerpaneel <input type="number" name="admin_port" min="1" max="65535" value="{{.Data.AdminPort}}" required></label>
-    <label>Poort portal (tv-boxen) <input type="number" name="portal_port" min="1" max="65535" value="{{.Data.PortalPort}}" required></label>
+    <label>Admin panel port <input type="number" name="admin_port" min="1" max="65535" value="{{.Data.AdminPort}}" required></label>
+    <label>Portal port (TV boxes) <input type="number" name="portal_port" min="1" max="65535" value="{{.Data.PortalPort}}" required></label>
   </div>
-  <p class="muted">Na het wijzigen van een poort start dat onderdeel direct opnieuw op de nieuwe poort. Pas daarna ook je reverse proxy of firewall aan.</p>
-  <button>Opslaan</button>
+  <p class="muted">After changing a port, that component restarts on the new port right away. Update your reverse proxy or firewall afterwards.</p>
+  <button>Save</button>
 </form>
 </section>
 {{end}}

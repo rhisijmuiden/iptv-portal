@@ -74,22 +74,22 @@ func (s *Store) Settings(ctx context.Context) (Settings, error) {
 func (st *Settings) Validate() error {
 	st.PortalName = strings.TrimSpace(st.PortalName)
 	if st.PortalName == "" {
-		return errors.New("naam mag niet leeg zijn")
+		return errors.New("name must not be empty")
 	}
 	st.PublicURL = strings.TrimRight(strings.TrimSpace(st.PublicURL), "/")
 	if st.PublicURL != "" {
 		u, err := url.Parse(st.PublicURL)
 		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-			return errors.New("publieke URL moet beginnen met http:// of https://")
+			return errors.New("public URL must start with http:// or https://")
 		}
 	}
 	for _, p := range []int{st.AdminPort, st.PortalPort} {
 		if p < 1 || p > 65535 {
-			return fmt.Errorf("poort %d is ongeldig (1-65535)", p)
+			return fmt.Errorf("port %d is invalid (1-65535)", p)
 		}
 	}
 	if st.AdminPort == st.PortalPort {
-		return errors.New("beheerpaneel en portal moeten verschillende poorten hebben")
+		return errors.New("admin panel and portal must use different ports")
 	}
 	return nil
 }

@@ -41,7 +41,7 @@ func (h *Handler) channelList(w http.ResponseWriter, r *http.Request, sess store
 		h.serverError(w, err)
 		return
 	}
-	h.render(w, r, "channels", page{Title: "Kanalen", Nav: "channels", Session: &sess,
+	h.render(w, r, "channels", page{Title: "Channels", Nav: "channels", Session: &sess,
 		Data: channelListData{Channels: chs, Categories: cats, Filter: f, Back: r.URL.RequestURI()}})
 }
 
@@ -76,9 +76,9 @@ func (h *Handler) renderChannelForm(w http.ResponseWriter, r *http.Request, sess
 		h.serverError(w, err)
 		return
 	}
-	title := "Kanaal toevoegen"
+	title := "Add channel"
 	if c.ID != 0 {
-		title = "Kanaal bewerken"
+		title = "Edit channel"
 	}
 	h.render(w, r, "channel", page{Title: title, Nav: "channels", Session: &sess, Error: errMsg,
 		Data: channelFormData{Channel: c, Categories: cats}})
@@ -116,7 +116,7 @@ func (h *Handler) channelSave(w http.ResponseWriter, r *http.Request, sess store
 		h.renderChannelForm(w, r, sess, c, err.Error())
 		return
 	}
-	redirectFlash(w, r, "/channels", fmt.Sprintf("Kanaal %q opgeslagen.", strings.TrimSpace(c.Name)))
+	redirectFlash(w, r, "/channels", fmt.Sprintf("Channel %q saved.", strings.TrimSpace(c.Name)))
 }
 
 func (h *Handler) channelToggle(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -146,7 +146,7 @@ func (h *Handler) channelDelete(w http.ResponseWriter, r *http.Request, sess sto
 		h.serverError(w, err)
 		return
 	}
-	redirectFlash(w, r, "/channels", "Kanaal verwijderd.")
+	redirectFlash(w, r, "/channels", "Channel deleted.")
 }
 
 // backTo returns the "back" form value when it is a local path.
@@ -170,7 +170,7 @@ func (h *Handler) renderCategories(w http.ResponseWriter, r *http.Request, sess 
 		h.serverError(w, err)
 		return
 	}
-	h.render(w, r, "categories", page{Title: "Categorieën", Nav: "categories", Session: &sess, Error: errMsg, Data: cats})
+	h.render(w, r, "categories", page{Title: "Categories", Nav: "categories", Session: &sess, Error: errMsg, Data: cats})
 }
 
 func (h *Handler) categorySave(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -181,7 +181,7 @@ func (h *Handler) categorySave(w http.ResponseWriter, r *http.Request, sess stor
 		h.renderCategories(w, r, sess, err.Error())
 		return
 	}
-	redirectFlash(w, r, "/categories", "Categorie opgeslagen.")
+	redirectFlash(w, r, "/categories", "Category saved.")
 }
 
 func (h *Handler) categoryDelete(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -194,19 +194,19 @@ func (h *Handler) categoryDelete(w http.ResponseWriter, r *http.Request, sess st
 		h.serverError(w, err)
 		return
 	}
-	redirectFlash(w, r, "/categories", "Categorie verwijderd. De kanalen staan nu zonder categorie.")
+	redirectFlash(w, r, "/categories", "Category deleted. Its channels are now uncategorized.")
 }
 
 // ---- import ----
 
 func (h *Handler) importForm(w http.ResponseWriter, r *http.Request, sess store.Session) {
-	h.render(w, r, "import", page{Title: "Importeren", Nav: "import", Session: &sess})
+	h.render(w, r, "import", page{Title: "Import", Nav: "import", Session: &sess})
 }
 
 const maxPlaylistSize = 10 << 20
 
 func (h *Handler) importRun(w http.ResponseWriter, r *http.Request, sess store.Session) {
-	p := page{Title: "Importeren", Nav: "import", Session: &sess}
+	p := page{Title: "Import", Nav: "import", Session: &sess}
 	src, err := playlistSource(r)
 	if err != nil {
 		p.Error = err.Error()
@@ -216,12 +216,12 @@ func (h *Handler) importRun(w http.ResponseWriter, r *http.Request, sess store.S
 	defer src.Close()
 	entries, err := m3u.Parse(io.LimitReader(src, maxPlaylistSize))
 	if err != nil {
-		p.Error = "Playlist kon niet gelezen worden: " + err.Error()
+		p.Error = "Could not read the playlist: " + err.Error()
 		h.render(w, r, "import", p)
 		return
 	}
 	if len(entries) == 0 {
-		p.Error = "Geen streams gevonden in de playlist."
+		p.Error = "No streams found in the playlist."
 		h.render(w, r, "import", p)
 		return
 	}
@@ -253,10 +253,10 @@ func playlistSource(r *http.Request) (io.ReadCloser, error) {
 	}
 	u := strings.TrimSpace(r.FormValue("url"))
 	if u == "" {
-		return nil, errors.New("Kies een bestand, plak een playlist of vul een URL in.")
+		return nil, errors.New("choose a file, paste a playlist or enter a URL")
 	}
 	if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
-		return nil, errors.New("URL moet beginnen met http:// of https://")
+		return nil, errors.New("URL must start with http:// or https://")
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -268,12 +268,12 @@ func playlistSource(r *http.Request) (io.ReadCloser, error) {
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		cancel()
-		return nil, fmt.Errorf("Playlist downloaden mislukt: %w", err)
+		return nil, fmt.Errorf("downloading the playlist failed: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
 		cancel()
-		return nil, fmt.Errorf("Playlist downloaden mislukt: %s", resp.Status)
+		return nil, fmt.Errorf("downloading the playlist failed: %s", resp.Status)
 	}
 	return cancelOnClose{resp.Body, cancel}, nil
 }

@@ -4,30 +4,30 @@
 <section class="card">
 <form method="post" action="{{if $c.ID}}/channels/{{$c.ID}}{{else}}/channels/new{{end}}" class="stack">
   <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
-  <label>Naam <input name="name" value="{{$c.Name}}" required></label>
-  <label>Stream-URL (m3u8)
+  <label>Name <input name="name" value="{{$c.Name}}" required></label>
+  <label>Stream URL (m3u8)
     <input type="url" name="stream_url" value="{{$c.StreamURL}}" placeholder="https://…/index.m3u8" required>
-    <small>De tv-box maakt direct verbinding met dit adres.</small>
+    <small>TV boxes connect directly to this address.</small>
   </label>
-  <label>Logo-URL <input type="url" name="logo_url" value="{{$c.LogoURL}}" placeholder="https://…/logo.png"></label>
-  <label>EPG-id (tvg-id)
+  <label>Logo URL <input type="url" name="logo_url" value="{{$c.LogoURL}}" placeholder="https://…/logo.png"></label>
+  <label>EPG ID (tvg-id)
     <input name="epg_id" value="{{$c.EPGID}}">
-    <small>Optioneel. Hiermee wordt het kanaal gekoppeld aan de programmagids.</small>
+    <small>Optional. Links the channel to the program guide.</small>
   </label>
   <div class="row">
-    <label>Categorie
+    <label>Category
       <select name="category_id">
-        <option value="0">Geen categorie</option>
+        <option value="0">No category</option>
         {{range .Data.Categories}}<option value="{{.ID}}" {{if eq $c.CategoryID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
       </select>
     </label>
-    <label>of nieuwe categorie <input name="new_category" placeholder="Naam van nieuwe categorie"></label>
+    <label>or new category <input name="new_category" placeholder="Name of a new category"></label>
   </div>
-  <label>Volgorde <input type="number" name="sort_order" value="{{$c.SortOrder}}"><small>Lagere nummers staan eerder in de lijst.</small></label>
-  <label class="check"><input type="checkbox" name="enabled" {{if $c.Enabled}}checked{{end}}> Actief</label>
+  <label>Order <input type="number" name="sort_order" value="{{$c.SortOrder}}"><small>Lower numbers come first.</small></label>
+  <label class="check"><input type="checkbox" name="enabled" {{if $c.Enabled}}checked{{end}}> Enabled</label>
   <div class="buttons">
-    <button>Opslaan</button>
-    <a class="button secondary" href="/channels">Annuleren</a>
+    <button>Save</button>
+    <a class="button secondary" href="/channels">Cancel</a>
   </div>
 </form>
 </section>

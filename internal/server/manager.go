@@ -34,7 +34,7 @@ type Manager struct {
 // NewManager creates a manager; call Start to begin listening.
 func NewManager(log *slog.Logger, admin, portal http.Handler) *Manager {
 	return &Manager{
-		admin:  &listener{name: "beheerpaneel", handler: admin},
+		admin:  &listener{name: "admin panel", handler: admin},
 		portal: &listener{name: "portal", handler: portal},
 		log:    log,
 	}
@@ -64,7 +64,7 @@ func (m *Manager) apply(l *listener, port int) {
 	ln, err := net.Listen("tcp", ":"+strconv.Itoa(port))
 	if err != nil {
 		l.err = err
-		m.log.Error("kan niet luisteren", "listener", l.name, "port", port, "err", err)
+		m.log.Error("cannot listen", "listener", l.name, "port", port, "err", err)
 		return
 	}
 	l.err = nil
@@ -74,10 +74,10 @@ func (m *Manager) apply(l *listener, port int) {
 		IdleTimeout:       120 * time.Second,
 	}
 	srv := l.srv
-	m.log.Info("luistert", "listener", l.name, "port", port)
+	m.log.Info("listening", "listener", l.name, "port", port)
 	go func() {
 		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			m.log.Error("listener gestopt", "listener", l.name, "err", err)
+			m.log.Error("listener stopped", "listener", l.name, "err", err)
 		}
 	}()
 }
@@ -118,7 +118,7 @@ func (m *Manager) PortAvailable(port int) error {
 	m.mu.Unlock()
 	ln, err := net.Listen("tcp", ":"+strconv.Itoa(port))
 	if err != nil {
-		return fmt.Errorf("poort %d is niet beschikbaar: %w", port, err)
+		return fmt.Errorf("port %d is not available: %w", port, err)
 	}
 	return ln.Close()
 }

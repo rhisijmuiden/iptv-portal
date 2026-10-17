@@ -1,22 +1,22 @@
 {{define "content"}}
-<h1>Importeren</h1>
+<h1>Import</h1>
 {{with .Data}}
 <section class="card">
-  <h2>Resultaat</h2>
-  <p>{{.Added}} kanalen toegevoegd, {{.Updated}} bijgewerkt{{if .Skipped}}, {{len .Skipped}} overgeslagen{{end}}.</p>
+  <h2>Result</h2>
+  <p>{{.Added}} channels added, {{.Updated}} updated{{if .Skipped}}, {{len .Skipped}} skipped{{end}}.</p>
   {{if .Skipped}}<ul class="muted">{{range .Skipped}}<li>{{.}}</li>{{end}}</ul>{{end}}
-  <p><a href="/channels">Bekijk de kanalen</a></p>
+  <p><a href="/channels">View channels</a></p>
 </section>
 {{end}}
 <section class="card">
-  <p>Importeer kanalen uit een M3U-playlist. Kanalen met een stream-URL die al bestaat worden bijgewerkt in plaats van dubbel toegevoegd. Categorieën worden aangemaakt op basis van <code>group-title</code>.</p>
+  <p>Import channels from an M3U playlist. A channel whose stream URL already exists is updated instead of added twice. Categories are created from <code>group-title</code>.</p>
   <form method="post" action="/import" enctype="multipart/form-data" class="stack">
     <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
-    <label>Bestand uploaden <input type="file" name="file" accept=".m3u,.m3u8,audio/x-mpegurl,application/vnd.apple.mpegurl,text/plain"></label>
-    <label>of playlist plakken <textarea name="text" rows="8" placeholder="#EXTM3U&#10;#EXTINF:-1 tvg-id=&quot;…&quot; group-title=&quot;…&quot;,Naam&#10;https://…/index.m3u8"></textarea></label>
-    <label>of playlist downloaden van URL <input type="url" name="url" placeholder="https://…/playlist.m3u"></label>
-    <label>Alles in deze categorie zetten <input name="category" placeholder="Optioneel, laat leeg om group-title te gebruiken"></label>
-    <button>Importeren</button>
+    <label>Upload a file <input type="file" name="file" accept=".m3u,.m3u8,audio/x-mpegurl,application/vnd.apple.mpegurl,text/plain"></label>
+    <label>or paste a playlist <textarea name="text" rows="8" placeholder="#EXTM3U&#10;#EXTINF:-1 tvg-id=&quot;…&quot; group-title=&quot;…&quot;,Name&#10;https://…/index.m3u8"></textarea></label>
+    <label>or download a playlist from a URL <input type="url" name="url" placeholder="https://…/playlist.m3u"></label>
+    <label>Put everything in this category <input name="category" placeholder="Optional, leave empty to use group-title"></label>
+    <button>Import</button>
   </form>
 </section>
 {{end}}

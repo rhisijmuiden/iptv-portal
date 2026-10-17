@@ -1,54 +1,54 @@
 # IPTV Portal
 
-Een lichte portal om losse, publiek toegankelijke m3u8-streams (bijvoorbeeld van lokale omroepen) op één plek te verzamelen. Gebruikers stellen de portal in op hun tv-box of IPTV-app (zoals MyTVOnline op een Formuler) en krijgen zo alle kanalen en, waar beschikbaar, de programmagids.
+A lightweight portal that collects individual, publicly available m3u8 streams (for example from local broadcasters) in one place. Users add the portal to their TV box or IPTV app (such as MyTVOnline on a Formuler) and get all channels and, where available, the program guide.
 
-De portal is alleen een index: tv-boxen maken direct verbinding met de stream van de omroep. Er loopt geen video via de server.
+The portal is only an index: TV boxes connect directly to the broadcaster's stream. No video passes through the server.
 
-> **Status:** in ontwikkeling. Het beheerpaneel met kanaalbeheer werkt. Gebruikers en uitnodigingen, de Xtream Codes-API, M3U en EPG, de installer en de update-functie volgen.
+> **Status:** in development. The admin panel with channel management works. Users and invitations, the Xtream Codes API, M3U and EPG output, the installer and the update feature are coming next.
 
-## Onderdelen
+## Components
 
-| Onderdeel | Standaardpoort | Doel |
+| Component | Default port | Purpose |
 |---|---|---|
-| Beheerpaneel | 8080 | Kanalen, categorieën, import en instellingen beheren |
-| Portal | 80 | Het adres dat gebruikers op hun tv-box invullen |
+| Admin panel | 8080 | Manage channels, categories, imports and settings |
+| Portal | 80 | The address users enter on their TV box |
 
-Beide poorten, de naam van de portal en de publieke URL zijn te wijzigen onder **Instellingen** in het beheerpaneel. Na het wijzigen van een poort start dat onderdeel direct opnieuw op de nieuwe poort.
+Both ports, the portal name and the public URL can be changed under **Settings** in the admin panel. After a port change, that component restarts on the new port right away.
 
-### Achter een reverse proxy
+### Behind a reverse proxy
 
-Draai je de portal achter een reverse proxy (Nginx, Caddy, Nginx Proxy Manager, Traefik), vul dan onder **Instellingen → Publieke URL** het adres van de proxy in, bijvoorbeeld `https://tv.example.com`. Alle links die naar tv-boxen gaan worden met dit adres opgebouwd.
+When the portal runs behind a reverse proxy (Nginx, Caddy, Nginx Proxy Manager, Traefik), set **Settings → Public URL** to the proxy address, for example `https://tv.example.com`. Every link sent to TV boxes is built from this address.
 
-## Zelf bouwen en draaien
+## Build and run
 
-Vereist Go 1.26 of nieuwer.
+Requires Go 1.26 or newer.
 
 ```sh
 make build
 IPTV_PORTAL_DATA=./data ./bin/iptv-portal serve
 ```
 
-Bij de eerste start zonder admin-account wordt het account `admin` aangemaakt met een eenmalig wachtwoord. Dat wachtwoord staat in het logboek. Na het inloggen moet je het direct wijzigen.
+On the first start without an admin account, the account `admin` is created with a one-time password, which is printed to the log. You must change it after logging in.
 
-## Opdrachten
+## Commands
 
 ```text
-iptv-portal serve                         Start de portal
-iptv-portal admin-reset [-username N]     Maak een admin aan of zet een nieuw eenmalig wachtwoord
+iptv-portal serve                         Start the portal
+iptv-portal admin-reset [-username N]     Create an admin or set a new one-time password
 iptv-portal set-port [-admin P] [-portal P]
-                                          Wijzig de poorten vanaf de commandoregel
-iptv-portal version                       Toon de versie
+                                          Change the ports from the command line
+iptv-portal version                       Print the version
 ```
 
-Alle opdrachten accepteren `-data DIR` (standaard `$IPTV_PORTAL_DATA` of `/var/lib/iptv-portal`).
+All commands accept `-data DIR` (default `$IPTV_PORTAL_DATA` or `/var/lib/iptv-portal`).
 
-Buitengesloten na het wijzigen van de poort van het beheerpaneel? Zet hem terug en herstart de service:
+Locked out after changing the admin panel port? Reset it and restart the service:
 
 ```sh
 iptv-portal set-port -admin 8080
 systemctl restart iptv-portal
 ```
 
-## Kanalen importeren
+## Importing channels
 
-Onder **Importeren** kun je een M3U-playlist uploaden, plakken of laten downloaden van een URL. De attributen `tvg-id` (EPG-koppeling), `tvg-logo` en `group-title` (categorie) worden overgenomen. Een kanaal met een stream-URL die al bestaat wordt bijgewerkt in plaats van dubbel toegevoegd.
+Under **Import** you can upload an M3U playlist, paste one, or have it downloaded from a URL. The `tvg-id` (EPG mapping), `tvg-logo` and `group-title` (category) attributes are kept. A channel whose stream URL already exists is updated instead of added twice.

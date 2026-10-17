@@ -1,13 +1,13 @@
 {{define "content"}}
 <section class="card narrow">
-  <h1>Instellingen opgeslagen</h1>
-  <p>De portal luistert nu op poort <strong>{{.Data.Settings.PortalPort}}</strong> en het beheerpaneel op poort <strong>{{.Data.Settings.AdminPort}}</strong>.</p>
+  <h1>Settings saved</h1>
+  <p>The portal now listens on port <strong>{{.Data.Settings.PortalPort}}</strong> and the admin panel on port <strong>{{.Data.Settings.AdminPort}}</strong>.</p>
   {{if .Data.NewAdminURL}}
-  <p>Het beheerpaneel is verhuisd. Ga verder op:</p>
+  <p>The admin panel has moved. Continue at:</p>
   <p><a class="button" href="{{.Data.NewAdminURL}}">{{.Data.NewAdminURL}}</a></p>
-  <p class="muted">Bereik je het beheerpaneel via een reverse proxy? Pas dan eerst de proxy aan naar de nieuwe poort.</p>
+  <p class="muted">Reaching the admin panel through a reverse proxy? Point the proxy at the new port first.</p>
   {{else}}
-  <p><a href="/settings">Terug naar instellingen</a></p>
+  <p><a href="/settings">Back to settings</a></p>
   {{end}}
 </section>
 {{end}}

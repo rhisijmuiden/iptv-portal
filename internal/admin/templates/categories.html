@@ -1,18 +1,18 @@
 {{define "content"}}
-<h1>Categorieën</h1>
+<h1>Categories</h1>
 <section class="card">
-  <h2>Nieuwe categorie</h2>
+  <h2>New category</h2>
   <form method="post" action="/categories" class="inline">
     <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
-    <input name="name" placeholder="Bijvoorbeeld Noord-Holland" required>
-    <input type="number" name="sort_order" value="0" title="Volgorde" class="small">
-    <button>Toevoegen</button>
+    <input name="name" placeholder="For example North Holland" required>
+    <input type="number" name="sort_order" value="0" title="Order" class="small">
+    <button>Add</button>
   </form>
 </section>
 {{if .Data}}
 <div class="card flush">
 <table>
-  <thead><tr><th>Naam</th><th>Volgorde</th><th>Kanalen</th><th></th></tr></thead>
+  <thead><tr><th>Name</th><th>Order</th><th>Channels</th><th></th></tr></thead>
   <tbody>
   {{range .Data}}
   <tr>
@@ -22,14 +22,14 @@
         <input type="hidden" name="id" value="{{.ID}}">
         <input name="name" value="{{.Name}}" required>
         <input type="number" name="sort_order" value="{{.SortOrder}}" class="small">
-        <button class="secondary">Opslaan</button>
+        <button class="secondary">Save</button>
       </form>
     </td>
     <td><a href="/channels?category={{.ID}}">{{.ChannelCount}}</a></td>
     <td class="actions">
-      <form method="post" action="/categories/{{.ID}}/delete" onsubmit="return confirm('Categorie verwijderen? De kanalen blijven bestaan.')">
+      <form method="post" action="/categories/{{.ID}}/delete" onsubmit="return confirm('Delete this category? Its channels are kept.')">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
-        <button class="link danger">Verwijderen</button>
+        <button class="link danger">Delete</button>
       </form>
     </td>
   </tr>

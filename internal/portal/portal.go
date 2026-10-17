@@ -34,8 +34,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) index(w http.ResponseWriter, r *http.Request) {
 	st, err := h.store.Settings(r.Context())
 	if err != nil {
-		h.log.Error("instellingen lezen", "err", err)
-		http.Error(w, "interne fout", http.StatusInternalServerError)
+		h.log.Error("reading settings", "err", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")

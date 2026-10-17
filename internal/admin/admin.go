@@ -145,11 +145,11 @@ func (h *Handler) requireSession(fn func(http.ResponseWriter, *http.Request, sto
 		if r.Method == http.MethodPost {
 			r.Body = http.MaxBytesReader(w, r.Body, 20<<20)
 			if err := r.ParseMultipartForm(20 << 20); err != nil && !errors.Is(err, http.ErrNotMultipart) {
-				http.Error(w, "ongeldig formulier", http.StatusBadRequest)
+				http.Error(w, "invalid form", http.StatusBadRequest)
 				return
 			}
 			if subtle.ConstantTimeCompare([]byte(r.FormValue("csrf")), []byte(sess.CSRF)) != 1 {
-				http.Error(w, "sessie verlopen, laad de pagina opnieuw", http.StatusForbidden)
+				http.Error(w, "session expired, reload the page", http.StatusForbidden)
 				return
 			}
 		}
@@ -179,7 +179,7 @@ type page struct {
 func (h *Handler) render(w http.ResponseWriter, r *http.Request, name string, p page) {
 	t, ok := h.pages[name]
 	if !ok {
-		h.serverError(w, errors.New("onbekende template "+name))
+		h.serverError(w, errors.New("unknown template "+name))
 		return
 	}
 	if p.PortalName == "" {
@@ -190,16 +190,29 @@ func (h *Handler) render(w http.ResponseWriter, r *http.Request, name string, p 
 	if p.Flash == "" {
 		p.Flash = r.URL.Query().Get("ok")
 	}
+	p.Error = sentence(p.Error)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	if err := t.ExecuteTemplate(w, "layout.html", p); err != nil {
-		h.log.Error("template", "page", name, "err", err)
+		h.log.Error("rendering template", "page", name, "err", err)
 	}
 }
 
+// sentence capitalises an error message for display.
+func sentence(s string) string {
+	if s == "" {
+		return s
+	}
+	s = strings.ToUpper(s[:1]) + s[1:]
+	if !strings.HasSuffix(s, ".") {
+		s += "."
+	}
+	return s
+}
+
 func (h *Handler) serverError(w http.ResponseWriter, err error) {
-	h.log.Error("interne fout", "err", err)
-	http.Error(w, "Er ging iets mis, zie het logboek van de server.", http.StatusInternalServerError)
+	h.log.Error("internal error", "err", err)
+	http.Error(w, "Something went wrong, see the server log.", http.StatusInternalServerError)
 }
 
 func redirectFlash(w http.ResponseWriter, r *http.Request, path, msg string) {
@@ -213,22 +226,22 @@ func isHTTPS(r *http.Request) bool {
 // ---- login ----
 
 func (h *Handler) loginForm(w http.ResponseWriter, r *http.Request) {
-	h.render(w, r, "login", page{Title: "Inloggen"})
+	h.render(w, r, "login", page{Title: "Log in"})
 }
 
 func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 	ip := clientIP(r)
 	if !h.limiter.allow(ip) {
 		w.WriteHeader(http.StatusTooManyRequests)
-		h.render(w, r, "login", page{Title: "Inloggen", Error: "Te veel mislukte pogingen, probeer het over 15 minuten opnieuw."})
+		h.render(w, r, "login", page{Title: "Log in", Error: "Too many failed attempts, try again in 15 minutes."})
 		return
 	}
 	admin, err := h.store.Authenticate(r.Context(), r.FormValue("username"), r.FormValue("password"))
 	if errors.Is(err, store.ErrInvalidLogin) {
 		h.limiter.fail(ip)
-		h.log.Warn("mislukte login", "username", r.FormValue("username"), "ip", ip)
+		h.log.Warn("failed login", "username", r.FormValue("username"), "ip", ip)
 		w.WriteHeader(http.StatusUnauthorized)
-		h.render(w, r, "login", page{Title: "Inloggen", Error: err.Error()})
+		h.render(w, r, "login", page{Title: "Log in", Error: err.Error()})
 		return
 	}
 	if err != nil {
@@ -256,13 +269,13 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request, sess store.Sess
 }
 
 func (h *Handler) passwordForm(w http.ResponseWriter, r *http.Request, sess store.Session) {
-	h.render(w, r, "password", page{Title: "Wachtwoord wijzigen", Session: &sess})
+	h.render(w, r, "password", page{Title: "Change password", Session: &sess})
 }
 
 func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request, sess store.Session) {
-	p := page{Title: "Wachtwoord wijzigen", Session: &sess}
+	p := page{Title: "Change password", Session: &sess}
 	if r.FormValue("new") != r.FormValue("confirm") {
-		p.Error = "De nieuwe wachtwoorden komen niet overeen."
+		p.Error = "The new passwords do not match."
 		h.render(w, r, "password", p)
 		return
 	}
@@ -271,7 +284,7 @@ func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request, sess st
 		h.render(w, r, "password", p)
 		return
 	}
-	redirectFlash(w, r, "/", "Je wachtwoord is gewijzigd.")
+	redirectFlash(w, r, "/", "Your password has been changed.")
 }
 
 // ---- dashboard ----
@@ -307,7 +320,7 @@ func (h *Handler) dashboard(w http.ResponseWriter, r *http.Request, sess store.S
 			d.Enabled++
 		}
 	}
-	h.render(w, r, "dashboard", page{Title: "Overzicht", Nav: "dashboard", Session: &sess, Data: d})
+	h.render(w, r, "dashboard", page{Title: "Dashboard", Nav: "dashboard", Session: &sess, Data: d})
 }
 
 // PortalURL is the address clients enter in their player. It is the public
@@ -338,7 +351,7 @@ func (h *Handler) settingsForm(w http.ResponseWriter, r *http.Request, sess stor
 		h.serverError(w, err)
 		return
 	}
-	h.render(w, r, "settings", page{Title: "Instellingen", Nav: "settings", Session: &sess, Data: st})
+	h.render(w, r, "settings", page{Title: "Settings", Nav: "settings", Session: &sess, Data: st})
 }
 
 func (h *Handler) settingsSave(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -353,7 +366,7 @@ func (h *Handler) settingsSave(w http.ResponseWriter, r *http.Request, sess stor
 	}
 	st.AdminPort, _ = strconv.Atoi(r.FormValue("admin_port"))
 	st.PortalPort, _ = strconv.Atoi(r.FormValue("portal_port"))
-	p := page{Title: "Instellingen", Nav: "settings", Session: &sess, Data: st}
+	p := page{Title: "Settings", Nav: "settings", Session: &sess, Data: st}
 	err = st.Validate()
 	if err == nil && st.AdminPort != old.AdminPort {
 		err = h.listeners.PortAvailable(st.AdminPort)
@@ -370,7 +383,7 @@ func (h *Handler) settingsSave(w http.ResponseWriter, r *http.Request, sess stor
 		return
 	}
 	if st.AdminPort == old.AdminPort && st.PortalPort == old.PortalPort {
-		redirectFlash(w, r, "/settings", "Instellingen opgeslagen.")
+		redirectFlash(w, r, "/settings", "Settings saved.")
 		return
 	}
 	// The listeners are restarted after this response has been sent, because
@@ -390,7 +403,7 @@ func (h *Handler) settingsSave(w http.ResponseWriter, r *http.Request, sess stor
 		}
 		newAdmin = "http://" + host + ":" + strconv.Itoa(st.AdminPort) + "/"
 	}
-	h.render(w, r, "restarted", page{Title: "Instellingen opgeslagen", Nav: "settings", Session: &sess,
+	h.render(w, r, "restarted", page{Title: "Settings saved", Nav: "settings", Session: &sess,
 		Data: map[string]any{"Settings": st, "NewAdminURL": newAdmin}})
 }
 
@@ -468,7 +481,7 @@ func (h *Handler) PurgeLoop(ctx context.Context) {
 	defer t.Stop()
 	for {
 		if err := h.store.PurgeExpiredSessions(ctx); err != nil && ctx.Err() == nil {
-			h.log.Warn("sessies opruimen", "err", err)
+			h.log.Warn("purging sessions", "err", err)
 		}
 		select {
 		case <-ctx.Done():

@@ -37,13 +37,13 @@ func (c *Channel) Validate() error {
 	c.LogoURL = strings.TrimSpace(c.LogoURL)
 	c.EPGID = strings.TrimSpace(c.EPGID)
 	if c.Name == "" {
-		return errors.New("naam mag niet leeg zijn")
+		return errors.New("name must not be empty")
 	}
 	if !isHTTPURL(c.StreamURL) {
-		return errors.New("stream-URL moet beginnen met http:// of https://")
+		return errors.New("stream URL must start with http:// or https://")
 	}
 	if c.LogoURL != "" && !isHTTPURL(c.LogoURL) {
-		return errors.New("logo-URL moet beginnen met http:// of https://")
+		return errors.New("logo URL must start with http:// or https://")
 	}
 	return nil
 }
@@ -85,20 +85,20 @@ func (s *Store) Categories(ctx context.Context) ([]Category, error) {
 func (s *Store) SaveCategory(ctx context.Context, c Category) (int64, error) {
 	c.Name = strings.TrimSpace(c.Name)
 	if c.Name == "" {
-		return 0, errors.New("naam mag niet leeg zijn")
+		return 0, errors.New("name must not be empty")
 	}
 	if c.ID == 0 {
 		res, err := s.db.ExecContext(ctx,
 			`INSERT INTO categories(name, sort_order) VALUES(?, ?)`, c.Name, c.SortOrder)
 		if err != nil {
-			return 0, uniqueErr(err, "categorie bestaat al")
+			return 0, uniqueErr(err, "category already exists")
 		}
 		return res.LastInsertId()
 	}
 	res, err := s.db.ExecContext(ctx,
 		`UPDATE categories SET name = ?, sort_order = ? WHERE id = ?`, c.Name, c.SortOrder, c.ID)
 	if err != nil {
-		return 0, uniqueErr(err, "categorie bestaat al")
+		return 0, uniqueErr(err, "category already exists")
 	}
 	return c.ID, mustAffect(res)
 }

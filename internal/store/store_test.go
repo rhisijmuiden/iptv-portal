@@ -58,7 +58,7 @@ func TestOneTimePassword(t *testing.T) {
 	if err != nil || !a.MustChangePassword {
 		t.Fatalf("Authenticate = %+v, %v", a, err)
 	}
-	if _, err := s.Authenticate(ctx, "admin", "verkeerd"); !errors.Is(err, ErrInvalidLogin) {
+	if _, err := s.Authenticate(ctx, "admin", "wrong-password"); !errors.Is(err, ErrInvalidLogin) {
 		t.Fatalf("wrong password err = %v", err)
 	}
 	sess, _ := s.CreateSession(ctx, a)
@@ -66,7 +66,7 @@ func TestOneTimePassword(t *testing.T) {
 	if err := s.ChangeOwnPassword(ctx, sess, pw, pw); err == nil {
 		t.Fatal("reusing the one-time password was accepted")
 	}
-	if err := s.ChangeOwnPassword(ctx, sess, pw, "nieuw-wachtwoord"); err != nil {
+	if err := s.ChangeOwnPassword(ctx, sess, pw, "new-password"); err != nil {
 		t.Fatal(err)
 	}
 	got, err := s.Session(ctx, sess.Token)
@@ -77,13 +77,13 @@ func TestOneTimePassword(t *testing.T) {
 		t.Fatalf("other session still valid: %v", err)
 	}
 	// admin-reset sets a new one-time password and logs everyone out.
-	if err := s.SetAdminPassword(ctx, "admin", "eenmalig-123", true); err != nil {
+	if err := s.SetAdminPassword(ctx, "admin", "one-time-123", true); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.Session(ctx, sess.Token); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("session survived reset: %v", err)
 	}
-	if a, _ := s.Authenticate(ctx, "admin", "eenmalig-123"); !a.MustChangePassword {
+	if a, _ := s.Authenticate(ctx, "admin", "one-time-123"); !a.MustChangePassword {
 		t.Fatal("reset password is not one-time")
 	}
 }

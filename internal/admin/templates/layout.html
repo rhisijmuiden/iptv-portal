@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="nl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,15 +11,15 @@
 <header class="top">
   <a class="brand" href="/">{{.PortalName}}</a>
   <nav>
-    <a href="/" {{if eq .Nav "dashboard"}}class="active"{{end}}>Overzicht</a>
-    <a href="/channels" {{if eq .Nav "channels"}}class="active"{{end}}>Kanalen</a>
-    <a href="/categories" {{if eq .Nav "categories"}}class="active"{{end}}>Categorieën</a>
-    <a href="/import" {{if eq .Nav "import"}}class="active"{{end}}>Importeren</a>
-    <a href="/settings" {{if eq .Nav "settings"}}class="active"{{end}}>Instellingen</a>
+    <a href="/" {{if eq .Nav "dashboard"}}class="active"{{end}}>Dashboard</a>
+    <a href="/channels" {{if eq .Nav "channels"}}class="active"{{end}}>Channels</a>
+    <a href="/categories" {{if eq .Nav "categories"}}class="active"{{end}}>Categories</a>
+    <a href="/import" {{if eq .Nav "import"}}class="active"{{end}}>Import</a>
+    <a href="/settings" {{if eq .Nav "settings"}}class="active"{{end}}>Settings</a>
   </nav>
   <div class="user">
     <a href="/password">{{.Session.Admin.Username}}</a>
-    <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.Session.CSRF}}"><button class="link">Uitloggen</button></form>
+    <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.Session.CSRF}}"><button class="link">Log out</button></form>
   </div>
 </header>
 {{end}}

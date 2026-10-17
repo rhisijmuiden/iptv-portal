@@ -36,7 +36,7 @@ const SessionTTL = 7 * 24 * time.Hour
 var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("dummy-password"), bcrypt.DefaultCost)
 
 // ErrInvalidLogin is returned for a wrong username or password.
-var ErrInvalidLogin = errors.New("onjuiste gebruikersnaam of wachtwoord")
+var ErrInvalidLogin = errors.New("invalid username or password")
 
 // AdminCount returns the number of admin accounts.
 func (s *Store) AdminCount(ctx context.Context) (int, error) {
@@ -47,10 +47,10 @@ func (s *Store) AdminCount(ctx context.Context) (int, error) {
 
 func validateCredentials(username, password string) error {
 	if strings.TrimSpace(username) == "" {
-		return errors.New("gebruikersnaam mag niet leeg zijn")
+		return errors.New("username must not be empty")
 	}
 	if len(password) < 8 {
-		return errors.New("wachtwoord moet minimaal 8 tekens zijn")
+		return errors.New("password must be at least 8 characters")
 	}
 	return nil
 }
@@ -71,7 +71,7 @@ func (s *Store) CreateAdmin(ctx context.Context, username, password string, must
 		username, string(hash), mustChange)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
-			return Admin{}, errors.New("gebruikersnaam bestaat al")
+			return Admin{}, errors.New("username already exists")
 		}
 		return Admin{}, err
 	}
@@ -179,10 +179,10 @@ func (s *Store) PurgeExpiredSessions(ctx context.Context) error {
 // session stays valid; all other sessions of the admin are logged out.
 func (s *Store) ChangeOwnPassword(ctx context.Context, sess Session, current, password string) error {
 	if _, err := s.Authenticate(ctx, sess.Admin.Username, current); err != nil {
-		return errors.New("huidig wachtwoord is onjuist")
+		return errors.New("current password is incorrect")
 	}
 	if current == password {
-		return errors.New("kies een ander wachtwoord dan het huidige")
+		return errors.New("choose a password different from the current one")
 	}
 	if err := validateCredentials(sess.Admin.Username, password); err != nil {
 		return err

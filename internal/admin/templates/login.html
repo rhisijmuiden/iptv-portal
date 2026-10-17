@@ -1,11 +1,11 @@
 {{define "content"}}
 <section class="card narrow">
   <h1>{{.PortalName}}</h1>
-  <p class="muted">Log in op het beheerpaneel.</p>
+  <p class="muted">Log in to the admin panel.</p>
   <form method="post" action="/login" class="stack">
-    <label>Gebruikersnaam <input name="username" autocomplete="username" required autofocus></label>
-    <label>Wachtwoord <input type="password" name="password" autocomplete="current-password" required></label>
-    <button>Inloggen</button>
+    <label>Username <input name="username" autocomplete="username" required autofocus></label>
+    <label>Password <input type="password" name="password" autocomplete="current-password" required></label>
+    <button>Log in</button>
   </form>
 </section>
 {{end}}

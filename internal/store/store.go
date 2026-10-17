@@ -14,7 +14,7 @@ import (
 )
 
 // ErrNotFound is returned when a requested record does not exist.
-var ErrNotFound = errors.New("niet gevonden")
+var ErrNotFound = errors.New("not found")
 
 // Store wraps the SQLite database.
 type Store struct {
@@ -25,7 +25,7 @@ type Store struct {
 // any pending migrations.
 func Open(dataDir string) (*Store, error) {
 	if err := os.MkdirAll(dataDir, 0o750); err != nil {
-		return nil, fmt.Errorf("data-map aanmaken: %w", err)
+		return nil, fmt.Errorf("creating data directory: %w", err)
 	}
 	dsn := "file:" + filepath.Join(dataDir, "portal.db") +
 		"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"
@@ -97,7 +97,7 @@ func (s *Store) migrate(ctx context.Context) error {
 		}
 		if _, err := tx.ExecContext(ctx, migrations[i]); err != nil {
 			tx.Rollback()
-			return fmt.Errorf("migratie %d: %w", i+1, err)
+			return fmt.Errorf("migration %d: %w", i+1, err)
 		}
 		if _, err := tx.ExecContext(ctx, fmt.Sprintf(`PRAGMA user_version = %d`, i+1)); err != nil {
 			tx.Rollback()
