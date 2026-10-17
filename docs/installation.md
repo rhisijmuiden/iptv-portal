@@ -57,7 +57,7 @@ At the end, the console shows:
 - the admin panel address with the username `admin` and a one-time password. You have to change the password after the first login.
 - the portal address for TV boxes (`http://<container IP>`).
 
-To update later, open the container's console and run `update`, or run the installer command from [Updating](#updating) inside the container.
+To update later, use **Info → Update now** in the admin panel, run `update` in the container's console, or run the installer command from [Updating](#updating) inside the container.
 
 ## Behind a reverse proxy
 
@@ -128,7 +128,16 @@ http:
 
 ## Updating
 
-Run the installer again. It downloads the latest release, restarts the service and keeps all settings, channels and users:
+The easiest way is the admin panel: open **Info**, click **Check for updates** and then **Update now**. The portal downloads the new release, verifies its checksum, keeps the current program as `/opt/iptv-portal/iptv-portal.old` and restarts itself. With *Check automatically every 24 hours* switched on, the dashboard tells you when a new version is available.
+
+To roll back to the previous version:
+
+```sh
+sudo mv /opt/iptv-portal/iptv-portal.old /opt/iptv-portal/iptv-portal
+sudo systemctl restart iptv-portal
+```
+
+You can also run the installer again. It downloads the latest release, restarts the service and keeps all settings, channels and users:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/rhisijmuiden/iptv-portal/main/install.sh | sudo bash

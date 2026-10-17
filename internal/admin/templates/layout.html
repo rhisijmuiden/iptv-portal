@@ -20,6 +20,7 @@
     <a href="/packages" {{if eq .Nav "packages"}}class="active"{{end}}>Packages</a>
     <a href="/invites" {{if eq .Nav "invites"}}class="active"{{end}}>Invitations</a>
     <a href="/settings" {{if eq .Nav "settings"}}class="active"{{end}}>Settings</a>
+    <a href="/info" {{if eq .Nav "info"}}class="active"{{end}}>Info</a>
   </nav>
   <div class="user">
     <a href="/password">{{.Session.Admin.Username}}</a>

@@ -4,7 +4,7 @@ A lightweight portal that collects individual, publicly available m3u8 streams (
 
 The portal is only an index: TV boxes connect directly to the broadcaster's stream. No video passes through the server.
 
-> **Status:** in development. Channel management, users and invitations, the Xtream Codes API, M3U playlists, the program guide and the installers work. Updating from the admin panel is coming next.
+> **Status:** in development. Channel management, users and invitations, the Xtream Codes API, M3U playlists, the program guide, the installers and updating from the admin panel work.
 
 ## Installation
 
@@ -38,6 +38,10 @@ When the portal runs behind a reverse proxy, set **Settings → Public URL** to 
 ## Releases
 
 Pushing a tag such as `v0.1.0` builds the Linux binaries (amd64 and arm64) and publishes a GitHub release with generated release notes. The installers download the latest release.
+
+## Updates
+
+The **Info** page in the admin panel shows the installed version and the release notes of every version. **Check for updates** asks GitHub for new releases; with *Check automatically every 24 hours* switched on (the default), the dashboard shows a banner when a new version is out. **Update now** downloads the release, verifies its checksum, checks that it starts, keeps the current program as `iptv-portal.old` and restarts the portal. Settings, channels and users are kept. See [docs/installation.md](docs/installation.md#updating) for rolling back.
 
 ## Build from source
 

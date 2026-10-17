@@ -1,5 +1,6 @@
 {{define "content"}}
 <h1>Dashboard</h1>
+{{with .Data.Update}}<p class="flash ok">Version {{.Tag}} is available. <a href="/info">See what's new and update</a>.</p>{{end}}
 <div class="stats">
   <a class="card stat" href="/channels"><strong>{{.Data.Channels}}</strong><span>channels</span></a>
   <a class="card stat" href="/channels"><strong>{{.Data.Enabled}}</strong><span>enabled</span></a>

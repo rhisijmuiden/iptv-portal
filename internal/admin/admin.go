@@ -20,6 +20,7 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
 	"github.com/rhisijmuiden/iptv-portal/internal/server"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
+	"github.com/rhisijmuiden/iptv-portal/internal/update"
 	"github.com/rhisijmuiden/iptv-portal/internal/version"
 	"github.com/rhisijmuiden/iptv-portal/internal/web"
 )
@@ -46,12 +47,27 @@ type Handler struct {
 	limiter   *web.Limiter
 	guide     *epg.Guide
 	refresh   chan<- struct{}
+	updater   *update.Updater
+	restart   func()
 }
 
-// New builds the admin panel. A send on refresh asks the guide to reload.
-func New(st *store.Store, listeners Listeners, guide *epg.Guide, refresh chan<- struct{}, log *slog.Logger) (*Handler, error) {
-	h := &Handler{store: st, listeners: listeners, log: log, limiter: web.NewLimiter(10, 15*time.Minute),
-		guide: guide, refresh: refresh}
+// Config holds what the admin panel needs from the rest of the program.
+type Config struct {
+	Store     *store.Store
+	Listeners Listeners
+	Guide     *epg.Guide
+	// RefreshGuide receives a value when the guide should reload.
+	RefreshGuide chan<- struct{}
+	Updater      *update.Updater
+	// Restart stops the service and starts the (updated) binary again.
+	Restart func()
+	Log     *slog.Logger
+}
+
+// New builds the admin panel.
+func New(c Config) (*Handler, error) {
+	h := &Handler{store: c.Store, listeners: c.Listeners, log: c.Log, limiter: web.NewLimiter(10, 15*time.Minute),
+		guide: c.Guide, refresh: c.RefreshGuide, updater: c.Updater, restart: c.Restart}
 	if err := h.parseTemplates(); err != nil {
 		return nil, err
 	}
@@ -77,7 +93,8 @@ func (h *Handler) parseTemplates() error {
 			}
 			return t.Local().Format("2006-01-02")
 		},
-		"ptr": func(t time.Time) *time.Time { return &t },
+		"ptr":   func(t time.Time) *time.Time { return &t },
+		"notes": update.RenderNotes,
 		"datetime": func(t *time.Time) string {
 			if t == nil {
 				return ""
@@ -153,6 +170,10 @@ func (h *Handler) routes() {
 	auth("GET /epg", h.epgPage)
 	auth("POST /epg", h.epgSave)
 	auth("POST /epg/refresh", h.epgRefresh)
+	auth("GET /info", h.infoPage)
+	auth("POST /info/check", h.infoCheck)
+	auth("POST /info/auto", h.infoAuto)
+	auth("POST /info/install", h.infoInstall)
 	auth("GET /settings", h.settingsForm)
 	auth("POST /settings", h.settingsSave)
 	h.mux = m
@@ -323,6 +344,7 @@ type dashboardData struct {
 	Active     int
 	Listeners  []server.Status
 	PortalURL  string
+	Update     *update.Release // newer release, if one was found
 }
 
 func (h *Handler) dashboard(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -348,6 +370,9 @@ func (h *Handler) dashboard(w http.ResponseWriter, r *http.Request, sess store.S
 	}
 	d := dashboardData{Channels: len(chs), Categories: len(cats), Users: total, Active: active,
 		Listeners: h.listeners.Status(), PortalURL: PortalURL(st, r)}
+	if us := h.updater.Status(); us.Available() {
+		d.Update = us.Latest()
+	}
 	for _, c := range chs {
 		if c.Enabled {
 			d.Enabled++
@@ -397,6 +422,8 @@ func (h *Handler) settingsSave(w http.ResponseWriter, r *http.Request, sess stor
 		PortalName: r.FormValue("portal_name"),
 		PublicURL:  r.FormValue("public_url"),
 		EPGURLs:    old.EPGURLs,
+
+		AutoUpdateCheck: old.AutoUpdateCheck,
 	}
 	st.AdminPort, _ = strconv.Atoi(r.FormValue("admin_port"))
 	st.PortalPort, _ = strconv.Atoi(r.FormValue("portal_port"))

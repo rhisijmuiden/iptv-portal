@@ -21,6 +21,7 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/portal"
 	"github.com/rhisijmuiden/iptv-portal/internal/server"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
+	"github.com/rhisijmuiden/iptv-portal/internal/update"
 	"github.com/rhisijmuiden/iptv-portal/internal/version"
 )
 
@@ -123,8 +124,21 @@ func serve(args []string) error {
 		return s.EPGURLs
 	}, refresh)
 
+	updater := update.New(envOr("IPTV_PORTAL_RELEASES_API", update.DefaultAPI), version.Version)
+	go updater.Loop(ctx, 24*time.Hour, func() bool {
+		s, err := st.Settings(ctx)
+		return err == nil && s.AutoUpdateCheck
+	})
+	restart := false
 	var mgr *server.Manager
-	adminHandler, err := admin.New(st, managerRef{&mgr}, guide, refresh, log)
+	adminHandler, err := admin.New(admin.Config{
+		Store: st, Listeners: managerRef{&mgr}, Guide: guide, RefreshGuide: refresh,
+		Updater: updater, Log: log,
+		Restart: func() {
+			restart = true
+			stop()
+		},
+	})
 	if err != nil {
 		return err
 	}
@@ -142,7 +156,32 @@ func serve(args []string) error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	mgr.Shutdown(shutdownCtx)
+	if restart {
+		return reexec(log, st)
+	}
 	return nil
+}
+
+// reexec replaces this process with the (just updated) binary, keeping the
+// PID so systemd sees the same service.
+func reexec(log *slog.Logger, st *store.Store) error {
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
+		exe = resolved
+	}
+	st.Close()
+	log.Info("restarting with the new version", "binary", exe)
+	return syscall.Exec(exe, os.Args, os.Environ())
+}
+
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }
 
 // managerRef lets the admin handler be built before the manager that
