@@ -323,3 +323,49 @@ func uniqueErr(err error, msg string) error {
 	}
 	return err
 }
+
+// StreamURLs returns the stream URLs of all channels, to tell which
+// streams are already in the portal.
+func (s *Store) StreamURLs(ctx context.Context) (map[string]bool, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT stream_url FROM channels`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]bool{}
+	for rows.Next() {
+		var u string
+		if err := rows.Scan(&u); err != nil {
+			return nil, err
+		}
+		out[u] = true
+	}
+	return out, rows.Err()
+}
+
+// AddCategoriesToPackages adds the named categories (created when needed)
+// to the given packages, keeping what the packages already contain.
+func (s *Store) AddCategoriesToPackages(ctx context.Context, packageIDs []int64, categories []string) error {
+	if len(packageIDs) == 0 {
+		return nil
+	}
+	return s.withTx(ctx, func(tx *sql.Tx) error {
+		for _, name := range categories {
+			cat, err := categoryID(ctx, tx, name)
+			if err != nil {
+				return err
+			}
+			if cat == 0 {
+				continue
+			}
+			for _, p := range packageIDs {
+				if _, err := tx.ExecContext(ctx,
+					`INSERT OR IGNORE INTO package_categories(package_id, category_id)
+					 SELECT id, ? FROM packages WHERE id = ?`, cat, p); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+}

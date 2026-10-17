@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
+	"github.com/rhisijmuiden/iptv-portal/internal/iptvorg"
 	"github.com/rhisijmuiden/iptv-portal/internal/server"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 	"github.com/rhisijmuiden/iptv-portal/internal/update"
@@ -49,6 +50,7 @@ type Handler struct {
 	refresh   chan<- struct{}
 	updater   *update.Updater
 	restart   func()
+	iptvorg   *iptvorg.Client
 }
 
 // Config holds what the admin panel needs from the rest of the program.
@@ -61,13 +63,18 @@ type Config struct {
 	Updater      *update.Updater
 	// Restart stops the service and starts the (updated) binary again.
 	Restart func()
+	// IPTVOrg reads the iptv-org channel list; nil uses the public API.
+	IPTVOrg *iptvorg.Client
 	Log     *slog.Logger
 }
 
 // New builds the admin panel.
 func New(c Config) (*Handler, error) {
 	h := &Handler{store: c.Store, listeners: c.Listeners, log: c.Log, limiter: web.NewLimiter(10, 15*time.Minute),
-		guide: c.Guide, refresh: c.RefreshGuide, updater: c.Updater, restart: c.Restart}
+		guide: c.Guide, refresh: c.RefreshGuide, updater: c.Updater, restart: c.Restart, iptvorg: c.IPTVOrg}
+	if h.iptvorg == nil {
+		h.iptvorg = iptvorg.NewClient()
+	}
 	if err := h.parseTemplates(); err != nil {
 		return nil, err
 	}
@@ -150,6 +157,9 @@ func (h *Handler) routes() {
 	auth("POST /categories/{id}/delete", h.categoryDelete)
 	auth("GET /import", h.importForm)
 	auth("POST /import", h.importRun)
+	auth("GET /iptv-org", h.iptvorgPage)
+	auth("POST /iptv-org/add", h.iptvorgAdd)
+	auth("POST /iptv-org/reload", h.iptvorgReload)
 	auth("GET /users", h.userList)
 	auth("GET /users/new", h.userForm)
 	auth("POST /users/new", h.userSave)

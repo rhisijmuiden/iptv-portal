@@ -1,0 +1,89 @@
+{{define "content"}}
+<div class="titlebar">
+  <h1>iptv-org</h1>
+  {{with .Data}}
+  <form method="post" action="/iptv-org/reload">
+    <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+    <input type="hidden" name="back" value="{{.Back}}">
+    <button class="secondary" title="Loaded {{datetime (ptr .Loaded)}}">Reload list</button>
+  </form>
+  {{end}}
+</div>
+<p class="muted">Pick channels from the public <a href="https://iptv-org.github.io/" target="_blank" rel="noopener">iptv-org</a> database and add them to the portal. Clients connect to the streams directly, so check that a stream plays before you hand it out.</p>
+{{with .Data}}
+<form method="get" action="/iptv-org" class="filters">
+  <input type="search" name="q" value="{{.Filter.Search}}" placeholder="Search by name">
+  <select name="country" onchange="this.form.submit()">
+    <option value="">All countries</option>
+    {{range .Countries}}<option value="{{.Code}}" {{if eq $.Data.Filter.Country .Code}}selected{{end}}>{{.Flag}} {{.Name}} ({{.Count}})</option>{{end}}
+  </select>
+  <select name="category" onchange="this.form.submit()">
+    <option value="">All categories</option>
+    {{range .Categories}}<option value="{{.ID}}" {{if eq $.Data.Filter.Category .ID}}selected{{end}}>{{.Name}}</option>{{end}}
+  </select>
+  <button class="secondary">Filter</button>
+</form>
+{{if .Rows}}
+<form method="post" action="/iptv-org/add">
+<input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+<input type="hidden" name="back" value="{{.Back}}">
+<div class="card flush">
+<table class="iptvorg">
+  <thead><tr>
+    <th></th><th>Channel</th>
+    <th><label class="check"><input type="checkbox" onchange="for (const c of this.form.querySelectorAll('input[name=stream]')) c.checked = this.checked"> Streams</label></th>
+  </tr></thead>
+  <tbody>
+  {{range .Rows}}
+  <tr>
+    <td class="logo">{{if .Logo}}<img src="{{.Logo}}" alt="" loading="lazy" referrerpolicy="no-referrer">{{end}}</td>
+    <td>{{.Name}}
+      <div class="muted url">{{if .ID}}<code>{{.ID}}</code>{{else}}not linked to a channel{{end}}{{if .CategoryNames}} · {{.CategoryNames}}{{end}}</div>
+    </td>
+    <td>
+      {{range .Streams}}
+      <label class="check stream">
+        <input type="checkbox" name="stream" value="{{.URL}}">
+        <span>{{if .Feed}}{{.Feed}} {{end}}{{.Quality}}
+          {{if .Added}}<span class="badge on">in portal</span>{{end}}
+          {{range .Labels}}<span class="badge off">{{.}}</span>{{end}}
+          {{if .NeedsHeaders}}<span class="badge off" title="This stream needs a special User-Agent or Referer and may not play on all clients">needs headers</span>{{end}}
+          <span class="muted url">{{.URL}}</span>
+        </span>
+      </label>
+      {{end}}
+    </td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+</div>
+{{if .More}}<p class="muted">Only the first {{len .Rows}} channels are shown. Narrow the search to see the rest.</p>{{end}}
+<section class="card add-bar">
+  <h2>Add selected streams</h2>
+  <div class="row">
+    <label>Category
+      <select name="target">
+        <option value="@category">Use the iptv-org category</option>
+        <option value="@country">Use the country</option>
+        <option value="">No category</option>
+        {{range .Own}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+      </select>
+    </label>
+    <label>or a new category <input name="new_category" placeholder="Optional"></label>
+  </div>
+  {{if .Packages}}
+  <fieldset>
+    <legend>Also add the category to these packages</legend>
+    {{range .Packages}}<label class="check"><input type="checkbox" name="package" value="{{.ID}}"> {{.Name}}{{if .AllChannels}} <span class="muted">(already has all channels)</span>{{end}}</label>{{end}}
+  </fieldset>
+  {{end}}
+  <p class="muted">A stream that is already in the portal is updated instead of added twice.</p>
+  <button>Add selected</button>
+</section>
+</form>
+{{else}}
+<section class="card empty"><p>No channels match this filter.</p></section>
+{{end}}
+{{end}}
+{{end}}

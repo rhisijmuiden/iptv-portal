@@ -142,3 +142,30 @@ func TestImportChannels(t *testing.T) {
 		t.Fatalf("uncategorised = %+v", uncategorised)
 	}
 }
+
+func TestAddCategoriesToPackages(t *testing.T) {
+	ctx := context.Background()
+	s := openTest(t)
+	keep, err := s.SaveCategory(ctx, Category{Name: "Regional"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := s.SavePackage(ctx, Package{Name: "Basic", CategoryIDs: []int64{keep}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AddCategoriesToPackages(ctx, []int64{p, 999}, []string{"News", "Regional"}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.Package(ctx, p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.CategoryIDs) != 2 {
+		t.Fatalf("package categories = %v", got.CategoryIDs)
+	}
+	urls, err := s.StreamURLs(ctx)
+	if err != nil || len(urls) != 0 {
+		t.Fatalf("stream urls = %v, %v", urls, err)
+	}
+}
