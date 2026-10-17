@@ -26,13 +26,17 @@ type Settings struct {
 	// EPGURLs are XMLTV guide sources (plain or gzipped) that are merged
 	// into the guide served to players.
 	EPGURLs []string
+	// AutoUpdateCheck makes the portal look for new releases once a day.
+	// It only checks; installing is always started by an admin.
+	AutoUpdateCheck bool
 }
 
 // DefaultSettings are used for every key that has not been stored yet.
 var DefaultSettings = Settings{
-	PortalName: "IPTV Portal",
-	AdminPort:  8080,
-	PortalPort: 80,
+	PortalName:      "IPTV Portal",
+	AdminPort:       8080,
+	PortalPort:      80,
+	AutoUpdateCheck: true,
 }
 
 const (
@@ -41,6 +45,7 @@ const (
 	keyAdminPort  = "admin_port"
 	keyPortalPort = "portal_port"
 	keyEPGURLs    = "epg_urls"
+	keyAutoUpdate = "auto_update_check"
 )
 
 // Settings returns the current settings, falling back to defaults.
@@ -71,6 +76,8 @@ func (s *Store) Settings(ctx context.Context) (Settings, error) {
 			}
 		case keyEPGURLs:
 			out.EPGURLs = strings.Fields(v)
+		case keyAutoUpdate:
+			out.AutoUpdateCheck = v == "1"
 		}
 	}
 	return out, rows.Err()
@@ -125,6 +132,7 @@ func (s *Store) SaveSettings(ctx context.Context, st Settings) error {
 		keyAdminPort:  strconv.Itoa(st.AdminPort),
 		keyPortalPort: strconv.Itoa(st.PortalPort),
 		keyEPGURLs:    strings.Join(st.EPGURLs, "\n"),
+		keyAutoUpdate: boolString(st.AutoUpdateCheck),
 	}
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		for k, v := range values {
@@ -174,4 +182,21 @@ func (s *Store) AddEPGURL(ctx context.Context, u string) (bool, error) {
 	}
 	st.EPGURLs = append(st.EPGURLs, u)
 	return true, s.SaveSettings(ctx, st)
+}
+
+func boolString(b bool) string {
+	if b {
+		return "1"
+	}
+	return "0"
+}
+
+// SetAutoUpdateCheck switches the daily update check on or off.
+func (s *Store) SetAutoUpdateCheck(ctx context.Context, on bool) error {
+	st, err := s.Settings(ctx)
+	if err != nil {
+		return err
+	}
+	st.AutoUpdateCheck = on
+	return s.SaveSettings(ctx, st)
 }

@@ -1,0 +1,28 @@
+{{define "content"}}
+<section class="card narrow">
+  <h1>Updating</h1>
+  <p>Version {{.Data.To}} is installed. The portal is restarting; this page reloads when it is back.</p>
+  <p class="muted" id="state">Waiting for the portal…</p>
+  <p><a href="/info">Go to Info</a></p>
+</section>
+<script>
+(function () {
+  var tries = 0;
+  function poll() {
+    tries++;
+    fetch('/info', {cache: 'no-store'}).then(function (r) {
+      return r.text().then(function (body) {
+        // The footer shows the running version once the new one is up.
+        if (r.ok && body.indexOf('IPTV Portal ' + {{.Data.To}}) >= 0) {
+          location.href = '/info?ok=' + encodeURIComponent('Updated to ' + {{.Data.To}} + '.');
+        } else { setTimeout(poll, 2000); }
+      });
+    }).catch(function () {
+      document.getElementById('state').textContent = 'Restarting… (' + tries + ')';
+      setTimeout(poll, 2000);
+    });
+  }
+  setTimeout(poll, 3000);
+})();
+</script>
+{{end}}
