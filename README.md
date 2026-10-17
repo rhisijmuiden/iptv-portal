@@ -4,7 +4,23 @@ A lightweight portal that collects individual, publicly available m3u8 streams (
 
 The portal is only an index: TV boxes connect directly to the broadcaster's stream. No video passes through the server.
 
-> **Status:** in development. Channel management, users and invitations, the Xtream Codes API, M3U playlists and the program guide work. The installer and the update feature are coming next.
+> **Status:** in development. Channel management, users and invitations, the Xtream Codes API, M3U playlists, the program guide and the installers work. Updating from the admin panel is coming next.
+
+## Installation
+
+On a dedicated server or VPS (Debian, Ubuntu or another systemd-based Linux):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/rhisijmuiden/iptv-portal/main/install.sh | sudo bash
+```
+
+As a Proxmox VE LXC container, on the Proxmox host:
+
+```sh
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/rhisijmuiden/iptv-portal/main/ct/iptv-portal.sh)"
+```
+
+Both print the admin panel address, the username and a one-time password at the end. See [docs/installation.md](docs/installation.md) for options, reverse proxy examples (Nginx, Caddy, Nginx Proxy Manager, Traefik), updating and troubleshooting.
 
 ## Components
 
@@ -17,9 +33,13 @@ Both ports, the portal name and the public URL can be changed under **Settings**
 
 ### Behind a reverse proxy
 
-When the portal runs behind a reverse proxy (Nginx, Caddy, Nginx Proxy Manager, Traefik), set **Settings → Public URL** to the proxy address, for example `https://tv.example.com`. Every link sent to TV boxes is built from this address.
+When the portal runs behind a reverse proxy, set **Settings → Public URL** to the proxy address, for example `https://tv.example.com`. Every link sent to TV boxes is built from this address. Examples are in [docs/installation.md](docs/installation.md#behind-a-reverse-proxy).
 
-## Build and run
+## Releases
+
+Pushing a tag such as `v0.1.0` builds the Linux binaries (amd64 and arm64) and publishes a GitHub release with generated release notes. The installers download the latest release.
+
+## Build from source
 
 Requires Go 1.26 or newer.
 
