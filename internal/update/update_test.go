@@ -28,11 +28,33 @@ func TestNewer(t *testing.T) {
 		{"v1.2.0", "v1.2.0", false},
 		{"v1.1.0", "v1.2.0", false},
 		{"v2.0.0", "dev", false},
-		{"v2.0.0-rc1", "v1.0.0", false},
+		{"v2.0.0-rc.1", "v1.0.0", true},
+		{"v1.0.0", "v1.0.0-rc.1", true},
+		{"v1.0.0-rc.1", "v1.0.0", false},
+		{"v1.0.0-rc.2", "v1.0.0-rc.1", true},
+		{"v1.0.0-rc.10", "v1.0.0-rc.9", true},
+		{"v1.0.0-rc.1", "v1.0.0-beta.3", true},
+		{"v1.0.0-beta.1", "v1.0.0-alpha.2", true},
+		{"v1.0.0-rc.1", "v0.9.0", true},
+		{"v1.0.0-rc.1", "v1.0.0-rc.1", false},
+		{"v2.0.0", "v1.0.0-5-gabc123", false},
+		{"v2.0.0", "v1.0.0-dirty", false},
+		{"v2.0.0-dirty", "v1.0.0", false},
 		{"v1.0.1", "1.0.0", true},
 	} {
 		if got := Newer(c.a, c.b); got != c.want {
 			t.Errorf("Newer(%q, %q) = %v", c.a, c.b, got)
+		}
+	}
+}
+
+func TestIsPrerelease(t *testing.T) {
+	for tag, want := range map[string]bool{
+		"v1.0.0-rc.1": true, "v1.0.0-beta.2": true, "v1.0.0": false,
+		"dev": false, "v1.0.0-3-gabc123": false,
+	} {
+		if got := IsPrerelease(tag); got != want {
+			t.Errorf("IsPrerelease(%q) = %v", tag, got)
 		}
 	}
 }
@@ -123,6 +145,48 @@ func TestCheckAndInstall(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(exe); !strings.Contains(string(b), "echo v1.1.0") {
 		t.Fatalf("binary not replaced: %q", b)
+	}
+}
+
+func TestChannels(t *testing.T) {
+	srv := fakeRelease(t, "v1.1.0", false)
+	u := New(srv.URL+"/releases", "v1.0.0")
+	st, err := u.Check(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Channel != Stable || st.Latest().Tag != "v1.1.0" {
+		t.Fatalf("stable status = %+v", st)
+	}
+	for _, r := range st.Releases {
+		if r.Prerelease {
+			t.Fatalf("stable channel offers pre-release %s", r.Tag)
+		}
+	}
+
+	u.SetChannel(Test)
+	if got := u.Status(); got.Channel != Test || len(got.Releases) != 0 {
+		t.Fatalf("switching channel kept the old releases: %+v", got)
+	}
+	st, err = u.Check(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(st.Releases) != 3 || st.Latest().Tag != "v9.0.0-rc1" || !st.Available() {
+		t.Fatalf("test status = %+v", st)
+	}
+
+	// A pre-release on the test channel moves on to the stable release.
+	u = New(srv.URL+"/releases", "v1.1.0-rc.1")
+	st, _ = u.Check(context.Background())
+	if !st.Available() || st.Latest().Tag != "v1.1.0" {
+		t.Fatalf("pre-release on stable channel: %+v", st)
+	}
+}
+
+func TestParseChannel(t *testing.T) {
+	if ParseChannel("test") != Test || ParseChannel("stable") != Stable || ParseChannel("") != Stable || ParseChannel("x") != Stable {
+		t.Fatal("ParseChannel")
 	}
 }
 

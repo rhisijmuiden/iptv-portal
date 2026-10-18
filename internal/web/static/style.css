@@ -170,6 +170,7 @@ table.details th, table.details td { padding: .5rem .5rem .5rem 0; }
 .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .badge.on { background: var(--ok-bg); color: var(--ok); }
 .badge.off { background: var(--err-bg); color: var(--err); }
+.badge.warn { background: var(--warn-bg); color: var(--warn); }
 button.badge:hover { filter: brightness(.95); }
 
 .copy { display: flex; gap: .5rem; }

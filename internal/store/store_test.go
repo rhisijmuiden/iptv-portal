@@ -181,3 +181,24 @@ func TestAddCategoriesToPackages(t *testing.T) {
 		t.Fatalf("stream urls = %v, %v", urls, err)
 	}
 }
+
+func TestUpdateChannel(t *testing.T) {
+	s := openTest(t)
+	ctx := context.Background()
+	st, err := s.Settings(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.UpdateChannel != UpdateChannelStable {
+		t.Fatalf("default channel = %q", st.UpdateChannel)
+	}
+	if err := s.SetUpdateChannel(ctx, UpdateChannelTest); err != nil {
+		t.Fatal(err)
+	}
+	if st, _ := s.Settings(ctx); st.UpdateChannel != UpdateChannelTest {
+		t.Fatalf("channel = %q", st.UpdateChannel)
+	}
+	if err := s.SetUpdateChannel(ctx, "nightly"); err == nil {
+		t.Fatal("unknown channel accepted")
+	}
+}

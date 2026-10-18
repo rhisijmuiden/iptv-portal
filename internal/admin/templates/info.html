@@ -14,9 +14,13 @@
   <h2>Version</h2>
   <table class="details">
     <tr><th>Installed</th><td><code>{{$d.Version}}</code>{{if $d.DevBuild}} <span class="muted">(development build, updates are not installed automatically)</span>{{end}}</td></tr>
-    <tr><th>Latest release</th><td>{{with $d.Status.Latest}}<code>{{.Tag}}</code> <span class="muted">published {{date (ptr .PublishedAt)}}</span>{{else}}<span class="muted">unknown, check for updates</span>{{end}}</td></tr>
+    <tr><th>Release channel</th><td>{{if eq (print $d.Status.Channel) "test"}}<span class="badge warn">test</span> <span class="muted">stable releases and pre-releases</span>{{else}}<span class="badge on">stable</span> <span class="muted">stable releases only</span>{{end}}</td></tr>
+    <tr><th>Latest release</th><td>{{with $d.Status.Latest}}<code>{{.Tag}}</code>{{if .Prerelease}} <span class="badge warn">pre-release</span>{{end}} <span class="muted">published {{date (ptr .PublishedAt)}}</span>{{else}}<span class="muted">unknown, check for updates</span>{{end}}</td></tr>
     <tr><th>Last checked</th><td>{{if $d.Status.CheckedAt.IsZero}}<span class="muted">never</span>{{else}}{{datetime (ptr $d.Status.CheckedAt)}}{{end}}</td></tr>
   </table>
+  {{if and $d.Prerelease (ne (print $d.Status.Channel) "test")}}
+  <p class="muted">You are running a pre-release on the stable channel. The portal stays on this version until a newer stable release is published.</p>
+  {{end}}
   {{if $d.Status.Available}}
   <div class="flash ok update">
     <p><strong>Version {{$d.Status.Latest.Tag}} is available.</strong> Updating downloads it from GitHub, checks it and restarts the portal. TV boxes reconnect by themselves; the previous version is kept as a backup.</p>
@@ -28,6 +32,16 @@
   </div>
   {{end}}
   <div class="buttons wrap">
+    <form method="post" action="{{base}}/info/channel" class="inline">
+      <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+      <label class="check">Release channel
+        <select name="channel" onchange="this.form.submit()">
+          <option value="stable"{{if ne (print $d.Status.Channel) "test"}} selected{{end}}>Stable</option>
+          <option value="test"{{if eq (print $d.Status.Channel) "test"}} selected{{end}}>Test (pre-releases)</option>
+        </select>
+      </label>
+      <noscript><button class="secondary">Save</button></noscript>
+    </form>
     <form method="post" action="{{base}}/info/auto" class="inline">
       <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
       <label class="check"><input type="checkbox" name="auto" {{if $d.AutoCheck}}checked{{end}} onchange="this.form.submit()"> Check automatically every 24 hours</label>
@@ -39,7 +53,7 @@
 {{range $d.Status.Releases}}
 <section class="card release">
   <div class="card-head">
-    <h2>{{if .Name}}{{.Name}}{{else}}{{.Tag}}{{end}} {{if eq .Tag $d.Version}}<span class="badge on">installed</span>{{end}}</h2>
+    <h2>{{if .Name}}{{.Name}}{{else}}{{.Tag}}{{end}} {{if .Prerelease}}<span class="badge warn">pre-release</span>{{end}} {{if eq .Tag $d.Version}}<span class="badge on">installed</span>{{end}}</h2>
     <span class="muted">{{date (ptr .PublishedAt)}} · <a href="{{.URL}}" target="_blank" rel="noopener">on GitHub</a></span>
   </div>
   <div class="notes">{{if .Notes}}{{notes .Notes}}{{else}}<p class="muted">No release notes.</p>{{end}}</div>

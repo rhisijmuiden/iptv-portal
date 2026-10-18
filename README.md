@@ -18,7 +18,7 @@ It can also offer the movies and series of your own **Jellyfin** or **Plex** ser
 - **Xtream Codes API, M3U and XMLTV.** Works with MyTVOnline (Formuler), TiviMate, IPTV Smarters and most other players.
 - **Program guide** merged from your own XMLTV sources and filtered per user.
 - **Settings in the browser**: portal name, public URL and both ports, ready for a reverse proxy.
-- **Updates from the admin panel** with release notes, an optional daily check and automatic rollback.
+- **Updates from the admin panel** with release notes, stable and test release channels, an optional daily check and automatic rollback.
 - **Simple to host**: one Go binary with SQLite, an installer for any systemd Linux and a script for Proxmox VE LXC.
 
 See [The admin panel](#the-admin-panel) below for a page-by-page tour.
@@ -142,7 +142,7 @@ Portal name, public URL (for a reverse proxy or your own domain), and the ports 
 
 ### Info
 
-The installed version, the latest release and the release notes of every version. Check for updates by hand or every 24 hours, and update with one click. See [Updates](#updates).
+The installed version, the latest release and the release notes of every version. Choose the stable or test release channel, check for updates by hand or every 24 hours, and update with one click. See [Updates](#updates).
 
 ![Info](docs/screenshots/info.png)
 
@@ -161,11 +161,20 @@ When the portal runs behind a reverse proxy, set **Settings → Public URL** to 
 
 ## Releases
 
-Pushing a tag such as `v0.1.0`, or running the **Release** workflow under *Actions* with a version, builds the Linux binaries (amd64 and arm64) and publishes a GitHub release with generated release notes. The installers download the latest release.
+Pushing a tag such as `v0.1.0`, or running the **Release** workflow under *Actions* with a version, builds the Linux binaries (amd64 and arm64) and publishes a GitHub release with generated release notes. The installers download the latest stable release.
+
+There are two release channels:
+
+| Channel | Versions | Example |
+|---|---|---|
+| Stable | Normal releases | `v0.4.0` |
+| Test | Pre-releases, and the stable releases | `v0.4.0-rc.1`, `v0.4.0-beta.2`, `v0.4.0-alpha.1` |
+
+A version with an `-rc.N`, `-beta.N` or `-alpha.N` suffix is published as a GitHub pre-release. Only portals on the test channel are offered it; the installers and stable portals ignore it. Once `v0.4.0` itself is released, portals on the test channel move on to it like everyone else. To try a pre-release on a fresh install, pass it to the installer: `--version v0.4.0-rc.1`.
 
 ## Updates
 
-The **Info** page in the admin panel shows the installed version and the release notes of every version. **Check for updates** asks GitHub for new releases; with *Check automatically every 24 hours* switched on (the default), the dashboard shows a banner when a new version is out. **Update now** downloads the release, verifies its checksum, checks that it starts, keeps the current program as `iptv-portal.old` and restarts the portal. Settings, channels and users are kept. See [docs/installation.md](docs/installation.md#updating) for rolling back.
+The **Info** page in the admin panel shows the installed version and the release notes of every version. **Release channel** picks which releases are offered: *Stable* (the default) or *Test*, which also offers pre-releases (see [Releases](#releases)). **Check for updates** asks GitHub for new releases; with *Check automatically every 24 hours* switched on (the default), the dashboard shows a banner when a new version is out. **Update now** downloads the release, verifies its checksum, checks that it starts, keeps the current program as `iptv-portal.old` and restarts the portal. Settings, channels and users are kept. See [docs/installation.md](docs/installation.md#updating) for rolling back.
 
 ## Build from source
 

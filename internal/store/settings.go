@@ -32,6 +32,9 @@ type Settings struct {
 	// AutoUpdateCheck makes the portal look for new releases once a day.
 	// It only checks; installing is always started by an admin.
 	AutoUpdateCheck bool
+	// UpdateChannel is "stable" (normal releases only) or "test" (also
+	// pre-releases such as v1.2.0-rc.1).
+	UpdateChannel string
 	// Mail is the SMTP server used to email users their login details and
 	// invitations. An empty host means mail is off.
 	Mail mail.Config
@@ -51,6 +54,12 @@ type Settings struct {
 	ServiceToken string
 }
 
+// Release channels for UpdateChannel.
+const (
+	UpdateChannelStable = "stable"
+	UpdateChannelTest   = "test"
+)
+
 // MinServiceTokenLength is the shortest service token accepted.
 const MinServiceTokenLength = 32
 
@@ -60,6 +69,7 @@ var DefaultSettings = Settings{
 	AdminPort:       8080,
 	PortalPort:      80,
 	AutoUpdateCheck: true,
+	UpdateChannel:   UpdateChannelStable,
 	Mail:            mail.Config{Port: 587, Security: mail.StartTLS},
 }
 
@@ -70,6 +80,7 @@ const (
 	keyPortalPort = "portal_port"
 	keyEPGURLs    = "epg_urls"
 	keyAutoUpdate = "auto_update_check"
+	keyChannel    = "update_channel"
 
 	keySMTPHost     = "smtp_host"
 	keySMTPPort     = "smtp_port"
@@ -114,6 +125,8 @@ func (s *Store) Settings(ctx context.Context) (Settings, error) {
 			out.EPGURLs = strings.Fields(v)
 		case keyAutoUpdate:
 			out.AutoUpdateCheck = v == "1"
+		case keyChannel:
+			out.UpdateChannel = v
 		case keySMTPHost:
 			out.Mail.Host = v
 		case keySMTPPort:
@@ -158,6 +171,13 @@ func (st *Settings) Validate() error {
 		if p < 1 || p > 65535 {
 			return fmt.Errorf("port %d is invalid (1-65535)", p)
 		}
+	}
+	switch st.UpdateChannel {
+	case UpdateChannelStable, UpdateChannelTest:
+	case "":
+		st.UpdateChannel = UpdateChannelStable
+	default:
+		return fmt.Errorf("release channel %q is invalid (stable or test)", st.UpdateChannel)
 	}
 	if st.AdminPort == st.PortalPort {
 		return errors.New("admin panel and portal must use different ports")
@@ -250,6 +270,7 @@ func (s *Store) SaveSettings(ctx context.Context, st Settings) error {
 		keyPortalPort: strconv.Itoa(st.PortalPort),
 		keyEPGURLs:    strings.Join(st.EPGURLs, "\n"),
 		keyAutoUpdate: boolString(st.AutoUpdateCheck),
+		keyChannel:    st.UpdateChannel,
 
 		keySMTPHost:     st.Mail.Host,
 		keySMTPPort:     strconv.Itoa(st.Mail.Port),
@@ -327,6 +348,16 @@ func (s *Store) SetAutoUpdateCheck(ctx context.Context, on bool) error {
 		return err
 	}
 	st.AutoUpdateCheck = on
+	return s.SaveSettings(ctx, st)
+}
+
+// SetUpdateChannel selects the release channel ("stable" or "test").
+func (s *Store) SetUpdateChannel(ctx context.Context, channel string) error {
+	st, err := s.Settings(ctx)
+	if err != nil {
+		return err
+	}
+	st.UpdateChannel = channel
 	return s.SaveSettings(ctx, st)
 }
 
