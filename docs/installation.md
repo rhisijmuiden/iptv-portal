@@ -33,7 +33,7 @@ curl -fsSL https://raw.githubusercontent.com/rhisijmuiden/iptv-portal/main/insta
 
 | Option | Meaning |
 |---|---|
-| `--version vX.Y.Z` | Install a specific release instead of the latest |
+| `--version vX.Y.Z` | Install a specific release instead of the latest stable one, also a pre-release such as `v0.4.0-rc.1` |
 | `--admin-port PORT` | Admin panel port (default 8080) |
 | `--portal-port PORT` | Portal port for TV boxes (default 80) |
 | `--reset-admin` | Print a new one-time admin password |
@@ -132,6 +132,8 @@ http:
 ## Updating
 
 The easiest way is the admin panel: open **Info**, click **Check for updates** and then **Update now**. The portal downloads the new release, verifies its checksum, keeps the current program as `/opt/iptv-portal/iptv-portal.old` and restarts itself. With *Check automatically every 24 hours* switched on, the dashboard tells you when a new version is available.
+
+**Release channel** on the same page chooses which versions are offered. *Stable* (the default) offers normal releases only. *Test* also offers pre-releases such as `v0.4.0-rc.1`, to try a version before it is released to everyone. Switching back to *Stable* does not downgrade: the portal keeps the installed pre-release until a newer stable release comes out.
 
 To roll back to the previous version:
 

@@ -18,6 +18,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -45,11 +46,42 @@ type Asset struct {
 	URL  string `json:"browser_download_url"`
 }
 
+// Channel selects which releases are offered as updates.
+type Channel string
+
+const (
+	// Stable offers normal releases only.
+	Stable Channel = "stable"
+	// Test also offers pre-releases such as v1.2.0-rc.1, and moves on to
+	// the stable release once it is out.
+	Test Channel = "test"
+)
+
+// ParseChannel returns the channel named s; anything unknown is Stable.
+func ParseChannel(s string) Channel {
+	if Channel(s) == Test {
+		return Test
+	}
+	return Stable
+}
+
+// Includes reports whether a release belongs to the channel.
+func (c Channel) Includes(r Release) bool {
+	if r.Draft {
+		return false
+	}
+	if r.Prerelease || IsPrerelease(r.Tag) {
+		return c == Test
+	}
+	return true
+}
+
 // Status is the result of the last check.
 type Status struct {
 	Current   string
+	Channel   Channel
 	CheckedAt time.Time
-	Releases  []Release // newest first, without drafts and pre-releases
+	Releases  []Release // newest version first, only those of Channel
 	Error     string
 }
 
@@ -75,6 +107,7 @@ type Updater struct {
 	client  *http.Client
 
 	mu      sync.Mutex
+	channel Channel
 	status  Status
 	running sync.Mutex // held while an update is being installed
 }
@@ -89,8 +122,21 @@ func New(api, current string) *Updater {
 		}
 	}
 	return &Updater{api: api, current: current, exe: exe,
-		client: &http.Client{Timeout: 5 * time.Minute},
-		status: Status{Current: current}}
+		client: &http.Client{Timeout: 5 * time.Minute}, channel: Stable,
+		status: Status{Current: current, Channel: Stable}}
+}
+
+// SetChannel selects the release channel used by the next check. The
+// releases from the previous check are dropped when the channel changes,
+// so a stale list from the other channel is never offered.
+func (u *Updater) SetChannel(c Channel) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if c == u.channel {
+		return
+	}
+	u.channel = c
+	u.status = Status{Current: u.current, Channel: c}
 }
 
 // Status returns the result of the last check.
@@ -102,24 +148,34 @@ func (u *Updater) Status() Status {
 
 // Check fetches the list of releases.
 func (u *Updater) Check(ctx context.Context) (Status, error) {
-	st := Status{Current: u.current, CheckedAt: time.Now()}
+	u.mu.Lock()
+	ch := u.channel
+	u.mu.Unlock()
+	st := Status{Current: u.current, Channel: ch, CheckedAt: time.Now()}
 	rels, err := u.fetch(ctx)
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if ch != u.channel {
+		// The channel changed while fetching; this result is stale.
+		return u.status, nil
+	}
 	if err != nil {
 		st.Error = err.Error()
-		u.mu.Lock()
 		st.Releases = u.status.Releases // keep what we knew
 		u.status = st
-		u.mu.Unlock()
 		return st, err
 	}
 	for _, r := range rels {
-		if !r.Draft && !r.Prerelease {
+		if ch.Includes(r) {
 			st.Releases = append(st.Releases, r)
 		}
 	}
-	u.mu.Lock()
+	// GitHub sorts by creation date; a hotfix for an older line can be
+	// newer than the latest version, so sort by version instead.
+	sort.SliceStable(st.Releases, func(i, j int) bool {
+		return Newer(st.Releases[i].Tag, st.Releases[j].Tag)
+	})
 	u.status = st
-	u.mu.Unlock()
 	return st, nil
 }
 
@@ -342,11 +398,33 @@ func copyFile(src, dst string) error {
 	return out.Close()
 }
 
-// parseVersion parses "v1.2.3" (the "v" is optional). Versions with a
-// suffix such as "-rc1" or "-dirty" are not release versions.
-func parseVersion(s string) ([3]int, bool) {
-	var v [3]int
-	parts := strings.Split(strings.TrimPrefix(s, "v"), ".")
+// semver is a parsed release version such as v1.2.3 or v1.2.3-rc.1.
+type semver struct {
+	core [3]int
+	pre  []string // pre-release identifiers, empty for a normal release
+}
+
+// parseVersion parses "v1.2.3" or a pre-release "v1.2.3-rc.1" (the "v" is
+// optional). Pre-releases must start with alpha, beta or rc; other
+// suffixes such as "-dirty" or the "-5-gabc123" of git describe are not
+// release versions.
+func parseVersion(s string) (semver, bool) {
+	var v semver
+	s = strings.TrimPrefix(s, "v")
+	if i := strings.IndexByte(s, '-'); i >= 0 {
+		v.pre = strings.Split(s[i+1:], ".")
+		s = s[:i]
+		if !strings.HasPrefix(v.pre[0], "alpha") && !strings.HasPrefix(v.pre[0], "beta") &&
+			!strings.HasPrefix(v.pre[0], "rc") {
+			return v, false
+		}
+		for _, p := range v.pre[1:] {
+			if p == "" {
+				return v, false
+			}
+		}
+	}
+	parts := strings.Split(s, ".")
 	if len(parts) != 3 {
 		return v, false
 	}
@@ -355,24 +433,59 @@ func parseVersion(s string) ([3]int, bool) {
 		if err != nil || n < 0 {
 			return v, false
 		}
-		v[i] = n
+		v.core[i] = n
 	}
 	return v, true
 }
 
-// Newer reports whether version a is newer than b. A non-release b (such
-// as "dev") is never considered older, so development builds do not
-// nag about updates.
+// IsPrerelease reports whether tag is a pre-release version such as
+// v1.2.0-rc.1.
+func IsPrerelease(tag string) bool {
+	v, ok := parseVersion(tag)
+	return ok && len(v.pre) > 0
+}
+
+// Newer reports whether version a is newer than b, following semantic
+// versioning: v1.2.0-rc.1 < v1.2.0-rc.2 < v1.2.0. A non-release b (such as
+// "dev") is never considered older, so development builds do not nag
+// about updates.
 func Newer(a, b string) bool {
 	va, ok1 := parseVersion(a)
 	vb, ok2 := parseVersion(b)
 	if !ok1 || !ok2 {
 		return false
 	}
-	for i := range va {
-		if va[i] != vb[i] {
-			return va[i] > vb[i]
+	for i := range va.core {
+		if va.core[i] != vb.core[i] {
+			return va.core[i] > vb.core[i]
 		}
 	}
-	return false
+	switch {
+	case len(va.pre) == 0:
+		return len(vb.pre) > 0
+	case len(vb.pre) == 0:
+		return false
+	}
+	for i := 0; i < len(va.pre) && i < len(vb.pre); i++ {
+		if c := comparePre(va.pre[i], vb.pre[i]); c != 0 {
+			return c > 0
+		}
+	}
+	return len(va.pre) > len(vb.pre)
+}
+
+// comparePre compares two pre-release identifiers: numbers numerically
+// and below words, words alphabetically.
+func comparePre(a, b string) int {
+	na, errA := strconv.Atoi(a)
+	nb, errB := strconv.Atoi(b)
+	switch {
+	case errA == nil && errB == nil:
+		return na - nb
+	case errA == nil:
+		return -1
+	case errB == nil:
+		return 1
+	}
+	return strings.Compare(a, b)
 }

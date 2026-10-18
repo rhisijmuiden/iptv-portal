@@ -223,6 +223,7 @@ func (h *Handler) routes() {
 	auth("GET /info", h.infoPage)
 	auth("POST /info/check", h.infoCheck)
 	auth("POST /info/auto", h.infoAuto)
+	auth("POST /info/channel", h.infoChannel)
 	auth("POST /info/install", h.infoInstall)
 	auth("GET /settings", h.settingsForm)
 	auth("POST /settings", h.settingsSave)

@@ -149,6 +149,7 @@ func serve(args []string) error {
 	updater := update.New(envOr("IPTV_PORTAL_RELEASES_API", update.DefaultAPI), version.Version)
 	iptvOrg := iptvorg.NewClient()
 	iptvOrg.BaseURL = envOr("IPTV_PORTAL_IPTVORG_API", iptvorg.DefaultBaseURL)
+	updater.SetChannel(update.ParseChannel(settings.UpdateChannel))
 	go updater.Loop(ctx, 24*time.Hour, func() bool {
 		s, err := st.Settings(ctx)
 		return err == nil && s.AutoUpdateCheck

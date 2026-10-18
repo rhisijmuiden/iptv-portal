@@ -14,6 +14,8 @@ type infoData struct {
 	Status    update.Status
 	AutoCheck bool
 	DevBuild  bool
+	// Prerelease is set when the installed version is a pre-release.
+	Prerelease bool
 }
 
 func (h *Handler) infoPage(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -31,10 +33,11 @@ func (h *Handler) renderInfo(w http.ResponseWriter, r *http.Request, sess store.
 		errMsg = us.Error
 	}
 	h.render(w, r, "info", page{Title: "Info & updates", Nav: "info", Session: &sess, Error: errMsg, Data: infoData{
-		Version:   version.Version,
-		Status:    us,
-		AutoCheck: st.AutoUpdateCheck,
-		DevBuild:  !update.Newer("v999999.0.0", version.Version),
+		Version:    version.Version,
+		Status:     us,
+		AutoCheck:  st.AutoUpdateCheck,
+		DevBuild:   !update.Newer("v999999.0.0", version.Version),
+		Prerelease: update.IsPrerelease(version.Version),
 	}})
 }
 
@@ -60,6 +63,25 @@ func (h *Handler) infoAuto(w http.ResponseWriter, r *http.Request, sess store.Se
 	msg := "Automatic update check switched off."
 	if on {
 		msg = "The portal now checks for updates every 24 hours."
+	}
+	redirectFlash(w, r, "/info", msg)
+}
+
+func (h *Handler) infoChannel(w http.ResponseWriter, r *http.Request, sess store.Session) {
+	ch := r.FormValue("channel")
+	if err := h.store.SetUpdateChannel(r.Context(), ch); err != nil {
+		h.renderInfo(w, r, sess, err.Error())
+		return
+	}
+	channel := update.ParseChannel(ch)
+	h.updater.SetChannel(channel)
+	msg := "Release channel set to stable: only stable releases are offered."
+	if channel == update.Test {
+		msg = "Release channel set to test: pre-releases are offered as well."
+	}
+	// Load the releases of the new channel right away.
+	if st, err := h.updater.Check(r.Context()); err == nil && st.Available() {
+		msg += " Version " + st.Latest().Tag + " is available."
 	}
 	redirectFlash(w, r, "/info", msg)
 }
