@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/rhisijmuiden/iptv-portal/internal/activity"
+	"github.com/rhisijmuiden/iptv-portal/internal/backup"
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
 	"github.com/rhisijmuiden/iptv-portal/internal/iptvorg"
 	"github.com/rhisijmuiden/iptv-portal/internal/media"
@@ -56,6 +57,7 @@ type Handler struct {
 	media        *media.Catalog
 	refreshMedia chan<- struct{}
 	activity     *activity.Tracker
+	backups      *backup.Service
 	// base is the path the admin panel is served under ("" for the root).
 	base string
 }
@@ -78,6 +80,8 @@ type Config struct {
 	RefreshMedia chan<- struct{}
 	// Activity is where the portal records player requests; nil shows none.
 	Activity *activity.Tracker
+	// Backups makes and restores backups; nil builds one for Store.
+	Backups *backup.Service
 	// BasePath serves the panel under this path, e.g. "/portal-admin"; it
 	// must be clean (see store.CleanBasePath). Empty means the root.
 	BasePath string
@@ -88,12 +92,15 @@ type Config struct {
 func New(c Config) (*Handler, error) {
 	h := &Handler{store: c.Store, listeners: c.Listeners, log: c.Log, limiter: web.NewLimiter(10, 15*time.Minute),
 		guide: c.Guide, refresh: c.RefreshGuide, updater: c.Updater, restart: c.Restart, iptvorg: c.IPTVOrg,
-		media: c.Media, refreshMedia: c.RefreshMedia, activity: c.Activity, base: c.BasePath}
+		media: c.Media, refreshMedia: c.RefreshMedia, activity: c.Activity, backups: c.Backups, base: c.BasePath}
 	if h.activity == nil {
 		h.activity = activity.New()
 	}
 	if h.iptvorg == nil {
 		h.iptvorg = iptvorg.NewClient()
+	}
+	if h.backups == nil && c.Store != nil {
+		h.backups = backup.New(c.Store, c.Log)
 	}
 	if h.media == nil {
 		h.media = media.NewCatalog(c.Store, c.Log)
@@ -139,7 +146,8 @@ func (h *Handler) parseTemplates() error {
 			}
 			return t.Local().Format("2006-01-02 15:04")
 		},
-		"ago": ago,
+		"ago":  ago,
+		"size": formatSize,
 	}
 	layout, err := template.New("layout.html").Funcs(funcs).ParseFS(templateFS, "templates/layout.html")
 	if err != nil {
@@ -231,6 +239,7 @@ func (h *Handler) routes() {
 	auth("POST /settings/mail/test", h.mailTest)
 	auth("POST /users/{id}/send-login", h.userSendLogin)
 	auth("POST /invites/{id}/send", h.inviteSend)
+	h.backupRoutes(auth)
 
 	api := func(pattern string, fn http.HandlerFunc) {
 		m.Handle(pattern, h.requireToken(fn))

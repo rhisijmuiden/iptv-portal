@@ -18,6 +18,7 @@ It can also offer the movies and series of your own **Jellyfin** or **Plex** ser
 - **Xtream Codes API, M3U and XMLTV.** Works with MyTVOnline (Formuler), TiviMate, IPTV Smarters and most other players.
 - **Program guide** merged from your own XMLTV sources and filtered per user.
 - **Settings in the browser**: portal name, public URL and both ports, ready for a reverse proxy.
+- **Backups** to FTP, FTPS or SCP: full and incremental, scheduled or by hand, optionally encrypted, and restored from the admin panel.
 - **Updates from the admin panel** with release notes, stable and test release channels, an optional daily check and automatic rollback.
 - **Simple to host**: one Go binary with SQLite, an installer for any systemd Linux and a script for Proxmox VE LXC.
 
@@ -139,6 +140,10 @@ Portal name, public URL (for a reverse proxy or your own domain), and the ports 
 
 ![Settings](docs/screenshots/settings.png)
 </details>
+
+### Backups
+
+Where backups go (FTP, FTPS or SCP), when they run, how many are kept and the encryption passphrase. Make a backup by hand, or pick one on the server and restore it. See [Backup and restore](#backup-and-restore).
 
 ### Info
 
@@ -272,6 +277,30 @@ Playback has two modes per server:
 - **Directly**: the box is redirected to the media server, like live channels. The server address must then be reachable from the boxes, and the token is part of the stream address the box sees, so use this only on a trusted network.
 
 Files are sent as they are (no transcoding), which the Formuler and most IPTV apps play fine. Posters are always served through the portal.
+
+## Backup and restore
+
+Under **Backups** the portal backs up its database (channels, categories, users, packages, invitations, media servers and all settings) to another server. The guide and the On Demand catalog are downloaded again after a restore, so they are not part of a backup.
+
+**Remote location.** Choose one of:
+
+- **SCP over SSH** (recommended). Log in with a password or a key: **Create an SSH key** makes an Ed25519 key in the portal and shows the public key to add to `~/.ssh/authorized_keys` on the backup server. The first **Save and test connection** trusts the server's host key and stores its fingerprint; from then on the portal refuses a server with another key. The server needs the `scp`, `ls`, `mkdir`, `mv` and `rm` commands, as any Linux server or NAS with SSH has.
+- **FTPS** with explicit TLS (`AUTH TLS`, usually port 21) or implicit TLS (usually port 990). The certificate is checked like a website's. For a self-signed certificate, the connection test shows its fingerprint; enter it under *Trusted certificate fingerprint* to trust exactly that certificate.
+- **FTP** without encryption, for a trusted local network only.
+
+The directory is created when it does not exist. The connection test writes and deletes a small file to prove the portal can write there.
+
+**Full and incremental.** A full backup holds the whole database. An incremental backup holds only the parts (32 KiB blocks) that changed since the previous backup, so it is usually a few kilobytes. **Back up now** makes an incremental backup when it can, **Full backup now** always a full one. A new full backup is made every *Full backup every* days, and also when the remote location or passphrase changes or the previous backup is missing on the server. *Keep* sets how many full backups stay on the server, each with its incremental backups; older ones are deleted after each backup.
+
+**Schedule.** Every hour, every 6 or 12 hours, daily or weekly (Sunday) at a chosen hour. A backup that fails is shown on the Backups page and in the log, and tried again at the next scheduled time.
+
+**Encryption.** With a passphrase, every backup is encrypted with [age](https://age-encryption.org) (scrypt) before it leaves the server; the files end in `.tar.gz.age`. Without the passphrase a backup cannot be restored, so keep it somewhere safe. Changing it starts a new chain with a full backup.
+
+**Restore.** **Restore** lists the backups on the server. Restoring one downloads it together with the full backup and the incremental backups it builds on, rebuilds the database, checks it against the checksum in the backup and with SQLite's integrity check, and then restarts the portal with it. The previous database stays in the data directory as `portal.db.before-restore`. After a restore you log in with the admin accounts of the backup.
+
+To move to a new server or recover from a lost one: install the portal, log in with the one-time password, enter the same remote location (and passphrase) under **Backups**, and restore the newest backup.
+
+A backup is a gzipped tar file with `manifest.json` (what the backup restores to) and either `portal.db` (full) or `blocks` (incremental). Without the portal, a full backup can be unpacked with `tar -xzf` (after `age -d` when encrypted) to get the database file.
 
 ## Program guide (EPG)
 
