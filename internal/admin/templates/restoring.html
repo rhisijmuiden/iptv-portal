@@ -1,0 +1,29 @@
+{{define "content"}}
+{{$m := .Data.Manifest}}
+<section class="card narrow">
+  <h1>Restoring</h1>
+  <p>The backup of <strong>{{datetime (ptr $m.Created)}}</strong>{{if $m.Version}} (made by IPTV Portal {{$m.Version}}){{end}} is downloaded and checked.
+  {{if .Data.Restart}}The portal is restarting with the restored data; this page continues when it is back.{{else}}Restart the service to finish: <code>systemctl restart iptv-portal</code>.{{end}}</p>
+  <p class="muted">Log in with an admin account from the backup.</p>
+  <p class="muted" id="state">{{if .Data.Restart}}Waiting for the portal…{{end}}</p>
+  <p><a href="{{base}}/backups">Go to Backups</a></p>
+</section>
+{{if .Data.Restart}}
+<script>
+(function () {
+  var tries = 0;
+  function poll() {
+    tries++;
+    fetch({{base}} + '/login', {cache: 'no-store'}).then(function (r) {
+      if (r.ok) { location.href = {{base}} + '/backups?ok=' + encodeURIComponent('The backup was restored.'); }
+      else { setTimeout(poll, 2000); }
+    }).catch(function () {
+      document.getElementById('state').textContent = 'Restarting… (' + tries + ')';
+      setTimeout(poll, 2000);
+    });
+  }
+  setTimeout(poll, 4000);
+})();
+</script>
+{{end}}
+{{end}}

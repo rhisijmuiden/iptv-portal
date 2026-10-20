@@ -238,3 +238,7 @@ label.check.stream input { margin-top: .25rem; }
 @media (max-width: 640px) {
   .viewers th:nth-child(4), .viewers td:nth-child(4), .viewers th:nth-child(5), .viewers td:nth-child(5) { display: none; }
 }
+
+/* Parts of a form that do not apply, hidden by a script */
+[hidden] { display: none !important; }
+td.nowrap { white-space: nowrap; }

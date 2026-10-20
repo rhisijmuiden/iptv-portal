@@ -21,6 +21,7 @@ var ErrNotFound = errors.New("not found")
 type Store struct {
 	db        *sql.DB
 	authCache authCache
+	dir       string
 }
 
 // Open opens (and creates when needed) the database in dataDir and applies
@@ -29,7 +30,10 @@ func Open(dataDir string) (*Store, error) {
 	if err := os.MkdirAll(dataDir, 0o750); err != nil {
 		return nil, fmt.Errorf("creating data directory: %w", err)
 	}
-	dsn := "file:" + filepath.Join(dataDir, "portal.db") +
+	if err := applyPendingRestore(dataDir); err != nil {
+		return nil, err
+	}
+	dsn := "file:" + filepath.Join(dataDir, dbFile) +
 		"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_time_format=sqlite"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
@@ -38,7 +42,7 @@ func Open(dataDir string) (*Store, error) {
 	// SQLite handles one writer at a time; a single connection avoids
 	// "database is locked" errors and is plenty for this workload.
 	db.SetMaxOpenConns(1)
-	s := &Store{db: db}
+	s := &Store{db: db, dir: dataDir}
 	if err := s.migrate(context.Background()); err != nil {
 		db.Close()
 		return nil, err

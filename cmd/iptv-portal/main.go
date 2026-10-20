@@ -18,6 +18,7 @@ import (
 
 	"github.com/rhisijmuiden/iptv-portal/internal/activity"
 	"github.com/rhisijmuiden/iptv-portal/internal/admin"
+	"github.com/rhisijmuiden/iptv-portal/internal/backup"
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
 	"github.com/rhisijmuiden/iptv-portal/internal/health"
 	"github.com/rhisijmuiden/iptv-portal/internal/iptvorg"
@@ -156,6 +157,8 @@ func serve(args []string) error {
 		return err == nil && s.AutoUpdateCheck
 	})
 	tracker := activity.New()
+	backups := backup.New(st, log)
+	go backups.Loop(ctx)
 	checker := health.New(st, log)
 	go checker.Loop(ctx)
 	restart := false
@@ -163,7 +166,7 @@ func serve(args []string) error {
 	adminHandler, err := admin.New(admin.Config{
 		Store: st, Listeners: managerRef{&mgr}, Guide: guide, RefreshGuide: refresh,
 		Updater: updater, IPTVOrg: iptvOrg, Media: vod, RefreshMedia: refreshVOD,
-		Activity: tracker, Health: checker, BasePath: settings.BasePath, Log: log,
+		Activity: tracker, Backups: backups, Health: checker, BasePath: settings.BasePath, Log: log,
 		Restart: func() {
 			restart = true
 			stop()
