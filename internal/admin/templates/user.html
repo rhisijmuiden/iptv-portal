@@ -36,6 +36,12 @@
     <label>Expires on <input type="date" name="expires" value="{{date $u.ExpiresAt}}"><small>Leave empty for no expiry.</small></label>
     <label>Note <input name="note" value="{{$u.Note}}" placeholder="For example who this account is for"></label>
   </div>
+  <div class="row">
+    <label>Maximum connections <input type="number" name="max_connections" value="{{if $u.MaxConnections}}{{$u.MaxConnections}}{{end}}" min="0"
+      placeholder="{{if $u.PackageConnections}}{{$u.PackageConnections}} (from packages){{else}}No limit{{end}}">
+      <small>How many places (IP addresses) can watch at the same time. Leave empty to use the limit of the packages.</small></label>
+    <div></div>
+  </div>
   <label class="check"><input type="checkbox" name="enabled" {{if $u.Enabled}}checked{{end}}> Enabled</label>
   <div class="form-actions">
     <button>Save</button>
@@ -44,6 +50,15 @@
 </form>
 </section>
 {{if $u.ID}}
+<section class="card">
+  <h2>Connections</h2>
+  <p>Watching from <strong>{{.Data.Connections}}</strong> {{if eq .Data.Connections 1}}place{{else}}places{{end}} now{{with $u.ConnectionLimit}}, {{.}} allowed{{else}}, no limit{{end}}.</p>
+  <p class="muted">A place keeps its connection for 15 minutes after the last stream was opened, or for as long as the player keeps using the portal. Release the connections when the user moved to another place and is refused.</p>
+  <form method="post" action="{{base}}/users/{{$u.ID}}/release">
+    <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+    <button class="secondary"{{if not .Data.Connections}} disabled{{end}}>Release connections</button>
+  </form>
+</section>
 <section class="card">
   <h2>Setup details</h2>
   <p>Give these to the user for their TV box (Xtream Codes login):</p>

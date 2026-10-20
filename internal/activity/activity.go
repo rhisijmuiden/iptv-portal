@@ -8,6 +8,10 @@
 // is the last one the player opened; the portal cannot tell when someone
 // stops watching. Activity is kept in memory and starts empty after a
 // restart.
+//
+// The same activity limits how many places a user can watch from at once
+// (see Open): a connection holds a slot while it is watching or, after
+// opening a stream, keeps making requests.
 package activity
 
 import (
@@ -78,6 +82,13 @@ func (t *Tracker) touch(userID int64, username, ip, userAgent string) *Connectio
 	return c
 }
 
+// Active reports whether the connection holds one of the user's
+// connection slots: it opened a stream recently, or opened one before and
+// is still making requests (players fetch the guide while playing).
+func (c Connection) Active(now time.Time) bool {
+	return c.Watching(now) || (c.Channel != "" && c.Online(now))
+}
+
 // Seen records an authenticated request from a player.
 func (t *Tracker) Seen(userID int64, username, ip, userAgent string) {
 	t.mu.Lock()
@@ -91,6 +102,53 @@ func (t *Tracker) Play(userID int64, username, ip, userAgent string, channelID i
 	defer t.mu.Unlock()
 	c := t.touch(userID, username, ip, userAgent)
 	c.Channel, c.ChannelID, c.ChannelAt = channel, channelID, c.LastSeen
+}
+
+// Open records that a player opens a stream, unless the user already
+// watches from limit other places (IP addresses); then it only records the
+// request and returns false. A limit of 0 means no limit.
+func (t *Tracker) Open(userID int64, username, ip, userAgent string, channelID int64, channel string, limit int) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if limit > 0 && t.active(userID, ip) >= limit {
+		t.touch(userID, username, ip, userAgent)
+		return false
+	}
+	c := t.touch(userID, username, ip, userAgent)
+	c.Channel, c.ChannelID, c.ChannelAt = channel, channelID, c.LastSeen
+	return true
+}
+
+// active counts the user's active connections other than the one from
+// exceptIP. The caller holds t.mu.
+func (t *Tracker) active(userID int64, exceptIP string) int {
+	now := t.now()
+	n := 0
+	for k, c := range t.conns {
+		if k.user == userID && k.ip != exceptIP && c.Active(now) {
+			n++
+		}
+	}
+	return n
+}
+
+// ActiveConnections returns how many connection slots the user holds now.
+func (t *Tracker) ActiveConnections(userID int64) int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.active(userID, "")
+}
+
+// Release frees the user's connection slots, for instance after the user
+// moved to another place. The connections stay listed as online.
+func (t *Tracker) Release(userID int64) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for k, c := range t.conns {
+		if k.user == userID {
+			c.Channel, c.ChannelID, c.ChannelAt = "", 0, time.Time{}
+		}
+	}
 }
 
 // Snapshot is the activity at one moment.

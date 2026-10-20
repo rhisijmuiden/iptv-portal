@@ -1,6 +1,6 @@
 // Package store holds all persistent state of the portal in a single SQLite
 // database: settings, admin accounts, sessions, categories, channels,
-// users and media servers.
+// users, media servers and stream health.
 package store
 
 import (
@@ -21,6 +21,7 @@ var ErrNotFound = errors.New("not found")
 type Store struct {
 	db        *sql.DB
 	authCache authCache
+	dir       string
 }
 
 // Open opens (and creates when needed) the database in dataDir and applies
@@ -29,7 +30,10 @@ func Open(dataDir string) (*Store, error) {
 	if err := os.MkdirAll(dataDir, 0o750); err != nil {
 		return nil, fmt.Errorf("creating data directory: %w", err)
 	}
-	dsn := "file:" + filepath.Join(dataDir, "portal.db") +
+	if err := applyPendingRestore(dataDir); err != nil {
+		return nil, err
+	}
+	dsn := "file:" + filepath.Join(dataDir, dbFile) +
 		"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_time_format=sqlite"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
@@ -38,7 +42,7 @@ func Open(dataDir string) (*Store, error) {
 	// SQLite handles one writer at a time; a single connection avoids
 	// "database is locked" errors and is plenty for this workload.
 	db.SetMaxOpenConns(1)
-	s := &Store{db: db}
+	s := &Store{db: db, dir: dataDir}
 	if err := s.migrate(context.Background()); err != nil {
 		db.Close()
 		return nil, err
@@ -148,6 +152,19 @@ var migrations = []string{
 		server_id INTEGER NOT NULL REFERENCES media_servers(id) ON DELETE CASCADE,
 		key       TEXT NOT NULL,
 		UNIQUE (server_id, key)
+	);`,
+
+	`ALTER TABLE users ADD COLUMN max_connections INTEGER NOT NULL DEFAULT 0;
+	ALTER TABLE packages ADD COLUMN max_connections INTEGER NOT NULL DEFAULT 0;`,
+
+	`CREATE TABLE channel_health (
+		channel_id    INTEGER PRIMARY KEY REFERENCES channels(id) ON DELETE CASCADE,
+		ok            INTEGER NOT NULL,
+		message       TEXT NOT NULL DEFAULT '',
+		failures      INTEGER NOT NULL DEFAULT 0,
+		checked_at    DATETIME NOT NULL,
+		last_ok_at    DATETIME,
+		auto_disabled INTEGER NOT NULL DEFAULT 0
 	);`,
 }
 

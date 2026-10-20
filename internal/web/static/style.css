@@ -163,6 +163,7 @@ td a.name:hover { color: var(--accent); }
 td.logo { width: 64px; }
 td.logo img { max-width: 48px; max-height: 32px; display: block; }
 .url { font-size: .8rem; word-break: break-all; }
+.health-msg { font-size: .8rem; max-width: 22rem; margin-top: .25rem; }
 table.details th { text-transform: none; letter-spacing: 0; font-size: .9rem; width: 40%; background: none; color: var(--muted); font-weight: 500; }
 table.details th, table.details td { padding: .5rem .5rem .5rem 0; }
 
@@ -242,3 +243,7 @@ label.check.stream input { margin-top: .25rem; }
 .ms-logo { width: 18px; height: 18px; flex: none; }
 p.divider { display: flex; align-items: center; gap: .75rem; color: var(--muted); font-size: .83rem; margin: 1.1rem 0; }
 p.divider::before, p.divider::after { content: ""; flex: 1; border-top: 1px solid var(--border); }
+
+/* Parts of a form that do not apply, hidden by a script */
+[hidden] { display: none !important; }
+td.nowrap { white-space: nowrap; }

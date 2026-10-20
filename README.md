@@ -14,11 +14,13 @@ It can also offer the movies and series of your own **Jellyfin** or **Plex** ser
 
 - **Channels as an index, not a proxy.** Store the m3u8 address, logo, category and EPG ID of each channel. Players are redirected to the source, so the server needs almost no bandwidth.
 - **Imports** from an M3U file, pasted text or a URL, and a built-in browser for the public [iptv-org](https://github.com/iptv-org/iptv) channel database.
-- **Users, packages and invitations.** Decide per user which channels they see, set expiry dates, switch accounts off, and send invitation links so people create their own login.
+- **Users, packages and invitations.** Decide per user which channels they see, set expiry dates and connection limits, switch accounts off, and send invitation links so people create their own login.
 - **Xtream Codes API, M3U and XMLTV.** Works with MyTVOnline (Formuler), TiviMate, IPTV Smarters and most other players.
 - **Program guide** merged from your own XMLTV sources and filtered per user.
+- **Stream health checks** that test every channel like a player would, show which streams are down and can switch dead channels off until they work again.
 - **Settings in the browser**: portal name, public URL and both ports, ready for a reverse proxy.
 - **Microsoft Entra sign-in** for the admin panel (optional), limited to the groups or app roles you choose, with local accounts as a fallback.
+- **Backups** to FTP, FTPS or SCP: full and incremental, scheduled or by hand, optionally encrypted, and restored from the admin panel.
 - **Updates from the admin panel** with release notes, stable and test release channels, an optional daily check and automatic rollback.
 - **Simple to host**: one Go binary with SQLite, an installer for any systemd Linux and a script for Proxmox VE LXC.
 
@@ -94,6 +96,12 @@ Add XMLTV sources and see, per channel, whether the guide has data for it. The g
 
 ![Program guide](docs/screenshots/guide.png)
 
+### Stream health
+
+The portal tests every channel's stream on a schedule (every hour by default): it loads the playlist, follows a master playlist to its first variant and fetches the newest video segment. The channel list shows **working**, **failing** (with the reason) or **unchecked** for each channel and can be filtered on it; **Check streams** tests them all now and **Check** tests one.
+
+Under **Stream health** you set the interval (5 minutes to a week, or off) and can let the portal switch a channel off after a number of failed checks in a row. Such a channel is switched on again as soon as its stream works; switching a channel on or off by hand stops that. Off by default.
+
 ### Users
 
 The accounts players log in with: packages, expiry date, last time the player connected, and a note. Expired and disabled accounts are marked and lose access on their next channel switch.
@@ -140,6 +148,10 @@ Portal name, public URL (for a reverse proxy or your own domain), and the ports 
 
 ![Settings](docs/screenshots/settings.png)
 </details>
+
+### Backups
+
+Where backups go (FTP, FTPS or SCP), when they run, how many are kept and the encryption passphrase. Make a backup by hand, or pick one on the server and restore it. See [Backup and restore](#backup-and-restore).
 
 ### Info
 
@@ -226,6 +238,12 @@ systemctl restart iptv-portal
 
 Invitation links point to the portal (port 80 by default), not the admin panel, so the admin panel does not have to be reachable from the internet.
 
+### Connection limits
+
+To stop people from sharing an account, set **Maximum connections per user** on a package, or **Maximum connections** on a user to override it. It is the number of places (IP addresses) that can watch at the same time; a user with several packages gets the highest limit, and leaving it empty everywhere means no limit. Players see the limit and their current connections in the Xtream account info.
+
+Because players fetch the stream straight from the broadcaster, the portal only sees the moment a channel or On Demand title is opened. A place therefore keeps its connection for 15 minutes after it last opened a stream, or for as long as its player keeps talking to the portal (for example to fetch the guide). Devices behind the same internet connection share one IP address and count as one place; switching channels never counts as a new connection. When a user moved to another place and is refused, **Release connections** on the user page frees their connections right away.
+
 ### Sending login details by email
 
 Under **Settings → Mail server** you can enter your own SMTP server (host, port, STARTTLS/TLS/none, login and sender address) and send a test email. Once it is set up:
@@ -289,6 +307,30 @@ Playback has two modes per server:
 - **Directly**: the box is redirected to the media server, like live channels. The server address must then be reachable from the boxes, and the token is part of the stream address the box sees, so use this only on a trusted network.
 
 Files are sent as they are (no transcoding), which the Formuler and most IPTV apps play fine. Posters are always served through the portal.
+
+## Backup and restore
+
+Under **Backups** the portal backs up its database (channels, categories, users, packages, invitations, media servers and all settings) to another server. The guide and the On Demand catalog are downloaded again after a restore, so they are not part of a backup.
+
+**Remote location.** Choose one of:
+
+- **SCP over SSH** (recommended). Log in with a password or a key: **Create an SSH key** makes an Ed25519 key in the portal and shows the public key to add to `~/.ssh/authorized_keys` on the backup server. The first **Save and test connection** trusts the server's host key and stores its fingerprint; from then on the portal refuses a server with another key. The server needs the `scp`, `ls`, `mkdir`, `mv` and `rm` commands, as any Linux server or NAS with SSH has.
+- **FTPS** with explicit TLS (`AUTH TLS`, usually port 21) or implicit TLS (usually port 990). The certificate is checked like a website's. For a self-signed certificate, the connection test shows its fingerprint; enter it under *Trusted certificate fingerprint* to trust exactly that certificate.
+- **FTP** without encryption, for a trusted local network only.
+
+The directory is created when it does not exist. The connection test writes and deletes a small file to prove the portal can write there.
+
+**Full and incremental.** A full backup holds the whole database. An incremental backup holds only the parts (32 KiB blocks) that changed since the previous backup, so it is usually a few kilobytes. **Back up now** makes an incremental backup when it can, **Full backup now** always a full one. A new full backup is made every *Full backup every* days, and also when the remote location or passphrase changes or the previous backup is missing on the server. *Keep* sets how many full backups stay on the server, each with its incremental backups; older ones are deleted after each backup.
+
+**Schedule.** Every hour, every 6 or 12 hours, daily or weekly (Sunday) at a chosen hour. A backup that fails is shown on the Backups page and in the log, and tried again at the next scheduled time.
+
+**Encryption.** With a passphrase, every backup is encrypted with [age](https://age-encryption.org) (scrypt) before it leaves the server; the files end in `.tar.gz.age`. Without the passphrase a backup cannot be restored, so keep it somewhere safe. Changing it starts a new chain with a full backup.
+
+**Restore.** **Restore** lists the backups on the server. Restoring one downloads it together with the full backup and the incremental backups it builds on, rebuilds the database, checks it against the checksum in the backup and with SQLite's integrity check, and then restarts the portal with it. The previous database stays in the data directory as `portal.db.before-restore`. After a restore you log in with the admin accounts of the backup.
+
+To move to a new server or recover from a lost one: install the portal, log in with the one-time password, enter the same remote location (and passphrase) under **Backups**, and restore the newest backup.
+
+A backup is a gzipped tar file with `manifest.json` (what the backup restores to) and either `portal.db` (full) or `blocks` (incremental). Without the portal, a full backup can be unpacked with `tar -xzf` (after `age -d` when encrypted) to get the database file.
 
 ## Program guide (EPG)
 

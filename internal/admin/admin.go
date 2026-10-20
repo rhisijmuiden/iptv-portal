@@ -18,8 +18,10 @@ import (
 	"time"
 
 	"github.com/rhisijmuiden/iptv-portal/internal/activity"
+	"github.com/rhisijmuiden/iptv-portal/internal/backup"
 	"github.com/rhisijmuiden/iptv-portal/internal/entra"
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
+	"github.com/rhisijmuiden/iptv-portal/internal/health"
 	"github.com/rhisijmuiden/iptv-portal/internal/iptvorg"
 	"github.com/rhisijmuiden/iptv-portal/internal/media"
 	"github.com/rhisijmuiden/iptv-portal/internal/server"
@@ -58,6 +60,8 @@ type Handler struct {
 	refreshMedia chan<- struct{}
 	activity     *activity.Tracker
 	entra        *entra.Client
+	backups      *backup.Service
+	health       *health.Checker
 	// base is the path the admin panel is served under ("" for the root).
 	base string
 }
@@ -82,6 +86,11 @@ type Config struct {
 	Activity *activity.Tracker
 	// Entra runs Microsoft sign-ins; nil uses the public Entra cloud.
 	Entra *entra.Client
+	// Backups makes and restores backups; nil builds one for Store.
+	Backups *backup.Service
+	// Health checks channel streams; nil creates a checker that only runs
+	// when asked.
+	Health *health.Checker
 	// BasePath serves the panel under this path, e.g. "/portal-admin"; it
 	// must be clean (see store.CleanBasePath). Empty means the root.
 	BasePath string
@@ -92,15 +101,22 @@ type Config struct {
 func New(c Config) (*Handler, error) {
 	h := &Handler{store: c.Store, listeners: c.Listeners, log: c.Log, limiter: web.NewLimiter(10, 15*time.Minute),
 		guide: c.Guide, refresh: c.RefreshGuide, updater: c.Updater, restart: c.Restart, iptvorg: c.IPTVOrg,
-		media: c.Media, refreshMedia: c.RefreshMedia, activity: c.Activity, entra: c.Entra, base: c.BasePath}
+		media: c.Media, refreshMedia: c.RefreshMedia, activity: c.Activity, entra: c.Entra, backups: c.Backups,
+		health: c.Health, base: c.BasePath}
 	if h.activity == nil {
 		h.activity = activity.New()
 	}
 	if h.entra == nil {
 		h.entra = entra.NewClient()
 	}
+	if h.health == nil {
+		h.health = health.New(c.Store, c.Log)
+	}
 	if h.iptvorg == nil {
 		h.iptvorg = iptvorg.NewClient()
+	}
+	if h.backups == nil && c.Store != nil {
+		h.backups = backup.New(c.Store, c.Log)
 	}
 	if h.media == nil {
 		h.media = media.NewCatalog(c.Store, c.Log)
@@ -146,7 +162,8 @@ func (h *Handler) parseTemplates() error {
 			}
 			return t.Local().Format("2006-01-02 15:04")
 		},
-		"ago": ago,
+		"ago":  ago,
+		"size": formatSize,
 	}
 	layout, err := template.New("layout.html").Funcs(funcs).ParseFS(templateFS, "templates/layout.html")
 	if err != nil {
@@ -194,6 +211,10 @@ func (h *Handler) routes() {
 	auth("POST /channels/{id}", h.channelSave)
 	auth("POST /channels/{id}/toggle", h.channelToggle)
 	auth("POST /channels/{id}/delete", h.channelDelete)
+	auth("POST /channels/{id}/check", h.channelCheck)
+	auth("GET /health", h.healthPage)
+	auth("POST /health", h.healthSave)
+	auth("POST /health/run", h.healthRun)
 	auth("GET /categories", h.categoryList)
 	auth("POST /categories", h.categorySave)
 	auth("POST /categories/{id}/delete", h.categoryDelete)
@@ -209,6 +230,7 @@ func (h *Handler) routes() {
 	auth("POST /users/{id}", h.userSave)
 	auth("POST /users/{id}/toggle", h.userToggle)
 	auth("POST /users/{id}/delete", h.userDelete)
+	auth("POST /users/{id}/release", h.userRelease)
 	auth("GET /packages", h.packageList)
 	auth("GET /packages/new", h.packageForm)
 	auth("POST /packages/new", h.packageSave)
@@ -241,6 +263,7 @@ func (h *Handler) routes() {
 	auth("POST /settings/sso", h.ssoSave)
 	auth("POST /users/{id}/send-login", h.userSendLogin)
 	auth("POST /invites/{id}/send", h.inviteSend)
+	h.backupRoutes(auth)
 
 	api := func(pattern string, fn http.HandlerFunc) {
 		m.Handle(pattern, h.requireToken(fn))
@@ -374,6 +397,9 @@ func (h *Handler) render(w http.ResponseWriter, r *http.Request, name string, p 
 	if p.Flash == "" {
 		p.Flash = r.URL.Query().Get("ok")
 	}
+	if p.Error == "" {
+		p.Error = r.URL.Query().Get("err")
+	}
 	p.Error = web.Sentence(p.Error)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
@@ -388,7 +414,27 @@ func (h *Handler) serverError(w http.ResponseWriter, err error) {
 }
 
 func redirectFlash(w http.ResponseWriter, r *http.Request, path, msg string) {
-	http.Redirect(w, r, path+"?ok="+url.QueryEscape(msg), http.StatusSeeOther)
+	redirectMessage(w, r, path, "ok", msg)
+}
+
+// redirectError shows msg as an error on the page at path.
+func redirectError(w http.ResponseWriter, r *http.Request, path, msg string) {
+	redirectMessage(w, r, path, "err", msg)
+}
+
+// redirectMessage adds msg to path as the query parameter key, replacing
+// any earlier message so they do not pile up.
+func redirectMessage(w http.ResponseWriter, r *http.Request, path, key, msg string) {
+	u, err := url.Parse(path)
+	if err != nil {
+		u = &url.URL{Path: path}
+	}
+	q := u.Query()
+	q.Del("ok")
+	q.Del("err")
+	q.Set(key, msg)
+	u.RawQuery = q.Encode()
+	http.Redirect(w, r, u.String(), http.StatusSeeOther)
 }
 
 // ---- login ----

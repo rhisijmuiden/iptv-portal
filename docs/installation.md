@@ -165,4 +165,4 @@ Add `--purge` to delete the data in `/var/lib/iptv-portal` as well.
 | Service does not start | `journalctl -u iptv-portal -e` shows the log |
 | A port is taken | Change it under **Settings**, or with `iptv-portal set-port` |
 
-Data lives in `/var/lib/iptv-portal/portal.db` (SQLite). Back it up with `sqlite3 /var/lib/iptv-portal/portal.db ".backup portal-backup.db"`, or copy the directory while the service is stopped.
+Data lives in `/var/lib/iptv-portal/portal.db` (SQLite). Set up automatic full and incremental backups to FTP, FTPS or SCP under **Backups** in the admin panel (see [Backup and restore](../README.md#backup-and-restore)). By hand, use `sqlite3 /var/lib/iptv-portal/portal.db ".backup portal-backup.db"`, or copy the directory while the service is stopped.
