@@ -17,6 +17,7 @@ It can also offer the movies and series of your own **Jellyfin** or **Plex** ser
 - **Users, packages and invitations.** Decide per user which channels they see, set expiry dates and connection limits, switch accounts off, and send invitation links so people create their own login.
 - **Xtream Codes API, M3U and XMLTV.** Works with MyTVOnline (Formuler), TiviMate, IPTV Smarters and most other players.
 - **Program guide** merged from your own XMLTV sources and filtered per user.
+- **Stream health checks** that test every channel like a player would, show which streams are down and can switch dead channels off until they work again.
 - **Settings in the browser**: portal name, public URL and both ports, ready for a reverse proxy.
 - **Updates from the admin panel** with release notes, stable and test release channels, an optional daily check and automatic rollback.
 - **Simple to host**: one Go binary with SQLite, an installer for any systemd Linux and a script for Proxmox VE LXC.
@@ -92,6 +93,12 @@ Browse the public iptv-org channel database, filtered by country (the Netherland
 Add XMLTV sources and see, per channel, whether the guide has data for it. The guide refreshes every 6 hours or with **Refresh now**. See [Program guide (EPG)](#program-guide-epg).
 
 ![Program guide](docs/screenshots/guide.png)
+
+### Stream health
+
+The portal tests every channel's stream on a schedule (every hour by default): it loads the playlist, follows a master playlist to its first variant and fetches the newest video segment. The channel list shows **working**, **failing** (with the reason) or **unchecked** for each channel and can be filtered on it; **Check streams** tests them all now and **Check** tests one.
+
+Under **Stream health** you set the interval (5 minutes to a week, or off) and can let the portal switch a channel off after a number of failed checks in a row. Such a channel is switched on again as soon as its stream works; switching a channel on or off by hand stops that. Off by default.
 
 ### Users
 
