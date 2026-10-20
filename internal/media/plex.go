@@ -15,7 +15,13 @@ type plex struct {
 }
 
 func (p *plex) get(ctx context.Context, path string, v any) error {
-	h := http.Header{}
+	return p.getPage(ctx, path, nil, v)
+}
+
+func (p *plex) getPage(ctx context.Context, path string, h http.Header, v any) error {
+	if h == nil {
+		h = http.Header{}
+	}
 	h.Set("X-Plex-Token", p.token)
 	h.Set("X-Plex-Product", "IPTV Portal")
 	h.Set("X-Plex-Client-Identifier", "iptv-portal")
@@ -72,17 +78,30 @@ type plexItem struct {
 }
 
 func (p *plex) list(ctx context.Context, lib Library, typ int) ([]plexItem, error) {
-	var resp struct {
-		MediaContainer struct{ Metadata []plexItem }
-	}
 	path := "/library/sections/" + url.PathEscape(lib.ID) + "/all"
 	if typ != 0 {
 		path += "?type=" + strconv.Itoa(typ)
 	}
-	if err := p.get(ctx, path, &resp); err != nil {
-		return nil, err
+	var out []plexItem
+	for {
+		var resp struct {
+			MediaContainer struct {
+				TotalSize int
+				Metadata  []plexItem
+			}
+		}
+		h := http.Header{}
+		h.Set("X-Plex-Container-Start", strconv.Itoa(len(out)))
+		h.Set("X-Plex-Container-Size", strconv.Itoa(pageSize))
+		if err := p.getPage(ctx, path, h, &resp); err != nil {
+			return nil, err
+		}
+		out = append(out, resp.MediaContainer.Metadata...)
+		if len(resp.MediaContainer.Metadata) < pageSize ||
+			(resp.MediaContainer.TotalSize > 0 && len(out) >= resp.MediaContainer.TotalSize) {
+			return out, nil
+		}
 	}
-	return resp.MediaContainer.Metadata, nil
 }
 
 func (p *plex) Items(ctx context.Context, lib Library) ([]Item, error) {

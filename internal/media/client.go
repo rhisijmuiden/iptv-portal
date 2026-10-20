@@ -4,10 +4,12 @@ package media
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -98,7 +100,7 @@ type Client interface {
 // NewClient returns the client for a media server.
 func NewClient(s store.MediaServer, hc *http.Client) (Client, error) {
 	if hc == nil {
-		hc = &http.Client{Timeout: 2 * time.Minute}
+		hc = NewHTTPClient(2 * time.Minute)
 	}
 	base := strings.TrimRight(s.URL, "/")
 	switch s.Kind {
@@ -108,6 +110,49 @@ func NewClient(s store.MediaServer, hc *http.Client) (Client, error) {
 		return &plex{base: base, token: s.Token, hc: hc}, nil
 	}
 	return nil, fmt.Errorf("unknown media server kind %q", s.Kind)
+}
+
+// pageSize is the number of items asked for per request. Large libraries
+// are read in pages, so no single request takes long enough to time out.
+var pageSize = 200
+
+// NewHTTPClient returns an HTTP client for media servers. Connecting gets
+// its own short timeout, so an unreachable server is reported as such
+// instead of as a slow answer; timeout limits each request as a whole.
+func NewHTTPClient(timeout time.Duration) *http.Client {
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.DialContext = (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext
+	tr.TLSHandshakeTimeout = 10 * time.Second
+	return &http.Client{Transport: tr, Timeout: timeout}
+}
+
+// requestError turns a failed request into a message that says what to
+// check. The URL is left out because it may hold the token.
+func requestError(host string, err error) error {
+	var ue *url.Error
+	if errors.As(err, &ue) {
+		err = ue.Err
+	}
+	var op *net.OpError
+	if errors.As(err, &op) && op.Op == "dial" {
+		if op.Timeout() {
+			return fmt.Errorf("no connection to %s within 10 seconds. Check the address and port, and that this machine can reach the server (firewall, VLAN, Docker port mapping)", host)
+		}
+		return fmt.Errorf("cannot connect to %s: %v. Check the address and port", host, op.Err)
+	}
+	var dns *net.DNSError
+	if errors.As(err, &dns) {
+		return fmt.Errorf("cannot find %s: %v", host, dns.Err)
+	}
+	var tlsErr *tls.RecordHeaderError
+	if errors.As(err, &tlsErr) || strings.Contains(err.Error(), "HTTP response to HTTPS client") {
+		return fmt.Errorf("%s does not speak HTTPS; use an address starting with http://", host)
+	}
+	var ne net.Error
+	if errors.Is(err, context.DeadlineExceeded) || (errors.As(err, &ne) && ne.Timeout()) {
+		return fmt.Errorf("connected to %s, but the server did not answer in time. It may be busy (for example scanning a library); try again later", host)
+	}
+	return fmt.Errorf("cannot reach %s: %w", host, err)
 }
 
 // withQuery appends a query parameter to a path that may already have a
@@ -134,11 +179,7 @@ func getJSON(ctx context.Context, hc *http.Client, rawURL string, header http.He
 	req.Header.Set("User-Agent", "iptv-portal/"+version.Version)
 	resp, err := hc.Do(req)
 	if err != nil {
-		var ue *url.Error
-		if errors.As(err, &ue) {
-			err = ue.Err // the URL may hold the token
-		}
-		return fmt.Errorf("cannot reach the server: %w", err)
+		return requestError(req.URL.Host, err)
 	}
 	defer resp.Body.Close()
 	switch {

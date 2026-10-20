@@ -17,7 +17,7 @@
   </div>
   <label>Server address
     <input type="url" name="url" value="{{$s.URL}}" placeholder="http://192.168.1.10:8096" required>
-    <small>The address this portal uses to reach the server, for example <code>http://192.168.1.10:8096</code> for Jellyfin or <code>http://192.168.1.10:32400</code> for Plex.</small>
+    <small>The address this portal uses to reach the server, for example <code>http://192.168.1.10:8096</code> for Jellyfin or <code>http://192.168.1.10:32400</code> for Plex. Prefer the server's local address over a public domain name: many routers do not let machines inside the network reach their own public address.</small>
   </label>
   <label>API key or token
     <input type="password" name="token" autocomplete="off" {{if not $s.ID}}required{{else}}placeholder="Leave empty to keep the current one"{{end}}>
