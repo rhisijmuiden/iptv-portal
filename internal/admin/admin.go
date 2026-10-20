@@ -212,6 +212,7 @@ func (h *Handler) routes() {
 	auth("POST /users/{id}", h.userSave)
 	auth("POST /users/{id}/toggle", h.userToggle)
 	auth("POST /users/{id}/delete", h.userDelete)
+	auth("POST /users/{id}/release", h.userRelease)
 	auth("GET /packages", h.packageList)
 	auth("GET /packages/new", h.packageForm)
 	auth("POST /packages/new", h.packageSave)

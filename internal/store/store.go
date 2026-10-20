@@ -150,6 +150,9 @@ var migrations = []string{
 		UNIQUE (server_id, key)
 	);`,
 
+	`ALTER TABLE users ADD COLUMN max_connections INTEGER NOT NULL DEFAULT 0;
+	ALTER TABLE packages ADD COLUMN max_connections INTEGER NOT NULL DEFAULT 0;`,
+
 	`CREATE TABLE channel_health (
 		channel_id    INTEGER PRIMARY KEY REFERENCES channels(id) ON DELETE CASCADE,
 		ok            INTEGER NOT NULL,

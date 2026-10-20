@@ -229,3 +229,45 @@ func TestPlaylistAndGuide(t *testing.T) {
 		t.Fatalf("xmltv:\n%s", x)
 	}
 }
+
+func TestConnectionLimit(t *testing.T) {
+	f := setup(t)
+	ctx := context.Background()
+	u, _ := f.store.AuthenticateUser(ctx, "jan", "secret1")
+	u.MaxConnections = 1
+	if _, err := f.store.SaveUser(ctx, u, ""); err != nil {
+		t.Fatal(err)
+	}
+	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	open := func(ip string) int {
+		t.Helper()
+		req, _ := http.NewRequest("GET", fmt.Sprintf("%s/live/jan/secret1/%d.ts", f.srv.URL, f.nh), nil)
+		req.Header.Set("X-Forwarded-For", ip)
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		return resp.StatusCode
+	}
+	if got := open("198.51.100.1"); got != http.StatusFound {
+		t.Fatalf("first place = %d", got)
+	}
+	if got := open("198.51.100.1"); got != http.StatusFound {
+		t.Fatalf("switching channel at the same place = %d", got)
+	}
+	if got := open("198.51.100.2"); got != http.StatusForbidden {
+		t.Fatalf("second place = %d, want 403", got)
+	}
+
+	var login map[string]map[string]any
+	f.json(t, "/player_api.php?"+creds, &login)
+	if login["user_info"]["max_connections"] != "1" || login["user_info"]["active_cons"] != "1" {
+		t.Fatalf("user_info = %v", login["user_info"])
+	}
+
+	f.act.Release(u.ID)
+	if got := open("198.51.100.2"); got != http.StatusFound {
+		t.Fatalf("after release = %d", got)
+	}
+}
