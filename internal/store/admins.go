@@ -106,6 +106,28 @@ func (s *Store) SetAdminPassword(ctx context.Context, username, password string,
 	})
 }
 
+// SSOAdmin returns the admin account for a user who signed in with an
+// identity provider, creating it on first sign-in. The new account gets a
+// random password nobody knows, so it can only be used through the
+// identity provider; an existing local account with the same name keeps
+// its password.
+func (s *Store) SSOAdmin(ctx context.Context, username string) (Admin, error) {
+	username = strings.TrimSpace(username)
+	if username == "" {
+		return Admin{}, errors.New("username must not be empty")
+	}
+	var a Admin
+	err := s.db.QueryRowContext(ctx, `SELECT id, username, must_change FROM admins WHERE username = ?`, username).
+		Scan(&a.ID, &a.Username, &a.MustChangePassword)
+	if err == nil {
+		return a, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return Admin{}, err
+	}
+	return s.CreateAdmin(ctx, username, randomToken(), false)
+}
+
 // Authenticate checks a username and password.
 func (s *Store) Authenticate(ctx context.Context, username, password string) (Admin, error) {
 	var a Admin

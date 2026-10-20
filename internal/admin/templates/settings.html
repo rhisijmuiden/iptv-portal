@@ -2,7 +2,7 @@
 <div class="titlebar">
   <div>
     <h1>Settings</h1>
-    <p class="subtitle">How the portal presents itself, which ports it listens on and how it sends email.</p>
+    <p class="subtitle">How the portal presents itself, which ports it listens on, how it sends email and how admins sign in.</p>
   </div>
 </div>
 <form method="post" action="{{base}}/settings" class="stack">
@@ -65,5 +65,37 @@
   </form>
 </section>
 {{end}}
+{{end}}
+{{with .Data.SSO}}
+<form method="post" action="{{base}}/settings/sso" class="stack spaced" id="sso">
+  <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+  <section class="card stack-card">
+    <h2>Microsoft Entra sign-in</h2>
+    <p class="muted">Lets admins sign in with their Microsoft work account. Local admin accounts keep working, so you can always log in with a password if Entra is unavailable.</p>
+    <label class="check"><input type="checkbox" name="sso_enabled" {{if .Enabled}}checked{{end}}> Show "Sign in with Microsoft" on the login page</label>
+    <label>Redirect URI
+      <div class="copy">
+        <input id="sso-redirect" readonly value="{{$.Data.SSORedirectURL}}" onclick="this.select()">
+        <button type="button" class="secondary" onclick="navigator.clipboard.writeText(document.getElementById('sso-redirect').value).then(()=>this.lastChild.textContent='Copied')">{{icon "copy"}}<span>Copy</span></button>
+      </div>
+      <small>Add this as a <em>Web</em> redirect URI in the app registration (Entra admin center &rarr; App registrations &rarr; Authentication).</small>
+    </label>
+    <div class="row">
+      <label>Tenant ID <input name="sso_tenant_id" value="{{.TenantID}}" placeholder="00000000-0000-0000-0000-000000000000" autocomplete="off" spellcheck="false"><small>Directory (tenant) ID on the app's Overview page.</small></label>
+      <label>Client ID <input name="sso_client_id" value="{{.ClientID}}" placeholder="00000000-0000-0000-0000-000000000000" autocomplete="off" spellcheck="false"><small>Application (client) ID on the app's Overview page.</small></label>
+    </div>
+    <label>Client secret <input type="password" name="sso_client_secret" autocomplete="new-password" {{if .ClientSecret}}placeholder="unchanged"{{end}}>
+      <small>{{if .ClientSecret}}Leave empty to keep the stored secret.{{else}}The secret <em>Value</em> from Certificates &amp; secrets, not the secret ID.{{end}}</small></label>
+    <label>Admin panel URL <input type="url" name="sso_admin_url" value="{{.AdminURL}}" placeholder="https://admin.tv.example.com">
+      <small>The address you open the admin panel on, including any path. Set it when the panel is behind a reverse proxy, so the redirect URI stays the same. Leave empty to use the address of this page.</small></label>
+    <label>Allowed groups or app roles
+      <textarea name="sso_allowed_groups" rows="3" placeholder="Group object ID or app role value, one per line" spellcheck="false">{{range .AllowedGroups}}{{.}}
+{{end}}</textarea>
+      <small>An account needs one of these to get in. Groups need the <em>groups</em> claim in Token configuration; app roles are assigned under Enterprise applications.</small></label>
+    <label class="check"><input type="checkbox" name="sso_allow_all" {{if .AllowAll}}checked{{end}}> Allow every account that can sign in to the app (turn on <em>Assignment required</em> in Entra to limit who that is)</label>
+    <p class="muted"><small>The first Microsoft sign-in creates an admin account named after the sign-in name, e.g. <code>jane@example.com</code>. An existing admin account with that name is used instead.</small></p>
+  </section>
+  <div class="form-actions"><button>{{icon "check"}}Save sign-in settings</button></div>
+</form>
 {{end}}
 {{end}}

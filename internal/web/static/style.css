@@ -238,6 +238,11 @@ label.check.stream input { margin-top: .25rem; }
 @media (max-width: 640px) {
   .viewers th:nth-child(4), .viewers td:nth-child(4), .viewers th:nth-child(5), .viewers td:nth-child(5) { display: none; }
 }
+/* Microsoft sign-in on the login page */
+.button.sso { width: 100%; padding: .65rem 1rem; }
+.ms-logo { width: 18px; height: 18px; flex: none; }
+p.divider { display: flex; align-items: center; gap: .75rem; color: var(--muted); font-size: .83rem; margin: 1.1rem 0; }
+p.divider::before, p.divider::after { content: ""; flex: 1; border-top: 1px solid var(--border); }
 
 /* Parts of a form that do not apply, hidden by a script */
 [hidden] { display: none !important; }

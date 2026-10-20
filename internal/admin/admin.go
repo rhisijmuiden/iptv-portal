@@ -19,6 +19,7 @@ import (
 
 	"github.com/rhisijmuiden/iptv-portal/internal/activity"
 	"github.com/rhisijmuiden/iptv-portal/internal/backup"
+	"github.com/rhisijmuiden/iptv-portal/internal/entra"
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
 	"github.com/rhisijmuiden/iptv-portal/internal/health"
 	"github.com/rhisijmuiden/iptv-portal/internal/iptvorg"
@@ -58,6 +59,7 @@ type Handler struct {
 	media        *media.Catalog
 	refreshMedia chan<- struct{}
 	activity     *activity.Tracker
+	entra        *entra.Client
 	backups      *backup.Service
 	health       *health.Checker
 	// base is the path the admin panel is served under ("" for the root).
@@ -82,6 +84,8 @@ type Config struct {
 	RefreshMedia chan<- struct{}
 	// Activity is where the portal records player requests; nil shows none.
 	Activity *activity.Tracker
+	// Entra runs Microsoft sign-ins; nil uses the public Entra cloud.
+	Entra *entra.Client
 	// Backups makes and restores backups; nil builds one for Store.
 	Backups *backup.Service
 	// Health checks channel streams; nil creates a checker that only runs
@@ -97,9 +101,13 @@ type Config struct {
 func New(c Config) (*Handler, error) {
 	h := &Handler{store: c.Store, listeners: c.Listeners, log: c.Log, limiter: web.NewLimiter(10, 15*time.Minute),
 		guide: c.Guide, refresh: c.RefreshGuide, updater: c.Updater, restart: c.Restart, iptvorg: c.IPTVOrg,
-		media: c.Media, refreshMedia: c.RefreshMedia, activity: c.Activity, backups: c.Backups, health: c.Health, base: c.BasePath}
+		media: c.Media, refreshMedia: c.RefreshMedia, activity: c.Activity, entra: c.Entra, backups: c.Backups,
+		health: c.Health, base: c.BasePath}
 	if h.activity == nil {
 		h.activity = activity.New()
+	}
+	if h.entra == nil {
+		h.entra = entra.NewClient()
 	}
 	if h.health == nil {
 		h.health = health.New(c.Store, c.Log)
@@ -186,6 +194,8 @@ func (h *Handler) routes() {
 	m.HandleFunc("GET /healthz", web.Health)
 	m.HandleFunc("GET /login", h.loginForm)
 	m.HandleFunc("POST /login", h.login)
+	m.HandleFunc("GET /login/entra", h.ssoStart)
+	m.HandleFunc("GET "+entra.CallbackPath, h.ssoCallback)
 
 	auth := func(pattern string, fn func(http.ResponseWriter, *http.Request, store.Session)) {
 		m.Handle(pattern, h.requireSession(fn))
@@ -250,6 +260,7 @@ func (h *Handler) routes() {
 	auth("POST /settings", h.settingsSave)
 	auth("POST /settings/mail", h.mailSave)
 	auth("POST /settings/mail/test", h.mailTest)
+	auth("POST /settings/sso", h.ssoSave)
 	auth("POST /users/{id}/send-login", h.userSendLogin)
 	auth("POST /invites/{id}/send", h.inviteSend)
 	h.backupRoutes(auth)
@@ -429,14 +440,14 @@ func redirectMessage(w http.ResponseWriter, r *http.Request, path, key, msg stri
 // ---- login ----
 
 func (h *Handler) loginForm(w http.ResponseWriter, r *http.Request) {
-	h.render(w, r, "login", page{Title: "Log in"})
+	h.render(w, r, "login", h.loginPage(r, ""))
 }
 
 func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 	ip := web.ClientIP(r)
 	if !h.limiter.Allow(ip) {
 		w.WriteHeader(http.StatusTooManyRequests)
-		h.render(w, r, "login", page{Title: "Log in", Error: "Too many failed attempts, try again in 15 minutes."})
+		h.render(w, r, "login", h.loginPage(r, "Too many failed attempts, try again in 15 minutes."))
 		return
 	}
 	admin, err := h.store.Authenticate(r.Context(), r.FormValue("username"), r.FormValue("password"))
@@ -444,7 +455,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		h.limiter.Fail(ip)
 		h.log.Warn("failed login", "username", r.FormValue("username"), "ip", ip)
 		w.WriteHeader(http.StatusUnauthorized)
-		h.render(w, r, "login", page{Title: "Log in", Error: err.Error()})
+		h.render(w, r, "login", h.loginPage(r, err.Error()))
 		return
 	}
 	if err != nil {
@@ -457,12 +468,16 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, err)
 		return
 	}
+	h.setSessionCookie(w, r, sess)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (h *Handler) setSessionCookie(w http.ResponseWriter, r *http.Request, sess store.Session) {
 	http.SetCookie(w, &http.Cookie{
 		Name: sessionCookie, Value: sess.Token, Path: h.cookiePath(),
 		HttpOnly: true, Secure: web.IsHTTPS(r), SameSite: http.SameSiteLaxMode,
 		MaxAge: int(store.SessionTTL.Seconds()),
 	})
-	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -582,7 +597,19 @@ func (h *Handler) settingsForm(w http.ResponseWriter, r *http.Request, sess stor
 		h.serverError(w, err)
 		return
 	}
-	h.render(w, r, "settings", page{Title: "Settings", Nav: "settings", Session: &sess, Data: st})
+	h.render(w, r, "settings", h.settingsPage(r, sess, st, ""))
+}
+
+// settingsData is what the settings page shows next to the settings.
+type settingsData struct {
+	store.Settings
+	// SSORedirectURL is the redirect URI to register in Entra.
+	SSORedirectURL string
+}
+
+func (h *Handler) settingsPage(r *http.Request, sess store.Session, st store.Settings, msg string) page {
+	return page{Title: "Settings", Nav: "settings", Session: &sess, Error: msg,
+		Data: settingsData{Settings: st, SSORedirectURL: h.ssoRedirectURL(st.SSO, r)}}
 }
 
 func (h *Handler) settingsSave(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -596,7 +623,6 @@ func (h *Handler) settingsSave(w http.ResponseWriter, r *http.Request, sess stor
 	st.PublicURL = r.FormValue("public_url")
 	st.AdminPort, _ = strconv.Atoi(r.FormValue("admin_port"))
 	st.PortalPort, _ = strconv.Atoi(r.FormValue("portal_port"))
-	p := page{Title: "Settings", Nav: "settings", Session: &sess, Data: st}
 	err = st.Validate()
 	if err == nil && st.AdminPort != old.AdminPort {
 		err = h.listeners.PortAvailable(st.AdminPort)
@@ -608,8 +634,7 @@ func (h *Handler) settingsSave(w http.ResponseWriter, r *http.Request, sess stor
 		err = h.store.SaveSettings(r.Context(), st)
 	}
 	if err != nil {
-		p.Error = err.Error()
-		h.render(w, r, "settings", p)
+		h.render(w, r, "settings", h.settingsPage(r, sess, st, err.Error()))
 		return
 	}
 	if st.AdminPort == old.AdminPort && st.PortalPort == old.PortalPort {
