@@ -18,6 +18,7 @@ It can also offer the movies and series of your own **Jellyfin** or **Plex** ser
 - **Xtream Codes API, M3U and XMLTV.** Works with MyTVOnline (Formuler), TiviMate, IPTV Smarters and most other players.
 - **Program guide** merged from your own XMLTV sources and filtered per user.
 - **Settings in the browser**: portal name, public URL and both ports, ready for a reverse proxy.
+- **Microsoft Entra sign-in** for the admin panel (optional), limited to the groups or app roles you choose, with local accounts as a fallback.
 - **Updates from the admin panel** with release notes, stable and test release channels, an optional daily check and automatic rollback.
 - **Simple to host**: one Go binary with SQLite, an installer for any systemd Linux and a script for Proxmox VE LXC.
 
@@ -132,7 +133,7 @@ The link opens on the portal, not the admin panel. After signing up, the new use
 
 ### Settings
 
-Portal name, public URL (for a reverse proxy or your own domain), and the ports of the admin panel and the portal. A port change takes effect right away. See [Components](#components).
+Portal name, public URL (for a reverse proxy or your own domain), and the ports of the admin panel and the portal. A port change takes effect right away. See [Components](#components). The same page holds the [mail server](#sending-login-details-by-email) and [Microsoft Entra sign-in](#signing-in-with-microsoft-entra).
 
 <details>
 <summary>Screenshot</summary>
@@ -239,6 +240,22 @@ The SMTP password is stored in the portal database. Many providers (Gmail, Outlo
 ### Who is online
 
 The dashboard shows how many users are online and which channel each player opened last, with its IP address and player name. Streams go straight from the broadcaster to the player, so the portal only sees the player's own requests: a user counts as *online* after a request in the last 15 minutes, and as *watching* when they opened a channel in that time. The portal cannot tell when someone stops watching, and the list starts empty after a restart.
+
+## Signing in with Microsoft Entra
+
+Admins can sign in to the admin panel with their Microsoft work account (Entra ID, formerly Azure AD). It is off until you switch it on under **Settings → Microsoft Entra sign-in**. Local admin accounts keep working next to it, so `iptv-portal admin-reset` always gets you back in.
+
+1. In the [Entra admin center](https://entra.microsoft.com), go to **App registrations → New registration**. Pick *Accounts in this organizational directory only*, choose the platform **Web** and paste the **Redirect URI** shown on the settings page (it ends in `/login/entra/callback`).
+2. Under **Certificates & secrets**, create a client secret and copy its **Value**.
+3. Decide who may sign in:
+   - **App roles** (recommended): under **App roles**, create a role such as `Portal.Admin`, then assign people or groups to it under **Enterprise applications → (your app) → Users and groups**.
+   - **Groups**: under **Token configuration**, add the *groups* claim (security groups) and use the group's object ID.
+   - Or tick **Allow every account that can sign in to the app** and turn on **Assignment required** in the enterprise application, so only assigned people can sign in.
+4. In the portal, enter the **Directory (tenant) ID**, **Application (client) ID**, the secret value and the allowed roles or group IDs, tick **Show "Sign in with Microsoft"** and save.
+
+Behind a reverse proxy, fill in **Admin panel URL** with the address you open the panel on (for example `https://admin.tv.example.com`), so the redirect URI does not depend on how the proxy forwards the host name. The redirect URI in Entra must match it exactly.
+
+The first sign-in creates an admin account named after the Microsoft sign-in name (for example `jane@example.com`) with a random password, so that account can only be used through Microsoft. If a local admin account with that name already exists, it is used and keeps its password. Removing someone's role or group blocks their next sign-in; a session that is already open stays valid until they log out or it expires after 7 days without use. The client secret is stored in the portal database; Entra secrets expire, so renew it in time.
 
 ## Setting up a TV box
 

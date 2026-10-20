@@ -42,7 +42,7 @@ func (h *Handler) mailSave(w http.ResponseWriter, r *http.Request, sess store.Se
 	}
 	if err := h.store.SetMail(r.Context(), m); err != nil {
 		st.Mail = m
-		h.render(w, r, "settings", page{Title: "Settings", Nav: "settings", Session: &sess, Error: err.Error(), Data: st})
+		h.render(w, r, "settings", h.settingsPage(r, sess, st, err.Error()))
 		return
 	}
 	msg := "Mail settings saved."
@@ -59,11 +59,9 @@ func (h *Handler) mailTest(w http.ResponseWriter, r *http.Request, sess store.Se
 		return
 	}
 	to := r.FormValue("to")
-	p := page{Title: "Settings", Nav: "settings", Session: &sess, Data: st}
 	if err := mail.Send(r.Context(), st.Mail, mail.TestMessage(to, st.PortalName)); err != nil {
 		h.log.Warn("sending test email", "to", to, "err", err)
-		p.Error = "The test email could not be sent: " + err.Error()
-		h.render(w, r, "settings", p)
+		h.render(w, r, "settings", h.settingsPage(r, sess, st, "The test email could not be sent: "+err.Error()))
 		return
 	}
 	redirectFlash(w, r, "/settings", fmt.Sprintf("Test email sent to %s.", strings.TrimSpace(to)))

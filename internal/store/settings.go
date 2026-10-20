@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/rhisijmuiden/iptv-portal/internal/entra"
 	"github.com/rhisijmuiden/iptv-portal/internal/mail"
 )
 
@@ -38,6 +39,9 @@ type Settings struct {
 	// Mail is the SMTP server used to email users their login details and
 	// invitations. An empty host means mail is off.
 	Mail mail.Config
+	// SSO lets admins sign in with Microsoft Entra ID next to the local
+	// accounts, which keep working as a fallback.
+	SSO entra.Config
 
 	// The settings below are set by the "station" command when the portal
 	// runs as part of Build My TV Station; a standalone install leaves them
@@ -89,6 +93,14 @@ const (
 	keySMTPPassword = "smtp_password"
 	keySMTPFrom     = "smtp_from"
 	keySMTPFromName = "smtp_from_name"
+
+	keySSOEnabled  = "sso_enabled"
+	keySSOTenant   = "sso_tenant_id"
+	keySSOClient   = "sso_client_id"
+	keySSOSecret   = "sso_client_secret"
+	keySSOAdminURL = "sso_admin_url"
+	keySSOGroups   = "sso_allowed_groups"
+	keySSOAllowAll = "sso_allow_all"
 
 	keyBasePath       = "base_path"
 	keyTrustedProxies = "trusted_proxies"
@@ -143,6 +155,20 @@ func (s *Store) Settings(ctx context.Context) (Settings, error) {
 			out.Mail.From = v
 		case keySMTPFromName:
 			out.Mail.FromName = v
+		case keySSOEnabled:
+			out.SSO.Enabled = v == "1"
+		case keySSOTenant:
+			out.SSO.TenantID = v
+		case keySSOClient:
+			out.SSO.ClientID = v
+		case keySSOSecret:
+			out.SSO.ClientSecret = v
+		case keySSOAdminURL:
+			out.SSO.AdminURL = v
+		case keySSOGroups:
+			out.SSO.AllowedGroups = strings.Fields(v)
+		case keySSOAllowAll:
+			out.SSO.AllowAll = v == "1"
 		case keyBasePath:
 			out.BasePath = v
 		case keyTrustedProxies:
@@ -218,6 +244,9 @@ func (st *Settings) Validate() error {
 	if st.ServiceToken != "" && len(st.ServiceToken) < MinServiceTokenLength {
 		return fmt.Errorf("service token must be at least %d characters", MinServiceTokenLength)
 	}
+	if err := st.SSO.Validate(); err != nil {
+		return err
+	}
 	return st.Mail.Validate()
 }
 
@@ -279,6 +308,14 @@ func (s *Store) SaveSettings(ctx context.Context, st Settings) error {
 		keySMTPPassword: st.Mail.Password,
 		keySMTPFrom:     st.Mail.From,
 		keySMTPFromName: st.Mail.FromName,
+
+		keySSOEnabled:  boolString(st.SSO.Enabled),
+		keySSOTenant:   st.SSO.TenantID,
+		keySSOClient:   st.SSO.ClientID,
+		keySSOSecret:   st.SSO.ClientSecret,
+		keySSOAdminURL: st.SSO.AdminURL,
+		keySSOGroups:   strings.Join(st.SSO.AllowedGroups, "\n"),
+		keySSOAllowAll: boolString(st.SSO.AllowAll),
 
 		keyBasePath:       st.BasePath,
 		keyTrustedProxies: strings.Join(st.TrustedProxies, "\n"),
@@ -368,5 +405,15 @@ func (s *Store) SetMail(ctx context.Context, m mail.Config) error {
 		return err
 	}
 	st.Mail = m
+	return s.SaveSettings(ctx, st)
+}
+
+// SetSSO replaces the Microsoft Entra sign-in settings.
+func (s *Store) SetSSO(ctx context.Context, c entra.Config) error {
+	st, err := s.Settings(ctx)
+	if err != nil {
+		return err
+	}
+	st.SSO = c
 	return s.SaveSettings(ctx, st)
 }
