@@ -46,3 +46,44 @@ func TestTracker(t *testing.T) {
 		t.Fatalf("after play: %+v", s)
 	}
 }
+
+func TestOpenLimit(t *testing.T) {
+	now := time.Date(2026, 10, 17, 20, 0, 0, 0, time.UTC)
+	tr := New()
+	tr.now = func() time.Time { return now }
+
+	if !tr.Open(1, "jan", "10.0.0.1", "", 7, "NH", 2) || !tr.Open(1, "jan", "10.0.0.2", "", 7, "NH", 2) {
+		t.Fatal("first two places refused")
+	}
+	tr.Seen(1, "jan", "10.0.0.3", "") // browsing without watching holds no slot
+	if tr.ActiveConnections(1) != 2 {
+		t.Fatalf("active = %d, want 2", tr.ActiveConnections(1))
+	}
+	if tr.Open(1, "jan", "10.0.0.3", "", 8, "Gld", 2) {
+		t.Fatal("third place allowed")
+	}
+	if !tr.Open(1, "jan", "10.0.0.1", "", 8, "Gld", 2) {
+		t.Fatal("channel switch refused")
+	}
+	if !tr.Open(2, "piet", "10.0.0.9", "", 7, "NH", 1) || !tr.Open(1, "jan", "10.0.0.4", "", 7, "NH", 0) {
+		t.Fatal("other user or no limit refused")
+	}
+
+	// A place that keeps using the portal keeps its slot; a silent one
+	// frees it after the online window.
+	now = now.Add(10 * time.Minute)
+	tr.Seen(1, "jan", "10.0.0.1", "")
+	now = now.Add(10 * time.Minute)
+	tr.Seen(1, "jan", "10.0.0.1", "")
+	if got := tr.ActiveConnections(1); got != 1 {
+		t.Fatalf("active after 20 minutes = %d, want 1", got)
+	}
+	if !tr.Open(1, "jan", "10.0.0.3", "", 8, "Gld", 2) {
+		t.Fatal("place refused after a slot freed up")
+	}
+
+	tr.Release(1)
+	if got := tr.ActiveConnections(1); got != 0 {
+		t.Fatalf("active after release = %d", got)
+	}
+}

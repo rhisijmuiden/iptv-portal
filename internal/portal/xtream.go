@@ -90,7 +90,7 @@ func (h *Handler) playerAPI(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, map[string]any{
-			"user_info":   userInfo(u, password),
+			"user_info":   userInfo(u, password, h.activity.ActiveConnections(u.ID)),
 			"server_info": serverInfo(web.BaseURL(st.PublicURL, r)),
 		})
 		return
@@ -118,7 +118,8 @@ func (h *Handler) playerAPI(w http.ResponseWriter, r *http.Request) {
 
 func unix(t time.Time) string { return strconv.FormatInt(t.Unix(), 10) }
 
-func userInfo(u store.User, password string) map[string]any {
+// userInfo describes the account; a max_connections of "0" means no limit.
+func userInfo(u store.User, password string, activeCons int) map[string]any {
 	status := "Active"
 	switch {
 	case !u.Enabled:
@@ -138,9 +139,9 @@ func userInfo(u store.User, password string) map[string]any {
 		"status":                 status,
 		"exp_date":               exp,
 		"is_trial":               "0",
-		"active_cons":            "0",
+		"active_cons":            strconv.Itoa(activeCons),
 		"created_at":             unix(u.CreatedAt),
-		"max_connections":        "1",
+		"max_connections":        strconv.Itoa(u.ConnectionLimit()),
 		"allowed_output_formats": []string{"m3u8", "ts"},
 	}
 }
@@ -341,9 +342,23 @@ func (h *Handler) liveRedirect(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	h.activity.Play(u.ID, u.Username, web.ClientIP(r), r.UserAgent(), c.ID, c.Name)
+	if !h.open(w, r, u, c.ID, c.Name) {
+		return
+	}
 	w.Header().Set("Cache-Control", "no-store")
 	http.Redirect(w, r, c.StreamURL, http.StatusFound)
+}
+
+// open records that the player starts watching, or refuses it with 403
+// when the user already watches from as many places as allowed.
+func (h *Handler) open(w http.ResponseWriter, r *http.Request, u store.User, channelID int64, title string) bool {
+	limit := u.ConnectionLimit()
+	if h.activity.Open(u.ID, u.Username, web.ClientIP(r), r.UserAgent(), channelID, title, limit) {
+		return true
+	}
+	h.log.Info("connection limit reached", "username", u.Username, "ip", web.ClientIP(r), "limit", limit)
+	http.Error(w, "maximum number of connections reached", http.StatusForbidden)
+	return false
 }
 
 // ---- get.php / xmltv.php ----

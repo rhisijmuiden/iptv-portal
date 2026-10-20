@@ -162,3 +162,51 @@ func TestUserEmailAndPasswordReset(t *testing.T) {
 		t.Fatalf("new password: %v", err)
 	}
 }
+
+func TestConnectionLimit(t *testing.T) {
+	st := openTest(t)
+	ctx := context.Background()
+	basic, err := st.SavePackage(ctx, Package{Name: "Basic", AllChannels: true, MaxConnections: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	family, _ := st.SavePackage(ctx, Package{Name: "Family", AllChannels: true, MaxConnections: 3})
+	extra, _ := st.SavePackage(ctx, Package{Name: "Extra", OnDemand: true})
+	if _, err := st.SavePackage(ctx, Package{Name: "Bad", AllChannels: true, MaxConnections: -1}); err == nil {
+		t.Fatal("negative limit accepted")
+	}
+	id, err := st.SaveUser(ctx, User{Username: "jan", Enabled: true, PackageIDs: []int64{basic, extra}}, "secret1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	limit := func() int {
+		t.Helper()
+		u, err := st.AuthenticateUser(ctx, "jan", "secret1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return u.ConnectionLimit()
+	}
+	if got := limit(); got != 1 {
+		t.Fatalf("limit = %d, want 1 (a package without limit does not lift it)", got)
+	}
+	u, _ := st.User(ctx, id)
+	u.PackageIDs = []int64{basic, family}
+	st.SaveUser(ctx, u, "")
+	if got := limit(); got != 3 {
+		t.Fatalf("limit = %d, want 3 (highest package)", got)
+	}
+	u.MaxConnections = 2
+	st.SaveUser(ctx, u, "")
+	if got := limit(); got != 2 {
+		t.Fatalf("limit = %d, want 2 (user override)", got)
+	}
+	u.PackageIDs, u.MaxConnections = []int64{extra}, 0
+	st.SaveUser(ctx, u, "")
+	if got := limit(); got != 0 {
+		t.Fatalf("limit = %d, want 0 (no limit)", got)
+	}
+	if p, _ := st.Package(ctx, family); p.MaxConnections != 3 {
+		t.Fatalf("package = %+v", p)
+	}
+}

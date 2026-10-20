@@ -149,6 +149,9 @@ var migrations = []string{
 		key       TEXT NOT NULL,
 		UNIQUE (server_id, key)
 	);`,
+
+	`ALTER TABLE users ADD COLUMN max_connections INTEGER NOT NULL DEFAULT 0;
+	ALTER TABLE packages ADD COLUMN max_connections INTEGER NOT NULL DEFAULT 0;`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {
