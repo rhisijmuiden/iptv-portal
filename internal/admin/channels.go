@@ -25,6 +25,9 @@ type channelListData struct {
 	Channels   []store.Channel
 	Categories []store.Category
 	Filter     store.ChannelFilter
+	Health     map[int64]store.ChannelHealth
+	HealthOnly string // "ok", "failing" or "unchecked"; "" shows all
+	Now        time.Time
 	Back       string // current list URL, to return to after a toggle
 }
 
@@ -41,8 +44,32 @@ func (h *Handler) channelList(w http.ResponseWriter, r *http.Request, sess store
 		h.serverError(w, err)
 		return
 	}
+	hl, err := h.store.ChannelHealth(r.Context())
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	only := r.URL.Query().Get("health")
+	if only != "" {
+		var keep []store.Channel
+		for _, c := range chs {
+			res, checked := hl[c.ID]
+			state := "unchecked"
+			switch {
+			case checked && res.OK:
+				state = "ok"
+			case checked:
+				state = "failing"
+			}
+			if state == only {
+				keep = append(keep, c)
+			}
+		}
+		chs = keep
+	}
 	h.render(w, r, "channels", page{Title: "Channels", Nav: "channels", Session: &sess,
-		Data: channelListData{Channels: chs, Categories: cats, Filter: f, Back: r.URL.RequestURI()}})
+		Data: channelListData{Channels: chs, Categories: cats, Filter: f, Health: hl, HealthOnly: only,
+			Now: time.Now(), Back: r.URL.RequestURI()}})
 }
 
 type channelFormData struct {
@@ -130,6 +157,11 @@ func (h *Handler) channelToggle(w http.ResponseWriter, r *http.Request, sess sto
 			http.NotFound(w, r)
 			return
 		}
+		h.serverError(w, err)
+		return
+	}
+	// Switched by hand: the stream check should not switch it back.
+	if err := h.store.ClearAutoDisabled(r.Context(), id); err != nil {
 		h.serverError(w, err)
 		return
 	}
