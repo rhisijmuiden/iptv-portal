@@ -38,6 +38,19 @@ func formDate(r *http.Request, name string) (*time.Time, error) {
 	return &end, nil
 }
 
+// formCount parses a field holding a count that may be left empty (0).
+func formCount(r *http.Request, name, label string) (int, error) {
+	v := strings.TrimSpace(r.FormValue(name))
+	if v == "" {
+		return 0, nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 0 {
+		return 0, fmt.Errorf("%s must be a whole number of 0 or more", label)
+	}
+	return n, nil
+}
+
 // ---- users ----
 
 type userListData struct {
@@ -63,6 +76,8 @@ type userFormData struct {
 	PortalURL string
 	MailOn    bool // a mail server is configured
 	SendLogin bool // the "email the login details" box is ticked
+	// Connections is how many places the user watches from now.
+	Connections int
 }
 
 func (h *Handler) userForm(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -105,6 +120,9 @@ func (h *Handler) renderUserFormData(w http.ResponseWriter, r *http.Request, ses
 		title = "Edit user"
 	}
 	d.Packages, d.PortalURL, d.MailOn = pkgs, PortalURL(st, r), st.Mail.Configured()
+	if d.User.ID != 0 {
+		d.Connections = h.activity.ActiveConnections(d.User.ID)
+	}
 	h.render(w, r, "user", page{Title: title, Nav: "users", Session: &sess, Error: errMsg, Data: d})
 }
 
@@ -133,6 +151,10 @@ func (h *Handler) userSave(w http.ResponseWriter, r *http.Request, sess store.Se
 		return
 	}
 	u.ExpiresAt = exp
+	if u.MaxConnections, err = formCount(r, "max_connections", "Maximum connections"); err != nil {
+		fail(err.Error())
+		return
+	}
 	if send && strings.TrimSpace(u.Email) == "" {
 		fail("Enter an email address to send the login details to.")
 		return
@@ -186,6 +208,27 @@ func (h *Handler) userToggle(w http.ResponseWriter, r *http.Request, sess store.
 		return
 	}
 	http.Redirect(w, r, backTo(r, "/users"), http.StatusSeeOther)
+}
+
+// userRelease frees the connection slots of a user, so they can watch
+// from another place right away.
+func (h *Handler) userRelease(w http.ResponseWriter, r *http.Request, sess store.Session) {
+	id, ok := pathID(r)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	u, err := h.store.User(r.Context(), id)
+	if errors.Is(err, store.ErrNotFound) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	h.activity.Release(id)
+	redirectFlash(w, r, fmt.Sprintf("/users/%d", id), fmt.Sprintf("Connections of %q released.", u.Username))
 }
 
 func (h *Handler) userDelete(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -277,6 +320,11 @@ func (h *Handler) packageSave(w http.ResponseWriter, r *http.Request, sess store
 		p.ID = id
 	} else if r.PathValue("id") != "" {
 		http.NotFound(w, r)
+		return
+	}
+	var err error
+	if p.MaxConnections, err = formCount(r, "max_connections", "Maximum connections"); err != nil {
+		h.renderPackageForm(w, r, sess, p, err.Error())
 		return
 	}
 	if _, err := h.store.SavePackage(r.Context(), p); err != nil {

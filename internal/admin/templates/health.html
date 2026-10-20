@@ -1,0 +1,52 @@
+{{define "content"}}
+{{$d := .Data}}
+<div class="titlebar">
+  <div>
+    <h1>Stream health</h1>
+    <p class="subtitle">The portal tests every channel's stream like a player would: it loads the playlist, follows it to a variant and fetches a video segment.</p>
+  </div>
+  <form method="post" action="{{base}}/health/run">
+    <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+    <button class="secondary" {{if $d.Status.Running}}disabled{{end}}>{{icon "refresh"}}{{if $d.Status.Running}}Checking {{$d.Status.Done}} of {{$d.Status.Total}}…{{else}}Check all now{{end}}</button>
+  </form>
+</div>
+<div class="stats">
+  <a class="card stat" href="{{base}}/channels?health=ok"><span class="stat-icon">{{icon "check"}}</span><div><strong>{{$d.OK}}</strong><span>working</span></div></a>
+  <a class="card stat" href="{{base}}/channels?health=failing"><span class="stat-icon">{{icon "ban"}}</span><div><strong>{{len $d.Failing}}</strong><span>failing{{if $d.Disabled}}, {{$d.Disabled}} switched off{{end}}</span></div></a>
+  <a class="card stat" href="{{base}}/channels?health=unchecked"><span class="stat-icon">{{icon "activity"}}</span><div><strong>{{$d.Unknown}}</strong><span>not checked yet</span></div></a>
+</div>
+<form method="post" action="{{base}}/health" class="stack">
+  <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+  <section class="card stack-card">
+    <h2>Automatic checks</h2>
+    <p class="muted">{{if $d.Status.LastRun.IsZero}}No check has run yet.{{else}}Last check {{ago $d.Now $d.Status.LastRun}}{{with $d.Took}}, took {{.}}{{end}}.{{end}}</p>
+    <label class="check"><input type="checkbox" name="enabled" {{if $d.Settings.IntervalMinutes}}checked{{end}}> Check all streams periodically</label>
+    <label>Check every (minutes)
+      <input type="number" name="interval" min="{{$d.Min}}" max="{{$d.Max}}" value="{{if $d.Settings.IntervalMinutes}}{{$d.Settings.IntervalMinutes}}{{else}}60{{end}}">
+      <small>Between {{$d.Min}} minutes and a week. Each check downloads a playlist and one small segment per channel.</small>
+    </label>
+    <label class="check"><input type="checkbox" name="auto_disable" {{if gt $d.Settings.DisableAfter 0}}checked{{end}}> Switch failing channels off automatically</label>
+    <label>Failed checks in a row before switching off
+      <input type="number" name="disable_after" min="1" max="{{$d.MaxAfter}}" value="{{if gt $d.Settings.DisableAfter 0}}{{$d.Settings.DisableAfter}}{{else}}3{{end}}">
+      <small>A channel switched off this way is switched on again as soon as its stream works. Switching a channel on or off by hand stops that.</small>
+    </label>
+  </section>
+  <div class="form-actions"><button>Save settings</button></div>
+</form>
+{{if $d.Failing}}
+<section class="card spaced">
+  <h2>Failing streams</h2>
+  <table>
+    <thead><tr><th>Channel</th><th>Problem</th><th>Last worked</th><th>Status</th></tr></thead>
+    <tbody>
+    {{range $d.Failing}}
+    <tr><td><a class="name" href="{{base}}/channels/{{.Channel.ID}}">{{.Channel.Name}}</a><div class="muted url">{{.Channel.StreamURL}}</div></td>
+      <td>{{.Health.Message}}<div class="muted">{{.Health.Failures}} failed {{if eq .Health.Failures 1}}check{{else}}checks in a row{{end}}, last {{ago $d.Now .Health.CheckedAt}}</div></td>
+      <td>{{with .Health.LastOKAt}}{{ago $d.Now .}}{{else}}<span class="muted">never</span>{{end}}</td>
+      <td>{{if .Channel.Enabled}}<span class="badge on">enabled</span>{{else if .Health.AutoDisabled}}<span class="badge warn">switched off</span>{{else}}<span class="badge off">disabled</span>{{end}}</td></tr>
+    {{end}}
+    </tbody>
+  </table>
+</section>
+{{end}}
+{{end}}

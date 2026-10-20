@@ -14,9 +14,10 @@ It can also offer the movies and series of your own **Jellyfin** or **Plex** ser
 
 - **Channels as an index, not a proxy.** Store the m3u8 address, logo, category and EPG ID of each channel. Players are redirected to the source, so the server needs almost no bandwidth.
 - **Imports** from an M3U file, pasted text or a URL, and a built-in browser for the public [iptv-org](https://github.com/iptv-org/iptv) channel database.
-- **Users, packages and invitations.** Decide per user which channels they see, set expiry dates, switch accounts off, and send invitation links so people create their own login.
+- **Users, packages and invitations.** Decide per user which channels they see, set expiry dates and connection limits, switch accounts off, and send invitation links so people create their own login.
 - **Xtream Codes API, M3U and XMLTV.** Works with MyTVOnline (Formuler), TiviMate, IPTV Smarters and most other players.
 - **Program guide** merged from your own XMLTV sources and filtered per user.
+- **Stream health checks** that test every channel like a player would, show which streams are down and can switch dead channels off until they work again.
 - **Settings in the browser**: portal name, public URL and both ports, ready for a reverse proxy.
 - **Backups** to FTP, FTPS or SCP: full and incremental, scheduled or by hand, optionally encrypted, and restored from the admin panel.
 - **Updates from the admin panel** with release notes, stable and test release channels, an optional daily check and automatic rollback.
@@ -93,6 +94,12 @@ Browse the public iptv-org channel database, filtered by country (the Netherland
 Add XMLTV sources and see, per channel, whether the guide has data for it. The guide refreshes every 6 hours or with **Refresh now**. See [Program guide (EPG)](#program-guide-epg).
 
 ![Program guide](docs/screenshots/guide.png)
+
+### Stream health
+
+The portal tests every channel's stream on a schedule (every hour by default): it loads the playlist, follows a master playlist to its first variant and fetches the newest video segment. The channel list shows **working**, **failing** (with the reason) or **unchecked** for each channel and can be filtered on it; **Check streams** tests them all now and **Check** tests one.
+
+Under **Stream health** you set the interval (5 minutes to a week, or off) and can let the portal switch a channel off after a number of failed checks in a row. Such a channel is switched on again as soon as its stream works; switching a channel on or off by hand stops that. Off by default.
 
 ### Users
 
@@ -229,6 +236,12 @@ systemctl restart iptv-portal
 - An **invitation** is a link you send to someone. They open it, choose their own username and password, and see the details to set up their TV box. You choose which packages the account gets, how many times the link can be used, how long the account stays valid and until when the link works.
 
 Invitation links point to the portal (port 80 by default), not the admin panel, so the admin panel does not have to be reachable from the internet.
+
+### Connection limits
+
+To stop people from sharing an account, set **Maximum connections per user** on a package, or **Maximum connections** on a user to override it. It is the number of places (IP addresses) that can watch at the same time; a user with several packages gets the highest limit, and leaving it empty everywhere means no limit. Players see the limit and their current connections in the Xtream account info.
+
+Because players fetch the stream straight from the broadcaster, the portal only sees the moment a channel or On Demand title is opened. A place therefore keeps its connection for 15 minutes after it last opened a stream, or for as long as its player keeps talking to the portal (for example to fetch the guide). Devices behind the same internet connection share one IP address and count as one place; switching channels never counts as a new connection. When a user moved to another place and is refused, **Release connections** on the user page frees their connections right away.
 
 ### Sending login details by email
 

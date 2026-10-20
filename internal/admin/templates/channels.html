@@ -5,6 +5,11 @@
     <p class="subtitle">The streams your users see. Click a status to switch a channel on or off.</p>
   </div>
   <div class="buttons">
+    <form method="post" action="{{base}}/health/run">
+      <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+      <input type="hidden" name="back" value="{{.Data.Back}}">
+      <button class="secondary" title="Test every stream now">{{icon "activity"}}Check streams</button>
+    </form>
     <a class="button secondary" href="{{base}}/import">{{icon "upload"}}Import</a>
     <a class="button" href="{{base}}/channels/new">{{icon "plus"}}Add channel</a>
   </div>
@@ -16,12 +21,18 @@
     <option value="-1" {{if eq .Data.Filter.CategoryID -1}}selected{{end}}>Uncategorized</option>
     {{range .Data.Categories}}<option value="{{.ID}}" {{if eq $.Data.Filter.CategoryID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
   </select>
+  <select name="health" onchange="this.form.submit()">
+    <option value="">Any stream health</option>
+    <option value="ok" {{if eq .Data.HealthOnly "ok"}}selected{{end}}>Working</option>
+    <option value="failing" {{if eq .Data.HealthOnly "failing"}}selected{{end}}>Failing</option>
+    <option value="unchecked" {{if eq .Data.HealthOnly "unchecked"}}selected{{end}}>Not checked yet</option>
+  </select>
   <button class="secondary">{{icon "search"}}Filter</button>
 </form>
 {{if .Data.Channels}}
 <div class="card flush">
 <table class="channels">
-  <thead><tr><th></th><th>Name</th><th>Category</th><th>EPG ID</th><th>Status</th><th></th></tr></thead>
+  <thead><tr><th></th><th>Name</th><th>Category</th><th>EPG ID</th><th>Stream</th><th>Status</th><th></th></tr></thead>
   <tbody>
   {{range .Data.Channels}}
   <tr>
@@ -29,6 +40,12 @@
     <td><a class="name" href="{{base}}/channels/{{.ID}}">{{.Name}}</a><div class="muted url">{{.StreamURL}}</div></td>
     <td>{{if .Category}}{{.Category}}{{else}}<span class="muted">none</span>{{end}}</td>
     <td>{{if .EPGID}}<code>{{.EPGID}}</code>{{else}}<span class="muted">none</span>{{end}}</td>
+    <td>{{$hl := index $.Data.Health .ID}}
+      {{if $hl.CheckedAt.IsZero}}<span class="badge idle" title="This stream has not been checked yet">unchecked</span>
+      {{else if $hl.OK}}<span class="badge on" title="{{$hl.Message}} · checked {{ago $.Data.Now $hl.CheckedAt}}">working</span>
+      {{else}}<span class="badge off" title="{{$hl.Message}} · checked {{ago $.Data.Now $hl.CheckedAt}}">failing</span>
+        <div class="muted health-msg">{{$hl.Message}}{{if gt $hl.Failures 1}} · {{$hl.Failures}} checks in a row{{end}}{{if $hl.AutoDisabled}} · switched off automatically{{end}}</div>{{end}}
+    </td>
     <td>
       <form method="post" action="{{base}}/channels/{{.ID}}/toggle">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
@@ -38,6 +55,11 @@
       </form>
     </td>
     <td class="actions">
+      <form method="post" action="{{base}}/channels/{{.ID}}/check">
+        <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+        <input type="hidden" name="back" value="{{$.Data.Back}}">
+        <button class="secondary sm" title="Check this stream now">{{icon "activity"}}<span class="label">Check</span></button>
+      </form>
       <a class="button secondary sm" href="{{base}}/channels/{{.ID}}" title="Edit">{{icon "edit"}}<span class="label">Edit</span></a>
       <form method="post" action="{{base}}/channels/{{.ID}}/delete" onsubmit="return confirm('Delete this channel?')">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
@@ -51,7 +73,7 @@
 </div>
 {{else}}
 <section class="card empty">
-  <p>No channels{{if or .Data.Filter.Search .Data.Filter.CategoryID}} match this filter{{else}} yet{{end}}.</p>
+  <p>No channels{{if or .Data.Filter.Search .Data.Filter.CategoryID .Data.HealthOnly}} match this filter{{else}} yet{{end}}.</p>
   <p><a href="{{base}}/channels/new">Add a channel</a> or <a href="{{base}}/import">import an M3U playlist</a>.</p>
 </section>
 {{end}}

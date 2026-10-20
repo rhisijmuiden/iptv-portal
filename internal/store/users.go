@@ -25,7 +25,10 @@ type Package struct {
 	AllChannels bool
 	CategoryIDs []int64
 	OnDemand    bool
-	UserCount   int
+	// MaxConnections is how many places a user of this package may watch
+	// from at once; 0 = no limit from this package.
+	MaxConnections int
+	UserCount      int
 }
 
 // User is an account an IPTV player logs in with.
@@ -40,6 +43,21 @@ type User struct {
 	LastSeenAt *time.Time
 	PackageIDs []int64
 	Packages   []string // package names, filled by queries
+	// MaxConnections overrides the limit of the user's packages; 0 = use
+	// the packages' limit.
+	MaxConnections int
+	// PackageConnections is the highest limit set on the user's packages
+	// (0 = none), filled by queries.
+	PackageConnections int
+}
+
+// ConnectionLimit is how many places the user may watch from at once;
+// 0 means no limit.
+func (u User) ConnectionLimit() int {
+	if u.MaxConnections > 0 {
+		return u.MaxConnections
+	}
+	return u.PackageConnections
 }
 
 // Expired reports whether the account is past its expiry date.
@@ -55,7 +73,7 @@ func (u User) Active() bool { return u.Enabled && !u.Expired() }
 // Packages returns all packages with their categories and user counts.
 func (s *Store) Packages(ctx context.Context) ([]Package, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT p.id, p.name, p.all_channels, p.on_demand,
+		`SELECT p.id, p.name, p.all_channels, p.on_demand, p.max_connections,
 		 (SELECT COUNT(*) FROM user_packages up WHERE up.package_id = p.id)
 		 FROM packages p ORDER BY p.name`)
 	if err != nil {
@@ -64,7 +82,7 @@ func (s *Store) Packages(ctx context.Context) ([]Package, error) {
 	var out []Package
 	for rows.Next() {
 		var p Package
-		if err := rows.Scan(&p.ID, &p.Name, &p.AllChannels, &p.OnDemand, &p.UserCount); err != nil {
+		if err := rows.Scan(&p.ID, &p.Name, &p.AllChannels, &p.OnDemand, &p.MaxConnections, &p.UserCount); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -87,8 +105,8 @@ func (s *Store) Packages(ctx context.Context) ([]Package, error) {
 func (s *Store) Package(ctx context.Context, id int64) (Package, error) {
 	var p Package
 	err := s.db.QueryRowContext(ctx,
-		`SELECT id, name, all_channels, on_demand FROM packages WHERE id = ?`, id).
-		Scan(&p.ID, &p.Name, &p.AllChannels, &p.OnDemand)
+		`SELECT id, name, all_channels, on_demand, max_connections FROM packages WHERE id = ?`, id).
+		Scan(&p.ID, &p.Name, &p.AllChannels, &p.OnDemand, &p.MaxConnections)
 	if errors.Is(err, sql.ErrNoRows) {
 		return p, ErrNotFound
 	}
@@ -108,17 +126,20 @@ func (s *Store) SavePackage(ctx context.Context, p Package) (int64, error) {
 	if !p.AllChannels && len(p.CategoryIDs) == 0 && !p.OnDemand {
 		return 0, errors.New("select at least one category, all channels or On Demand")
 	}
+	if p.MaxConnections < 0 {
+		return 0, errors.New("maximum connections must not be negative")
+	}
 	err := s.withTx(ctx, func(tx *sql.Tx) error {
 		if p.ID == 0 {
-			res, err := tx.ExecContext(ctx, `INSERT INTO packages(name, all_channels, on_demand) VALUES(?, ?, ?)`,
-				p.Name, p.AllChannels, p.OnDemand)
+			res, err := tx.ExecContext(ctx, `INSERT INTO packages(name, all_channels, on_demand, max_connections) VALUES(?, ?, ?, ?)`,
+				p.Name, p.AllChannels, p.OnDemand, p.MaxConnections)
 			if err != nil {
 				return uniqueErr(err, "package already exists")
 			}
 			p.ID, _ = res.LastInsertId()
 		} else {
-			res, err := tx.ExecContext(ctx, `UPDATE packages SET name = ?, all_channels = ?, on_demand = ? WHERE id = ?`,
-				p.Name, p.AllChannels, p.OnDemand, p.ID)
+			res, err := tx.ExecContext(ctx, `UPDATE packages SET name = ?, all_channels = ?, on_demand = ?, max_connections = ? WHERE id = ?`,
+				p.Name, p.AllChannels, p.OnDemand, p.MaxConnections, p.ID)
 			if err != nil {
 				return uniqueErr(err, "package already exists")
 			}
@@ -207,13 +228,13 @@ func normalizeEmail(s string) (string, error) {
 	return a, nil
 }
 
-const userSelect = `SELECT u.id, u.username, u.note, u.email, u.enabled, u.expires_at, u.created_at, u.last_seen_at
-	FROM users u`
+const userSelect = `SELECT u.id, u.username, u.note, u.email, u.enabled, u.expires_at, u.created_at, u.last_seen_at,
+	u.max_connections FROM users u`
 
 func scanUser(sc interface{ Scan(...any) error }) (User, error) {
 	var u User
 	var exp, seen sql.NullTime
-	err := sc.Scan(&u.ID, &u.Username, &u.Note, &u.Email, &u.Enabled, &exp, &u.CreatedAt, &seen)
+	err := sc.Scan(&u.ID, &u.Username, &u.Note, &u.Email, &u.Enabled, &exp, &u.CreatedAt, &seen, &u.MaxConnections)
 	if exp.Valid {
 		t := exp.Time
 		u.ExpiresAt = &t
@@ -227,21 +248,24 @@ func scanUser(sc interface{ Scan(...any) error }) (User, error) {
 
 func (s *Store) fillUserPackages(ctx context.Context, u *User) error {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT p.id, p.name FROM user_packages up JOIN packages p ON p.id = up.package_id
+		`SELECT p.id, p.name, p.max_connections FROM user_packages up JOIN packages p ON p.id = up.package_id
 		 WHERE up.user_id = ? ORDER BY p.name`, u.ID)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
-	u.PackageIDs, u.Packages = nil, nil
+	u.PackageIDs, u.Packages, u.PackageConnections = nil, nil, 0
 	for rows.Next() {
 		var id int64
 		var name string
-		if err := rows.Scan(&id, &name); err != nil {
+		var limit int
+		if err := rows.Scan(&id, &name, &limit); err != nil {
 			return err
 		}
 		u.PackageIDs = append(u.PackageIDs, id)
 		u.Packages = append(u.Packages, name)
+		// The most generous package wins, like for channels.
+		u.PackageConnections = max(u.PackageConnections, limit)
 	}
 	return rows.Err()
 }
@@ -305,6 +329,9 @@ func (s *Store) SaveUser(ctx context.Context, u User, password string) (int64, e
 	if err := ValidateUserCredentials(u.Username, check); err != nil {
 		return 0, err
 	}
+	if u.MaxConnections < 0 {
+		return 0, errors.New("maximum connections must not be negative")
+	}
 	var err error
 	if u.Email, err = normalizeEmail(u.Email); err != nil {
 		return 0, err
@@ -318,16 +345,16 @@ func (s *Store) SaveUser(ctx context.Context, u User, password string) (int64, e
 	err = s.withTx(ctx, func(tx *sql.Tx) error {
 		if u.ID == 0 {
 			res, err := tx.ExecContext(ctx,
-				`INSERT INTO users(username, password_hash, note, email, enabled, expires_at) VALUES(?, ?, ?, ?, ?, ?)`,
-				u.Username, string(hash), u.Note, u.Email, u.Enabled, utcPtr(u.ExpiresAt))
+				`INSERT INTO users(username, password_hash, note, email, enabled, expires_at, max_connections) VALUES(?, ?, ?, ?, ?, ?, ?)`,
+				u.Username, string(hash), u.Note, u.Email, u.Enabled, utcPtr(u.ExpiresAt), u.MaxConnections)
 			if err != nil {
 				return uniqueErr(err, "username already exists")
 			}
 			u.ID, _ = res.LastInsertId()
 		} else {
 			res, err := tx.ExecContext(ctx,
-				`UPDATE users SET username = ?, note = ?, email = ?, enabled = ?, expires_at = ? WHERE id = ?`,
-				u.Username, u.Note, u.Email, u.Enabled, utcPtr(u.ExpiresAt), u.ID)
+				`UPDATE users SET username = ?, note = ?, email = ?, enabled = ?, expires_at = ?, max_connections = ? WHERE id = ?`,
+				u.Username, u.Note, u.Email, u.Enabled, utcPtr(u.ExpiresAt), u.MaxConnections, u.ID)
 			if err != nil {
 				return uniqueErr(err, "username already exists")
 			}
