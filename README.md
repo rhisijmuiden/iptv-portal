@@ -297,7 +297,7 @@ Streams are not proxied. A player asks the portal for `/live/USER/PASS/ID.m3u8` 
 
 ## On Demand from Jellyfin or Plex
 
-Under **On Demand** you add a Jellyfin or Plex server: its address as seen from the portal (for example `http://192.168.1.10:8096` or `http://192.168.1.10:32400`) and a Jellyfin API key (*Dashboard → API Keys*) or a Plex token (`X-Plex-Token`). The portal lists the movie and series libraries and offers all of them; untick the ones you do not want to share. Then tick **On Demand** in the packages that should get it.
+Under **On Demand** you add a Jellyfin or Plex server: its address as seen from the portal (for example `http://192.168.1.10:8096` or `http://192.168.1.10:32400`; prefer the local address over a public domain name, which the portal's machine often cannot reach from inside the network) and a Jellyfin API key (*Dashboard → API Keys*) or a Plex token (`X-Plex-Token`). The portal lists the movie and series libraries and offers all of them; untick the ones you do not want to share. Then tick **On Demand** in the packages that should get it.
 
 TV boxes see each movie library as a category under *Movies* (VOD) and each series library under *Series*, with posters, descriptions, ratings, seasons and episodes. The libraries are read again every hour, or straight away with **Refresh now**. Item ids stay the same between refreshes, so favourites and resume points on the box keep working.
 

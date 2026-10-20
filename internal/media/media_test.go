@@ -2,9 +2,11 @@ package media
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -34,16 +36,16 @@ func fakeJellyfin(t *testing.T) *httptest.Server {
 			}
 			switch r.URL.Query().Get("IncludeItemTypes") {
 			case "Movie":
-				w.Write([]byte(`{"Items":[{"Id":"m1","Name":"Zorro","Overview":"Sword","ProductionYear":1998,
+				jellyfinPage(t, w, r, []byte(`{"Items":[{"Id":"m1","Name":"Zorro","Overview":"Sword","ProductionYear":1998,
 					"CommunityRating":6.7,"RunTimeTicks":82800000000,"DateCreated":"2024-05-01T10:00:00.0000000Z",
 					"Path":"/media/zorro.MKV","Container":"mkv","Genres":["Action"],"ImageTags":{"Primary":"x"},
 					"BackdropImageTags":["y"],"People":[{"Name":"Antonio","Type":"Actor"},{"Name":"Martin","Type":"Director"}],
 					"ProviderIds":{"Tmdb":"9342"}},
 					{"Id":"m2","Name":"Amelie","ProductionYear":2001,"Container":"mov,mp4,m4a"}]}`))
 			case "Series":
-				w.Write([]byte(`{"Items":[{"Id":"s1","Name":"Show","ImageTags":{"Primary":"x"}}]}`))
+				jellyfinPage(t, w, r, []byte(`{"Items":[{"Id":"s1","Name":"Show","ImageTags":{"Primary":"x"}}]}`))
 			case "Episode":
-				w.Write([]byte(`{"Items":[{"Id":"e2","Name":"Two","SeriesId":"s1","ParentIndexNumber":1,"IndexNumber":2,"Path":"/e2.mp4"},
+				jellyfinPage(t, w, r, []byte(`{"Items":[{"Id":"e2","Name":"Two","SeriesId":"s1","ParentIndexNumber":1,"IndexNumber":2,"Path":"/e2.mp4"},
 					{"Id":"e1","Name":"One","SeriesId":"s1","ParentIndexNumber":1,"IndexNumber":1,"Path":"/e1.mp4"},
 					{"Id":"e9","Name":"Orphan","SeriesId":"elsewhere","Path":"/e9.mp4"}]}`))
 			}
@@ -68,23 +70,102 @@ func fakePlex(t *testing.T) *httptest.Server {
 			w.Write([]byte(`{"MediaContainer":{"Directory":[{"key":"1","title":"Movies","type":"movie"},
 				{"key":"2","title":"TV","type":"show"},{"key":"3","title":"Music","type":"artist"}]}}`))
 		case "/library/sections/1/all":
-			w.Write([]byte(`{"MediaContainer":{"Metadata":[{"ratingKey":"10","title":"Heat","year":1995,"summary":"Bank",
+			plexPage(t, w, r, []byte(`{"MediaContainer":{"Metadata":[{"ratingKey":"10","title":"Heat","year":1995,"summary":"Bank",
 				"audienceRating":8.3,"duration":10200000,"addedAt":1700000000,"thumb":"/library/metadata/10/thumb/1",
 				"art":"/library/metadata/10/art/1","Genre":[{"tag":"Crime"}],"Role":[{"tag":"Al"}],
 				"Media":[{"container":"mkv","Part":[{"key":"/library/parts/55/1/file.mkv","container":"mkv"}]}]}]}}`))
 		case "/library/sections/2/all":
 			if r.URL.Query().Get("type") == "4" {
-				w.Write([]byte(`{"MediaContainer":{"Metadata":[{"ratingKey":"21","title":"Pilot","grandparentRatingKey":"20",
+				plexPage(t, w, r, []byte(`{"MediaContainer":{"Metadata":[{"ratingKey":"21","title":"Pilot","grandparentRatingKey":"20",
 					"parentIndex":1,"index":1,"Media":[{"container":"mp4","Part":[{"key":"/library/parts/66/1/file.mp4"}]}]}]}}`))
 				return
 			}
-			w.Write([]byte(`{"MediaContainer":{"Metadata":[{"ratingKey":"20","title":"Series","thumb":"/library/metadata/20/thumb/1"}]}}`))
+			plexPage(t, w, r, []byte(`{"MediaContainer":{"Metadata":[{"ratingKey":"20","title":"Series","thumb":"/library/metadata/20/thumb/1"}]}}`))
 		default:
 			http.NotFound(w, r)
 		}
 	}))
 	t.Cleanup(srv.Close)
 	return srv
+}
+
+// jellyfinPage answers one page of a Jellyfin item list.
+func jellyfinPage(t *testing.T, w http.ResponseWriter, r *http.Request, body []byte) {
+	var all struct{ Items []json.RawMessage }
+	if err := json.Unmarshal(body, &all); err != nil {
+		t.Fatal(err)
+	}
+	start, _ := strconv.Atoi(r.URL.Query().Get("StartIndex"))
+	limit, _ := strconv.Atoi(r.URL.Query().Get("Limit"))
+	json.NewEncoder(w).Encode(map[string]any{"Items": window(all.Items, start, limit), "TotalRecordCount": len(all.Items)})
+}
+
+// plexPage answers one page of a Plex item list.
+func plexPage(t *testing.T, w http.ResponseWriter, r *http.Request, body []byte) {
+	var all struct {
+		MediaContainer struct{ Metadata []json.RawMessage }
+	}
+	if err := json.Unmarshal(body, &all); err != nil {
+		t.Fatal(err)
+	}
+	start, _ := strconv.Atoi(r.Header.Get("X-Plex-Container-Start"))
+	size, _ := strconv.Atoi(r.Header.Get("X-Plex-Container-Size"))
+	json.NewEncoder(w).Encode(map[string]any{"MediaContainer": map[string]any{
+		"Metadata": window(all.MediaContainer.Metadata, start, size), "totalSize": len(all.MediaContainer.Metadata)}})
+}
+
+func window(items []json.RawMessage, start, n int) []json.RawMessage {
+	if n <= 0 {
+		n = len(items)
+	}
+	start = min(start, len(items))
+	return items[start:min(start+n, len(items))]
+}
+
+// TestPaging reads libraries one item per request.
+func TestPaging(t *testing.T) {
+	defer func(n int) { pageSize = n }(pageSize)
+	pageSize = 1
+	ctx := context.Background()
+	jf := fakeJellyfin(t)
+	cl, _ := NewClient(store.MediaServer{Kind: store.MediaJellyfin, URL: jf.URL, Token: "jf-key"}, nil)
+	if items, err := cl.Items(ctx, Library{ID: "lib-s", Type: Shows}); err != nil || len(items) != 4 {
+		t.Fatalf("jellyfin: %d items, %v", len(items), err)
+	}
+	px := fakePlex(t)
+	cl, _ = NewClient(store.MediaServer{Kind: store.MediaPlex, URL: px.URL, Token: "plex-tok"}, nil)
+	if items, err := cl.Items(ctx, Library{ID: "1", Type: Movies}); err != nil || len(items) != 1 {
+		t.Fatalf("plex: %d items, %v", len(items), err)
+	}
+}
+
+func TestRequestErrors(t *testing.T) {
+	ctx := context.Background()
+	// Nothing listens on a closed server's port.
+	closed := httptest.NewServer(http.NotFoundHandler())
+	closed.Close()
+	cl, _ := NewClient(store.MediaServer{Kind: store.MediaJellyfin, URL: closed.URL, Token: "x"}, nil)
+	if _, err := cl.Libraries(ctx); err == nil || !strings.Contains(err.Error(), "cannot connect to") {
+		t.Errorf("closed port: %v", err)
+	}
+
+	// A server that accepts but never answers.
+	slow := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done()
+	}))
+	defer slow.Close()
+	cl, _ = NewClient(store.MediaServer{Kind: store.MediaJellyfin, URL: slow.URL, Token: "x"}, NewHTTPClient(200*time.Millisecond))
+	if _, err := cl.Libraries(ctx); err == nil || !strings.Contains(err.Error(), "did not answer in time") {
+		t.Errorf("slow server: %v", err)
+	}
+
+	// HTTPS address for a plain HTTP server.
+	plain := httptest.NewServer(http.NotFoundHandler())
+	defer plain.Close()
+	cl, _ = NewClient(store.MediaServer{Kind: store.MediaJellyfin, URL: strings.Replace(plain.URL, "http:", "https:", 1), Token: "x"}, nil)
+	if _, err := cl.Libraries(ctx); err == nil || !strings.Contains(err.Error(), "does not speak HTTPS") {
+		t.Errorf("https to http: %v", err)
+	}
 }
 
 func TestJellyfinClient(t *testing.T) {

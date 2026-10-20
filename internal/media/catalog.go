@@ -3,6 +3,7 @@ package media
 import (
 	"cmp"
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"slices"
@@ -65,7 +66,7 @@ type Catalog struct {
 
 // NewCatalog creates an empty catalog; call Refresh or Loop to fill it.
 func NewCatalog(st *store.Store, log *slog.Logger) *Catalog {
-	c := &Catalog{store: st, log: log, hc: &http.Client{Timeout: 5 * time.Minute}, newClient: NewClient,
+	c := &Catalog{store: st, log: log, hc: NewHTTPClient(2 * time.Minute), newClient: NewClient,
 		snaps: map[int64]*snapshot{}, status: map[int64]ServerStatus{}}
 	c.rebuild()
 	return c
@@ -184,7 +185,7 @@ func (c *Catalog) load(ctx context.Context, s store.MediaServer) (*snapshot, err
 		}
 		items, err := client.Items(ctx, l)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("reading library %q: %w", l.Name, err)
 		}
 		offered = append(offered, l)
 		libItems = append(libItems, items)

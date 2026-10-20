@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -114,11 +115,22 @@ func (j *jellyfin) items(ctx context.Context, lib Library, kind string) ([]jelly
 		"Fields":           {"Overview,Genres,DateCreated,Path,People,ProviderIds,PremiereDate"},
 		"EnableImageTypes": {"Primary,Backdrop"},
 	}
-	var resp struct{ Items []jellyfinItem }
-	if err := j.get(ctx, "/Items", q, &resp); err != nil {
-		return nil, err
+	var out []jellyfinItem
+	for {
+		q.Set("StartIndex", strconv.Itoa(len(out)))
+		q.Set("Limit", strconv.Itoa(pageSize))
+		var resp struct {
+			Items            []jellyfinItem
+			TotalRecordCount int
+		}
+		if err := j.get(ctx, "/Items", q, &resp); err != nil {
+			return nil, err
+		}
+		out = append(out, resp.Items...)
+		if len(resp.Items) < pageSize || (resp.TotalRecordCount > 0 && len(out) >= resp.TotalRecordCount) {
+			return out, nil
+		}
 	}
-	return resp.Items, nil
 }
 
 func (j *jellyfin) Items(ctx context.Context, lib Library) ([]Item, error) {
