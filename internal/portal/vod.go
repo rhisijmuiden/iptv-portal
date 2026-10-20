@@ -319,7 +319,9 @@ func (h *Handler) vodPlay(t media.ItemType) http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
-		h.activity.Play(u.ID, u.Username, web.ClientIP(r), r.UserAgent(), 0, h.vodTitle(it))
+		if !h.open(w, r, u, 0, h.vodTitle(it)) {
+			return
+		}
 		target, direct := h.vod.URL(it, it.Stream)
 		if target == "" {
 			http.NotFound(w, r)

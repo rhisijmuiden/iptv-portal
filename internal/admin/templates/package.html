@@ -19,6 +19,8 @@
     <legend>On Demand</legend>
     <label class="check"><input type="checkbox" name="on_demand" {{if $p.OnDemand}}checked{{end}}> Movies and series from the <a href="{{base}}/media">media servers</a></label>
   </fieldset>
+  <label>Maximum connections per user <input type="number" name="max_connections" value="{{if $p.MaxConnections}}{{$p.MaxConnections}}{{end}}" min="0" placeholder="No limit">
+    <small>How many places (IP addresses) a user can watch from at the same time. Leave empty for no limit. A user with several packages gets the highest limit; you can override it per user.</small></label>
   <div class="form-actions">
     <button>Save</button>
     <a class="button secondary" href="{{base}}/packages">Cancel</a>
