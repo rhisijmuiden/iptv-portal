@@ -5,17 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{.Title}} · {{.PortalName}}</title>
 <link rel="stylesheet" href="{{base}}/static/style.css">
+<link rel="icon" href="{{base}}/static/brand/favicon.svg" type="image/svg+xml">
 </head>
 {{if and .Session (not .Session.Admin.MustChangePassword)}}
 <body class="app">
 <input type="checkbox" id="nav-open" class="nav-toggle" aria-hidden="true">
 <header class="mobilebar">
   <label for="nav-open" class="icon-button" title="Menu">{{icon "menu"}}</label>
-  <a class="brand" href="{{base}}/"><span class="brand-mark">{{icon "tv"}}</span>{{.PortalName}}</a>
+  <a class="brand" href="{{base}}/"><img class="logo-icon" src="{{base}}/static/brand/rhis-icon.svg" alt="">{{.PortalName}}</a>
 </header>
 <label for="nav-open" class="scrim" aria-hidden="true"></label>
 <aside class="sidebar">
-  <a class="brand" href="{{base}}/"><span class="brand-mark">{{icon "tv"}}</span><span>{{.PortalName}}<small>Admin panel</small></span></a>
+  <a class="brand" href="{{base}}/"><picture><source srcset="{{base}}/static/brand/rhis-logo-wit.svg" media="(prefers-color-scheme: dark)"><img class="brand-logo" src="{{base}}/static/brand/rhis-logo.svg" alt="RHIS"></picture><span>{{.PortalName}}<small>Admin panel</small></span></a>
   <nav>
     <a href="{{base}}/" {{if eq .Nav "dashboard"}}class="active"{{end}}>{{icon "dashboard"}}Dashboard</a>
     <p class="nav-group">Channels</p>
