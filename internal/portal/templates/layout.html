@@ -6,8 +6,10 @@
 <meta name="robots" content="noindex">
 <title>{{.Title}} · {{.PortalName}}</title>
 <link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="/static/brand/favicon.svg" type="image/svg+xml">
 </head>
 <body>
+<header class="portal-head"><picture><source srcset="/static/brand/rhis-logo-wit.svg" media="(prefers-color-scheme: dark)"><img class="brand-logo" src="/static/brand/rhis-logo.svg" alt="RHIS"></picture></header>
 <main>
   {{if .Error}}<p class="flash err">{{.Error}}</p>{{end}}
   {{template "content" .}}
