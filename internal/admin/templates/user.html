@@ -1,77 +1,77 @@
 {{define "content"}}
 {{$u := .Data.User}}
-<a class="back" href="{{base}}/users">&larr; Users</a>
-<h1>{{.Title}}</h1>
+<a class="back" href="{{base}}/users">&larr; {{t "Users"}}</a>
+<h1>{{t .Title}}</h1>
 <section class="card">
 <form method="post" action="{{if $u.ID}}/users/{{$u.ID}}{{else}}/users/new{{end}}" class="stack">
   <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
   <div class="row">
-    <label>Username <input name="username" value="{{$u.Username}}" pattern="[A-Za-z0-9._\-]{3,32}" autocomplete="off" required>
-      <small>3-32 characters: letters, digits, dot, dash or underscore.</small></label>
-    <label>{{if $u.ID}}New password{{else}}Password{{end}}
+    <label>{{t "Username"}} <input name="username" value="{{$u.Username}}" pattern="[A-Za-z0-9._\-]{3,32}" autocomplete="off" required>
+      <small>{{t "3-32 characters: letters, digits, dot, dash or underscore."}}</small></label>
+    <label>{{if $u.ID}}{{t "New password"}}{{else}}{{t "Password"}}{{end}}
       <input name="password" autocomplete="new-password" minlength="6" maxlength="64" {{if not $u.ID}}required{{end}}>
-      <small>{{if $u.ID}}Leave empty to keep the current password. {{end}}6-64 characters, no spaces or / ? # % &amp; \ " '</small></label>
+      <small>{{if $u.ID}}{{t "Leave empty to keep the current password."}} {{end}}{{t `6-64 characters, no spaces or / ? # % & \ " '`}}</small></label>
   </div>
   <fieldset>
-    <legend>Packages</legend>
+    <legend>{{t "Packages"}}</legend>
     {{range .Data.Packages}}
-    <label class="check"><input type="checkbox" name="package" value="{{.ID}}" {{if has $u.PackageIDs .ID}}checked{{end}}> {{.Name}}{{if .AllChannels}} <span class="muted">(all channels)</span>{{end}}</label>
+    <label class="check"><input type="checkbox" name="package" value="{{.ID}}" {{if has $u.PackageIDs .ID}}checked{{end}}> {{.Name}}{{if .AllChannels}} <span class="muted">({{t "all channels"}})</span>{{end}}</label>
     {{else}}
-    <p class="muted">There are no packages yet. <a href="{{base}}/packages/new">Create a package</a> to give this user channels.</p>
+    <p class="muted">{{th `There are no packages yet. <a href="%s/packages/new">Create a package</a> to give this user channels.` base}}</p>
     {{end}}
   </fieldset>
   <div class="row">
-    <label>Email <input type="email" name="email" value="{{$u.Email}}" autocomplete="off" placeholder="Optional">
-      <small>Where login details are sent to.</small></label>
+    <label>{{t "Email"}} <input type="email" name="email" value="{{$u.Email}}" autocomplete="off" placeholder="{{t "Optional"}}">
+      <small>{{t "Where login details are sent to."}}</small></label>
     <div class="beside-label">
     {{if .Data.MailOn}}
-      <label class="check"><input type="checkbox" name="send_login" {{if .Data.SendLogin}}checked{{end}}> Email the login details to the user</label>
-      <small>{{if $u.ID}}Only possible when you enter a new password above.{{else}}Sends the portal URL, username and password.{{end}}</small>
+      <label class="check"><input type="checkbox" name="send_login" {{if .Data.SendLogin}}checked{{end}}> {{t "Email the login details to the user"}}</label>
+      <small>{{if $u.ID}}{{t "Only possible when you enter a new password above."}}{{else}}{{t "Sends the portal URL, username and password."}}{{end}}</small>
     {{else}}
-      <small>To email login details, set up a <a href="{{base}}/settings#mail">mail server</a> first.</small>
+      <small>{{th `To email login details, set up a <a href="%s/settings#mail">mail server</a> first.` base}}</small>
     {{end}}
     </div>
   </div>
   <div class="row">
-    <label>Expires on <input type="date" name="expires" value="{{date $u.ExpiresAt}}"><small>Leave empty for no expiry.</small></label>
-    <label>Note <input name="note" value="{{$u.Note}}" placeholder="For example who this account is for"></label>
+    <label>{{t "Expires on"}} <input type="date" name="expires" value="{{date $u.ExpiresAt}}"><small>{{t "Leave empty for no expiry."}}</small></label>
+    <label>{{t "Note"}} <input name="note" value="{{$u.Note}}" placeholder="{{t "For example who this account is for"}}"></label>
   </div>
   <div class="row">
-    <label>Maximum connections <input type="number" name="max_connections" value="{{if $u.MaxConnections}}{{$u.MaxConnections}}{{end}}" min="0"
-      placeholder="{{if $u.PackageConnections}}{{$u.PackageConnections}} (from packages){{else}}No limit{{end}}">
-      <small>How many places (IP addresses) can watch at the same time. Leave empty to use the limit of the packages.</small></label>
+    <label>{{t "Maximum connections"}} <input type="number" name="max_connections" value="{{if $u.MaxConnections}}{{$u.MaxConnections}}{{end}}" min="0"
+      placeholder="{{if $u.PackageConnections}}{{tf "%d (from packages)" $u.PackageConnections}}{{else}}{{t "No limit"}}{{end}}">
+      <small>{{t "How many places (IP addresses) can watch at the same time. Leave empty to use the limit of the packages."}}</small></label>
     <div></div>
   </div>
-  <label class="check"><input type="checkbox" name="enabled" {{if $u.Enabled}}checked{{end}}> Enabled</label>
+  <label class="check"><input type="checkbox" name="enabled" {{if $u.Enabled}}checked{{end}}> {{t "Enabled"}}</label>
   <div class="form-actions">
-    <button>Save</button>
-    <a class="button secondary" href="{{base}}/users">Cancel</a>
+    <button>{{t "Save"}}</button>
+    <a class="button secondary" href="{{base}}/users">{{t "Cancel"}}</a>
   </div>
 </form>
 </section>
 {{if $u.ID}}
 <section class="card">
-  <h2>Connections</h2>
-  <p>Watching from <strong>{{.Data.Connections}}</strong> {{if eq .Data.Connections 1}}place{{else}}places{{end}} now{{with $u.ConnectionLimit}}, {{.}} allowed{{else}}, no limit{{end}}.</p>
-  <p class="muted">A place keeps its connection for 15 minutes after the last stream was opened, or for as long as the player keeps using the portal. Release the connections when the user moved to another place and is refused.</p>
+  <h2>{{t "Connections"}}</h2>
+  <p>{{if eq .Data.Connections 1}}{{th "Watching from <strong>%d</strong> place now" .Data.Connections}}{{else}}{{th "Watching from <strong>%d</strong> places now" .Data.Connections}}{{end}}{{with $u.ConnectionLimit}}{{tf ", %d allowed" .}}{{else}}{{t ", no limit"}}{{end}}.</p>
+  <p class="muted">{{t "A place keeps its connection for 15 minutes after the last stream was opened, or for as long as the player keeps using the portal. Release the connections when the user moved to another place and is refused."}}</p>
   <form method="post" action="{{base}}/users/{{$u.ID}}/release">
     <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
-    <button class="secondary"{{if not .Data.Connections}} disabled{{end}}>Release connections</button>
+    <button class="secondary"{{if not .Data.Connections}} disabled{{end}}>{{t "Release connections"}}</button>
   </form>
 </section>
 <section class="card">
-  <h2>Setup details</h2>
-  <p>Give these to the user for their TV box (Xtream Codes login):</p>
+  <h2>{{t "Setup details"}}</h2>
+  <p>{{t "Give these to the user for their TV box (Xtream Codes login):"}}</p>
   <table class="details">
-    <tr><th>Server / portal URL</th><td><code>{{.Data.PortalURL}}</code></td></tr>
-    <tr><th>Username</th><td><code>{{$u.Username}}</code></td></tr>
-    <tr><th>Password</th><td>The password set for this user</td></tr>
+    <tr><th>{{t "Server / portal URL"}}</th><td><code>{{.Data.PortalURL}}</code></td></tr>
+    <tr><th>{{t "Username"}}</th><td><code>{{$u.Username}}</code></td></tr>
+    <tr><th>{{t "Password"}}</th><td>{{t "The password set for this user"}}</td></tr>
   </table>
-  <p class="muted">M3U playlist: <code>{{.Data.PortalURL}}/get.php?username={{$u.Username}}&amp;password=PASSWORD&amp;type=m3u_plus&amp;output=m3u8</code></p>
+  <p class="muted">{{t "M3U playlist:"}} <code>{{.Data.PortalURL}}/get.php?username={{$u.Username}}&amp;password={{t "PASSWORD"}}&amp;type=m3u_plus&amp;output=m3u8</code></p>
   {{if and .Data.MailOn $u.Email}}
-  <form method="post" action="{{base}}/users/{{$u.ID}}/send-login" onsubmit="return confirm('This replaces the current password with a new one and emails it to {{$u.Email}}. The old password stops working. Continue?')">
+  <form method="post" action="{{base}}/users/{{$u.ID}}/send-login" onsubmit="return confirm('{{tf "This replaces the current password with a new one and emails it to %s. The old password stops working. Continue?" $u.Email}}')">
     <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
-    <button class="secondary">{{icon "mail"}}Email new password to {{$u.Email}}</button>
+    <button class="secondary">{{icon "mail"}}{{tf "Email new password to %s" $u.Email}}</button>
   </form>
   {{end}}
 </section>

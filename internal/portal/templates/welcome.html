@@ -1,25 +1,25 @@
 {{define "content"}}
 <section class="card narrow wide">
-  <h1>Your account is ready</h1>
-  <p>Add the portal to your TV box or IPTV app with these details.</p>
-  {{with .MailedTo}}<p class="muted">We are also sending these details to <strong>{{.}}</strong>.</p>{{end}}
+  <h1>{{t "Your account is ready"}}</h1>
+  <p>{{t "Add the portal to your TV box or IPTV app with these details."}}</p>
+  {{with .MailedTo}}<p class="muted">{{th "We are also sending these details to <strong>%s</strong>." .}}</p>{{end}}
 
-  <h2>Xtream Codes login (recommended)</h2>
-  <p class="muted">For MyTVOnline (Formuler), TiviMate, IPTV Smarters and most other apps.</p>
+  <h2>{{t "Xtream Codes login (recommended)"}}</h2>
+  <p class="muted">{{t "For MyTVOnline (Formuler), TiviMate, IPTV Smarters and most other apps."}}</p>
   <table class="details">
-    <tr><th>Server / portal URL</th><td><code>{{.Base}}</code></td></tr>
-    <tr><th>Username</th><td><code>{{.Username}}</code></td></tr>
-    <tr><th>Password</th><td>The password you just chose</td></tr>
+    <tr><th>{{t "Server / portal URL"}}</th><td><code>{{.Base}}</code></td></tr>
+    <tr><th>{{t "Username"}}</th><td><code>{{.Username}}</code></td></tr>
+    <tr><th>{{t "Password"}}</th><td>{{t "The password you just chose"}}</td></tr>
   </table>
-  <p class="muted">On a Formuler with MyTVOnline: <em>Add portal</em> → choose <em>Xtream Codes</em> (or <em>XC</em>) → enter the details above.</p>
+  <p class="muted">{{th "On a Formuler with MyTVOnline: <em>Add portal</em> → choose <em>Xtream Codes</em> (or <em>XC</em>) → enter the details above."}}</p>
 
-  <h2>M3U playlist</h2>
-  <p class="muted">For apps that only accept a playlist link.</p>
-  <div class="copy"><input readonly value="{{.Base}}/get.php?username={{.Username}}&amp;password=YOUR_PASSWORD&amp;type=m3u_plus&amp;output=m3u8" onclick="this.select()"></div>
+  <h2>{{t "M3U playlist"}}</h2>
+  <p class="muted">{{t "For apps that only accept a playlist link."}}</p>
+  <div class="copy"><input readonly value="{{.Base}}/get.php?username={{.Username}}&amp;password={{t "YOUR_PASSWORD"}}&amp;type=m3u_plus&amp;output=m3u8" onclick="this.select()"></div>
 
-  <h2>Program guide (EPG)</h2>
-  <div class="copy"><input readonly value="{{.Base}}/xmltv.php?username={{.Username}}&amp;password=YOUR_PASSWORD" onclick="this.select()"></div>
-  <p class="muted">Replace YOUR_PASSWORD with your password. With an Xtream Codes login the guide is loaded automatically.</p>
-  {{with .ExpiresAt}}<p>Your account is valid until <strong>{{.}}</strong>.</p>{{end}}
+  <h2>{{t "Program guide (EPG)"}}</h2>
+  <div class="copy"><input readonly value="{{.Base}}/xmltv.php?username={{.Username}}&amp;password={{t "YOUR_PASSWORD"}}" onclick="this.select()"></div>
+  <p class="muted">{{t "Replace YOUR_PASSWORD with your password. With an Xtream Codes login the guide is loaded automatically."}}</p>
+  {{with .ExpiresAt}}<p>{{th "Your account is valid until <strong>%s</strong>." .}}</p>{{end}}
 </section>
 {{end}}

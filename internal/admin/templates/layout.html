@@ -1,45 +1,47 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{lang}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.Title}} · {{.PortalName}}</title>
+<title>{{t .Title}} · {{.PortalName}}</title>
 <link rel="stylesheet" href="{{base}}/static/style.css">
+<link rel="icon" href="{{base}}/static/brand/favicon.svg" type="image/svg+xml">
 </head>
 {{if and .Session (not .Session.Admin.MustChangePassword)}}
 <body class="app">
 <input type="checkbox" id="nav-open" class="nav-toggle" aria-hidden="true">
 <header class="mobilebar">
-  <label for="nav-open" class="icon-button" title="Menu">{{icon "menu"}}</label>
-  <a class="brand" href="{{base}}/"><span class="brand-mark">{{icon "tv"}}</span>{{.PortalName}}</a>
+  <label for="nav-open" class="icon-button" title="{{t "Menu"}}">{{icon "menu"}}</label>
+  <a class="brand" href="{{base}}/"><img class="logo-icon" src="{{base}}/static/brand/rhis-icon.svg" alt="">{{.PortalName}}</a>
 </header>
 <label for="nav-open" class="scrim" aria-hidden="true"></label>
 <aside class="sidebar">
-  <a class="brand" href="{{base}}/"><span class="brand-mark">{{icon "tv"}}</span><span>{{.PortalName}}<small>Admin panel</small></span></a>
+  <a class="brand" href="{{base}}/"><picture><source srcset="{{base}}/static/brand/rhis-logo-wit.svg" media="(prefers-color-scheme: dark)"><img class="brand-logo" src="{{base}}/static/brand/rhis-logo.svg" alt="RHIS"></picture><span>{{.PortalName}}<small>{{t "Admin panel"}}</small></span></a>
   <nav>
-    <a href="{{base}}/" {{if eq .Nav "dashboard"}}class="active"{{end}}>{{icon "dashboard"}}Dashboard</a>
-    <p class="nav-group">Channels</p>
-    <a href="{{base}}/channels" {{if eq .Nav "channels"}}class="active"{{end}}>{{icon "tv"}}Channels</a>
-    <a href="{{base}}/categories" {{if eq .Nav "categories"}}class="active"{{end}}>{{icon "tag"}}Categories</a>
-    <a href="{{base}}/epg" {{if eq .Nav "epg"}}class="active"{{end}}>{{icon "guide"}}TV guide</a>
-    <a href="{{base}}/health" {{if eq .Nav "health"}}class="active"{{end}}>{{icon "activity"}}Stream health</a>
-    <a href="{{base}}/media" {{if eq .Nav "media"}}class="active"{{end}}>{{icon "film"}}On Demand</a>
-    <p class="nav-group">Add channels</p>
-    <a href="{{base}}/import" {{if eq .Nav "import"}}class="active"{{end}}>{{icon "upload"}}Import playlist</a>
-    <a href="{{base}}/iptv-org" {{if eq .Nav "iptvorg"}}class="active"{{end}}>{{icon "globe"}}Browse iptv-org</a>
-    <p class="nav-group">Subscribers</p>
-    <a href="{{base}}/users" {{if eq .Nav "users"}}class="active"{{end}}>{{icon "users"}}Users</a>
-    <a href="{{base}}/packages" {{if eq .Nav "packages"}}class="active"{{end}}>{{icon "package"}}Packages</a>
-    <a href="{{base}}/invites" {{if eq .Nav "invites"}}class="active"{{end}}>{{icon "mail"}}Invitations</a>
-    <p class="nav-group">System</p>
-    <a href="{{base}}/settings" {{if eq .Nav "settings"}}class="active"{{end}}>{{icon "settings"}}Settings</a>
-    <a href="{{base}}/backups" {{if eq .Nav "backups"}}class="active"{{end}}>{{icon "archive"}}Backups</a>
-    <a href="{{base}}/info" {{if eq .Nav "info"}}class="active"{{end}}>{{icon "info"}}Info &amp; updates</a>
+    <a href="{{base}}/" {{if eq .Nav "dashboard"}}class="active"{{end}}>{{icon "dashboard"}}{{t "Dashboard"}}</a>
+    <p class="nav-group">{{t "Channels"}}</p>
+    <a href="{{base}}/channels" {{if eq .Nav "channels"}}class="active"{{end}}>{{icon "tv"}}{{t "Channels"}}</a>
+    <a href="{{base}}/categories" {{if eq .Nav "categories"}}class="active"{{end}}>{{icon "tag"}}{{t "Categories"}}</a>
+    <a href="{{base}}/epg" {{if eq .Nav "epg"}}class="active"{{end}}>{{icon "guide"}}{{t "TV guide"}}</a>
+    <a href="{{base}}/health" {{if eq .Nav "health"}}class="active"{{end}}>{{icon "activity"}}{{t "Stream health"}}</a>
+    <a href="{{base}}/media" {{if eq .Nav "media"}}class="active"{{end}}>{{icon "film"}}{{t "On Demand"}}</a>
+    <p class="nav-group">{{t "Add channels"}}</p>
+    <a href="{{base}}/import" {{if eq .Nav "import"}}class="active"{{end}}>{{icon "upload"}}{{t "Import playlist"}}</a>
+    <a href="{{base}}/iptv-org" {{if eq .Nav "iptvorg"}}class="active"{{end}}>{{icon "globe"}}{{t "Browse iptv-org"}}</a>
+    <p class="nav-group">{{t "Subscribers"}}</p>
+    <a href="{{base}}/users" {{if eq .Nav "users"}}class="active"{{end}}>{{icon "users"}}{{t "Users"}}</a>
+    <a href="{{base}}/packages" {{if eq .Nav "packages"}}class="active"{{end}}>{{icon "package"}}{{t "Packages"}}</a>
+    <a href="{{base}}/invites" {{if eq .Nav "invites"}}class="active"{{end}}>{{icon "mail"}}{{t "Invitations"}}</a>
+    <p class="nav-group">{{t "System"}}</p>
+    <a href="{{base}}/settings" {{if eq .Nav "settings"}}class="active"{{end}}>{{icon "settings"}}{{t "Settings"}}</a>
+    <a href="{{base}}/backups" {{if eq .Nav "backups"}}class="active"{{end}}>{{icon "archive"}}{{t "Backups"}}</a>
+    <a href="{{base}}/info" {{if eq .Nav "info"}}class="active"{{end}}>{{icon "info"}}{{t "Info & updates"}}</a>
   </nav>
   <div class="account">
-    <a href="{{base}}/password" title="Change password">{{icon "user"}}<span>{{.Session.Admin.Username}}</span></a>
-    <form method="post" action="{{base}}/logout"><input type="hidden" name="csrf" value="{{.Session.CSRF}}"><button class="icon-button" title="Log out">{{icon "logout"}}</button></form>
+    <a href="{{base}}/password" title="{{t "Change password"}}">{{icon "user"}}<span>{{.Session.Admin.Username}}</span></a>
+    <form method="post" action="{{base}}/logout"><input type="hidden" name="csrf" value="{{.Session.CSRF}}"><button class="icon-button" title="{{t "Log out"}}">{{icon "logout"}}</button></form>
   </div>
+  {{template "language" .}}
   <footer>IPTV Portal {{version}}</footer>
 </aside>
 <main>
@@ -54,7 +56,14 @@
   {{if .Error}}<p class="flash err">{{.Error}}</p>{{end}}
   {{template "content" .}}
 </main>
-<footer>IPTV Portal {{version}}</footer>
+<footer>{{template "language" .}}IPTV Portal {{version}}</footer>
 {{end}}
 </body>
 </html>
+{{define "language"}}<form method="get" action="{{base}}/language" class="language">
+  <input type="hidden" name="next" value="{{.Path}}">
+  <label>{{icon "globe"}}<span class="sr-only">{{t "Language"}}</span>
+    <select name="lang" onchange="this.form.submit()" aria-label="{{t "Language"}}">{{range languages}}<option value="{{.Code}}"{{if eq .Code lang}} selected{{end}}>{{.Name}}</option>{{end}}</select>
+  </label>
+  <noscript><button class="secondary sm">{{t "Change"}}</button></noscript>
+</form>{{end}}

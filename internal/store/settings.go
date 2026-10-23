@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/rhisijmuiden/iptv-portal/internal/entra"
+	"github.com/rhisijmuiden/iptv-portal/internal/i18n"
 	"github.com/rhisijmuiden/iptv-portal/internal/mail"
 )
 
@@ -36,6 +37,10 @@ type Settings struct {
 	// UpdateChannel is "stable" (normal releases only) or "test" (also
 	// pre-releases such as v1.2.0-rc.1).
 	UpdateChannel string
+	// Language is the default language of the interface ("en" or "nl"):
+	// used for the invitation pages, emails to users and admins who did
+	// not pick a language themselves.
+	Language string
 	// Mail is the SMTP server used to email users their login details and
 	// invitations. An empty host means mail is off.
 	Mail mail.Config
@@ -74,6 +79,7 @@ var DefaultSettings = Settings{
 	PortalPort:      80,
 	AutoUpdateCheck: true,
 	UpdateChannel:   UpdateChannelStable,
+	Language:        i18n.Default,
 	Mail:            mail.Config{Port: 587, Security: mail.StartTLS},
 }
 
@@ -85,6 +91,7 @@ const (
 	keyEPGURLs    = "epg_urls"
 	keyAutoUpdate = "auto_update_check"
 	keyChannel    = "update_channel"
+	keyLanguage   = "language"
 
 	keySMTPHost     = "smtp_host"
 	keySMTPPort     = "smtp_port"
@@ -139,6 +146,8 @@ func (s *Store) Settings(ctx context.Context) (Settings, error) {
 			out.AutoUpdateCheck = v == "1"
 		case keyChannel:
 			out.UpdateChannel = v
+		case keyLanguage:
+			out.Language = v
 		case keySMTPHost:
 			out.Mail.Host = v
 		case keySMTPPort:
@@ -204,6 +213,12 @@ func (st *Settings) Validate() error {
 		st.UpdateChannel = UpdateChannelStable
 	default:
 		return fmt.Errorf("release channel %q is invalid (stable or test)", st.UpdateChannel)
+	}
+	if st.Language == "" {
+		st.Language = i18n.Default
+	}
+	if i18n.Match(st.Language) != st.Language {
+		return fmt.Errorf("language %q is not supported", st.Language)
 	}
 	if st.AdminPort == st.PortalPort {
 		return errors.New("admin panel and portal must use different ports")
@@ -300,6 +315,7 @@ func (s *Store) SaveSettings(ctx context.Context, st Settings) error {
 		keyEPGURLs:    strings.Join(st.EPGURLs, "\n"),
 		keyAutoUpdate: boolString(st.AutoUpdateCheck),
 		keyChannel:    st.UpdateChannel,
+		keyLanguage:   st.Language,
 
 		keySMTPHost:     st.Mail.Host,
 		keySMTPPort:     strconv.Itoa(st.Mail.Port),

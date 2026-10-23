@@ -111,7 +111,7 @@ func (h *Handler) renderMediaForm(w http.ResponseWriter, r *http.Request, sess s
 	d.Server.Token = "" // never sent back to the browser
 	title := "Add media server"
 	if s.ID != 0 {
-		title = "Edit " + s.Name
+		title = tr(r, "Edit %s", s.Name)
 	}
 	h.render(w, r, "mediaserver", page{Title: title, Nav: "media", Session: &sess, Error: errMsg, Data: d})
 }
@@ -132,7 +132,7 @@ func (h *Handler) mediaSave(w http.ResponseWriter, r *http.Request, sess store.S
 		return
 	}
 
-	msg := fmt.Sprintf("Media server %q saved. The libraries are being read; reload this page in a moment.", s.Name)
+	msg := tr(r, "Media server %q saved. The libraries are being read; reload this page in a moment.", s.Name)
 	if s.ID == 0 {
 		// Check the connection first and offer every library to start with.
 		if err := s.Validate(); err != nil {
@@ -141,7 +141,7 @@ func (h *Handler) mediaSave(w http.ResponseWriter, r *http.Request, sess store.S
 		}
 		libs, err := libraries(r.Context(), s)
 		if err != nil {
-			h.renderMediaForm(w, r, sess, s, "Could not read the libraries: "+err.Error())
+			h.renderMediaForm(w, r, sess, s, tr(r, "Could not read the libraries: %s", err.Error()))
 			return
 		}
 		for _, l := range libs {
@@ -176,7 +176,7 @@ func (h *Handler) mediaSave(w http.ResponseWriter, r *http.Request, sess store.S
 	h.refreshMediaNow()
 	if s.ID == 0 {
 		redirectFlash(w, r, fmt.Sprintf("/media/%d", id),
-			fmt.Sprintf("Media server %q added with all its libraries. Untick the libraries you do not want to offer.", s.Name))
+			tr(r, "Media server %q added with all its libraries. Untick the libraries you do not want to offer.", s.Name))
 		return
 	}
 	redirectFlash(w, r, "/media", msg)

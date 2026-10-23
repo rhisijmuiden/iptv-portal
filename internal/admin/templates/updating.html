@@ -1,9 +1,9 @@
 {{define "content"}}
 <section class="card narrow">
-  <h1>Updating</h1>
-  <p>Version {{.Data.To}} is installed. The portal is restarting; this page reloads when it is back.</p>
-  <p class="muted" id="state">Waiting for the portal…</p>
-  <p><a href="{{base}}/info">Go to Info</a></p>
+  <h1>{{t "Updating"}}</h1>
+  <p>{{tf "Version %s is installed. The portal is restarting; this page reloads when it is back." .Data.To}}</p>
+  <p class="muted" id="state">{{t "Waiting for the portal…"}}</p>
+  <p><a href="{{base}}/info">{{t "Go to Info"}}</a></p>
 </section>
 <script>
 (function () {
@@ -14,11 +14,11 @@
       return r.text().then(function (body) {
         // The footer shows the running version once the new one is up.
         if (r.ok && body.indexOf('IPTV Portal ' + {{.Data.To}}) >= 0) {
-          location.href = {{base}} + '/info?ok=' + encodeURIComponent('Updated to ' + {{.Data.To}} + '.');
+          location.href = {{base}} + '/info?ok=' + encodeURIComponent({{tf "Updated to %s." .Data.To}});
         } else { setTimeout(poll, 2000); }
       });
     }).catch(function () {
-      document.getElementById('state').textContent = 'Restarting… (' + tries + ')';
+      document.getElementById('state').textContent = {{t "Restarting…"}} + ' (' + tries + ')';
       setTimeout(poll, 2000);
     });
   }

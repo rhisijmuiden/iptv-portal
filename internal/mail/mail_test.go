@@ -93,7 +93,7 @@ func TestSend(t *testing.T) {
 		t.Fatal(err)
 	}
 	exp := time.Date(2027, 3, 1, 12, 0, 0, 0, time.Local)
-	msg := LoginMessage("jan@example.org", Login{PortalName: "My TV", PortalURL: "https://tv.example.com",
+	msg := LoginMessage("en", "jan@example.org", Login{PortalName: "My TV", PortalURL: "https://tv.example.com",
 		Username: "jan", Password: "pa$$w0rd", ExpiresAt: &exp})
 	if err := Send(context.Background(), c, msg); err != nil {
 		t.Fatal(err)
@@ -127,7 +127,7 @@ func TestSendRequiresStartTLS(t *testing.T) {
 	host, port, _ := net.SplitHostPort(f.addr)
 	c := Config{Host: host, Security: StartTLS, From: "tv@example.com"}
 	c.Port = atoi(port)
-	err := Send(context.Background(), c, TestMessage("a@example.com", "TV"))
+	err := Send(context.Background(), c, TestMessage("en", "a@example.com", "TV"))
 	if err == nil || !strings.Contains(err.Error(), "STARTTLS") {
 		t.Fatalf("err = %v, want STARTTLS error", err)
 	}
@@ -173,5 +173,23 @@ func TestRejectsHeaderInjection(t *testing.T) {
 	}
 	if err := Send(context.Background(), c, Message{To: "a@example.com", Subject: "x\r\nBcc: x@example.com"}); err == nil {
 		t.Fatal("accepted a subject with a line break")
+	}
+}
+
+func TestMessagesInDutch(t *testing.T) {
+	exp := time.Date(2027, 5, 1, 12, 0, 0, 0, time.Local)
+	msg := LoginMessage("nl", "jan@example.org", Login{PortalName: "Mijn TV", PortalURL: "https://tv.example.com",
+		Username: "jan", Password: "geheim", ExpiresAt: &exp})
+	for _, want := range []string{"Je account voor Mijn TV is klaar", "Gebruikersnaam:        jan", "geldig tot 1 mei 2027"} {
+		if !strings.Contains(msg.Body, want) {
+			t.Errorf("Dutch login email is missing %q:\n%s", want, msg.Body)
+		}
+	}
+	if msg.Subject != "Je inloggegevens voor Mijn TV" {
+		t.Errorf("subject %q", msg.Subject)
+	}
+	inv := InviteMessage("nl", "a@example.org", "Mijn TV", "https://tv.example.com/invite/x")
+	if !strings.Contains(inv.Body, "Je bent uitgenodigd voor Mijn TV") || !strings.Contains(inv.Body, "https://tv.example.com/invite/x") {
+		t.Errorf("Dutch invitation:\n%s", inv.Body)
 	}
 }

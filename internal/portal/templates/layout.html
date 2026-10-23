@@ -1,16 +1,25 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{lang}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>{{.Title}} · {{.PortalName}}</title>
+<title>{{t .Title}} · {{.PortalName}}</title>
 <link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="/static/brand/favicon.svg" type="image/svg+xml">
 </head>
 <body>
+<header class="portal-head"><picture><source srcset="/static/brand/rhis-logo-wit.svg" media="(prefers-color-scheme: dark)"><img class="brand-logo" src="/static/brand/rhis-logo.svg" alt="RHIS"></picture></header>
 <main>
-  {{if .Error}}<p class="flash err">{{.Error}}</p>{{end}}
+  {{if .Error}}<p class="flash err">{{t .Error}}</p>{{end}}
   {{template "content" .}}
 </main>
+<footer><form method="get" action="/language" class="language">
+  <input type="hidden" name="next" value="{{.Path}}">
+  <label><span class="sr-only">{{t "Language"}}</span>
+    <select name="lang" onchange="this.form.submit()" aria-label="{{t "Language"}}">{{range languages}}<option value="{{.Code}}"{{if eq .Code lang}} selected{{end}}>{{.Name}}</option>{{end}}</select>
+  </label>
+  <noscript><button class="secondary sm">{{t "Change"}}</button></noscript>
+</form></footer>
 </body>
 </html>

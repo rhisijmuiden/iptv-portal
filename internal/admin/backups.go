@@ -55,7 +55,7 @@ func (h *Handler) renderBackups(w http.ResponseWriter, r *http.Request, sess sto
 	if errMsg == "" && d.Status.Running == "" {
 		errMsg = d.Status.Error
 		if errMsg != "" {
-			errMsg = "The last backup failed: " + errMsg
+			errMsg = tr(r, "The last backup failed: %s", errMsg)
 		}
 	}
 	h.render(w, r, "backups", page{Title: "Backups", Nav: "backups", Session: &sess, Error: errMsg, Data: d})
@@ -119,7 +119,7 @@ func (h *Handler) backupsLocation(w http.ResponseWriter, r *http.Request, sess s
 	tctx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
 	hostKey, err := backup.Test(tctx, c.Location)
-	msg := "Connection works: the portal can write to " + c.Location.String() + "."
+	msg := tr(r, "Connection works: the portal can write to %s.", c.Location.String())
 	if hostKey != "" && c.Location.HostKey == "" {
 		// Trust on first use: store the key the server presented.
 		c.Location.HostKey = hostKey
@@ -127,10 +127,10 @@ func (h *Handler) backupsLocation(w http.ResponseWriter, r *http.Request, sess s
 			h.serverError(w, serr)
 			return
 		}
-		msg += " The server's host key " + hostKey + " is now trusted."
+		msg += " " + tr(r, "The server's host key %s is now trusted.", hostKey)
 	}
 	if err != nil {
-		h.renderBackups(w, r, sess, c, "Saved, but the connection test failed: "+err.Error())
+		h.renderBackups(w, r, sess, c, tr(r, "Saved, but the connection test failed: %s", err.Error()))
 		return
 	}
 	redirectFlash(w, r, "/backups", msg)
@@ -184,7 +184,7 @@ func (h *Handler) backupsSchedule(w http.ResponseWriter, r *http.Request, sess s
 	}
 	msg := "Schedule saved. Automatic backups are off."
 	if c.Schedule != backup.Off {
-		msg = "Schedule saved. Backups run " + c.ScheduleName() + "."
+		msg = tr(r, "Schedule saved. Backups run %s.", scheduleName(r, c))
 	}
 	redirectFlash(w, r, "/backups", msg)
 }
@@ -227,7 +227,7 @@ func (h *Handler) renderRemote(w http.ResponseWriter, r *http.Request, sess stor
 	var list []remoteBackup
 	files, err := h.backups.Remote(ctx)
 	if err != nil && errMsg == "" {
-		errMsg = "Could not read the remote location: " + err.Error()
+		errMsg = tr(r, "Could not read the remote location: %s", err.Error())
 	}
 	// files is newest first; a restore applies the last full backup at or
 	// before a file and every incremental backup up to it.
@@ -253,9 +253,9 @@ func (h *Handler) backupsRestore(w http.ResponseWriter, r *http.Request, sess st
 	defer cancel()
 	m, err := h.backups.Restore(ctx, name)
 	if err != nil {
-		msg := "The restore failed: " + err.Error()
+		msg := tr(r, "The restore failed: %s", err.Error())
 		if errors.Is(err, backup.ErrPassphrase) {
-			msg += ". Enter the passphrase the backup was made with under Schedule and encryption first."
+			msg += ". " + tr(r, "Enter the passphrase the backup was made with under Schedule and encryption first.")
 		}
 		h.renderRemote(w, r, sess, msg)
 		return
@@ -285,4 +285,16 @@ func formatSize(n int64) string {
 		return fmt.Sprintf("%.1f MB", float64(n)/1000/1000)
 	}
 	return fmt.Sprintf("%.1f GB", float64(n)/1000/1000/1000)
+}
+
+// scheduleName describes when backups run, like Config.ScheduleName but in
+// the language of the request.
+func scheduleName(r *http.Request, c backup.Config) string {
+	switch c.Schedule {
+	case backup.Daily:
+		return tr(r, "daily at %02d:00", c.Hour)
+	case backup.Weekly:
+		return tr(r, "every Sunday at %02d:00", c.Hour)
+	}
+	return tr(r, c.ScheduleName())
 }

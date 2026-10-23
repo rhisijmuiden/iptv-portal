@@ -1,50 +1,50 @@
 {{define "content"}}
 <div class="titlebar">
   <div>
-    <h1>Dashboard</h1>
-    <p class="subtitle">An overview of your channels, users and the portal itself.</p>
+    <h1>{{t "Dashboard"}}</h1>
+    <p class="subtitle">{{t "An overview of your channels, users and the portal itself."}}</p>
   </div>
 </div>
-{{with .Data.Update}}<p class="flash ok">Version {{.Tag}} is available. <a href="{{base}}/info">See what's new and update</a></p>{{end}}
+{{with .Data.Update}}<p class="flash ok">{{tf "Version %s is available." .Tag}} <a href="{{base}}/info">{{t "See what's new and update"}}</a></p>{{end}}
 <div class="stats">
-  <a class="card stat" href="{{base}}/channels"><span class="stat-icon">{{icon "tv"}}</span><div><strong>{{.Data.Channels}}</strong><span>channels</span></div></a>
-  <a class="card stat" href="{{base}}/channels"><span class="stat-icon">{{icon "check"}}</span><div><strong>{{.Data.Enabled}}</strong><span>enabled</span></div></a>
-  <a class="card stat" href="{{base}}/categories"><span class="stat-icon">{{icon "tag"}}</span><div><strong>{{.Data.Categories}}</strong><span>categories</span></div></a>
-  <a class="card stat" href="{{base}}/users"><span class="stat-icon">{{icon "users"}}</span><div><strong>{{.Data.Active}}</strong><span>active users{{if ne .Data.Active .Data.Users}} of {{.Data.Users}}{{end}}</span></div></a>
-  <a class="card stat" href="#viewers"><span class="stat-icon">{{icon "activity"}}</span><div><strong>{{.Data.Activity.OnlineUsers}}</strong><span>online now{{if .Data.Activity.Watching}}, {{.Data.Activity.Watching}} watching{{end}}</span></div></a>
+  <a class="card stat" href="{{base}}/channels"><span class="stat-icon">{{icon "tv"}}</span><div><strong>{{.Data.Channels}}</strong><span>{{t "channels"}}</span></div></a>
+  <a class="card stat" href="{{base}}/channels"><span class="stat-icon">{{icon "check"}}</span><div><strong>{{.Data.Enabled}}</strong><span>{{t "enabled"}}</span></div></a>
+  <a class="card stat" href="{{base}}/categories"><span class="stat-icon">{{icon "tag"}}</span><div><strong>{{.Data.Categories}}</strong><span>{{t "categories"}}</span></div></a>
+  <a class="card stat" href="{{base}}/users"><span class="stat-icon">{{icon "users"}}</span><div><strong>{{.Data.Active}}</strong><span>{{if ne .Data.Active .Data.Users}}{{tf "active users of %d" .Data.Users}}{{else}}{{t "active users"}}{{end}}</span></div></a>
+  <a class="card stat" href="#viewers"><span class="stat-icon">{{icon "activity"}}</span><div><strong>{{.Data.Activity.OnlineUsers}}</strong><span>{{if .Data.Activity.Watching}}{{tf "online now, %d watching" .Data.Activity.Watching}}{{else}}{{t "online now"}}{{end}}</span></div></a>
 </div>
 <div class="grid-2">
   <section class="card">
-    <h2>Portal address</h2>
-    <p class="muted">Users enter this address on their TV box or in their IPTV app.</p>
+    <h2>{{t "Portal address"}}</h2>
+    <p class="muted">{{t "Users enter this address on their TV box or in their IPTV app."}}</p>
     <div class="copy">
       <input id="portal-url" readonly value="{{.Data.PortalURL}}" onclick="this.select()">
-      <button type="button" class="secondary" onclick="navigator.clipboard.writeText(document.getElementById('portal-url').value).then(()=>this.lastChild.textContent='Copied')">{{icon "copy"}}<span>Copy</span></button>
+      <button type="button" class="secondary" onclick="navigator.clipboard.writeText(document.getElementById('portal-url').value).then(()=>this.lastChild.textContent='{{t "Copied"}}')">{{icon "copy"}}<span>{{t "Copy"}}</span></button>
     </div>
-    <p class="muted"><small>Using a reverse proxy or your own domain? Set the public URL under <a href="{{base}}/settings">Settings</a>.</small></p>
+    <p class="muted"><small>{{th `Using a reverse proxy or your own domain? Set the public URL under <a href="%s/settings">Settings</a>.` base}}</small></p>
   </section>
   <section class="card">
-    <h2>Quick actions</h2>
+    <h2>{{t "Quick actions"}}</h2>
     <div class="actions-grid">
-      <a class="action" href="{{base}}/channels/new">{{icon "plus"}}Add channel</a>
-      <a class="action" href="{{base}}/import">{{icon "upload"}}Import playlist</a>
-      <a class="action" href="{{base}}/iptv-org">{{icon "globe"}}Browse iptv-org</a>
-      <a class="action" href="{{base}}/invites">{{icon "mail"}}Invite someone</a>
+      <a class="action" href="{{base}}/channels/new">{{icon "plus"}}{{t "Add channel"}}</a>
+      <a class="action" href="{{base}}/import">{{icon "upload"}}{{t "Import playlist"}}</a>
+      <a class="action" href="{{base}}/iptv-org">{{icon "globe"}}{{t "Browse iptv-org"}}</a>
+      <a class="action" href="{{base}}/invites">{{icon "mail"}}{{t "Invite someone"}}</a>
     </div>
   </section>
 </div>
-<h2 class="section-title" id="viewers">Viewers <a class="section-link" href="{{base}}/#viewers">{{icon "refresh"}}Refresh</a></h2>
+<h2 class="section-title" id="viewers">{{t "Viewers"}} <a class="section-link" href="{{base}}/#viewers">{{icon "refresh"}}{{t "Refresh"}}</a></h2>
 {{$now := .Data.Activity.Now}}
 {{if .Data.Activity.Connections}}
 <section class="card flush">
   <table class="viewers">
-    <thead><tr><th>User</th><th>Status</th><th>Channel</th><th>Last request</th><th>Device</th></tr></thead>
+    <thead><tr><th>{{t "User"}}</th><th>{{t "Status"}}</th><th>{{t "Channel"}}</th><th>{{t "Last request"}}</th><th>{{t "Device"}}</th></tr></thead>
     <tbody>
     {{range .Data.Activity.Connections}}
       <tr>
         <td><a class="name" href="{{base}}/users/{{.UserID}}">{{.Username}}</a></td>
-        <td>{{if .Watching $now}}<span class="badge on">watching</span>{{else if .Online $now}}<span class="badge on">online</span>{{else}}<span class="badge idle">idle</span>{{end}}</td>
-        <td>{{if .Channel}}{{.Channel}} <span class="muted">opened {{ago $now .ChannelAt}}</span>{{else}}<span class="muted">none</span>{{end}}</td>
+        <td>{{if .Watching $now}}<span class="badge on">{{t "watching"}}</span>{{else if .Online $now}}<span class="badge on">{{t "online"}}</span>{{else}}<span class="badge idle">{{t "idle"}}</span>{{end}}</td>
+        <td>{{if .Channel}}{{.Channel}} <span class="muted">{{tf "opened %s" (ago $now .ChannelAt)}}</span>{{else}}<span class="muted">{{t "none"}}</span>{{end}}</td>
         <td>{{ago $now .LastSeen}}</td>
         <td><span class="device" title="{{.UserAgent}}">{{.IP}}{{with .UserAgent}} · {{.}}{{end}}</span></td>
       </tr>
@@ -53,17 +53,17 @@
   </table>
 </section>
 {{else}}
-<section class="card empty">No player has connected in the last 24 hours.</section>
+<section class="card empty">{{t "No player has connected in the last 24 hours."}}</section>
 {{end}}
-<p class="muted"><small>Streams go straight from the broadcaster to the player, so the portal only sees the player's own requests. "Online" means a request in the last {{.Data.Window}} minutes, "watching" means a channel was opened in that time. The channel shown is the last one opened; the portal cannot tell when someone stops watching. This list starts empty after a restart.</small></p>
-<h2 class="section-title">Services</h2>
+<p class="muted"><small>{{tf `Streams go straight from the broadcaster to the player, so the portal only sees the player's own requests. "Online" means a request in the last %d minutes, "watching" means a channel was opened in that time. The channel shown is the last one opened; the portal cannot tell when someone stops watching. This list starts empty after a restart.` .Data.Window}}</small></p>
+<h2 class="section-title">{{t "Services"}}</h2>
 <section class="card flush">
   <table>
-    <thead><tr><th>Service</th><th>Port</th><th>Status</th></tr></thead>
+    <thead><tr><th>{{t "Service"}}</th><th>{{t "Port"}}</th><th>{{t "Status"}}</th></tr></thead>
     <tbody>
     {{range .Data.Listeners}}
-      <tr><td>{{.Name}}</td><td>{{.Port}}</td>
-        <td>{{if .Running}}<span class="badge on">running</span>{{else}}<span class="badge off">not running</span> <span class="muted">{{.Error}}</span>{{end}}</td></tr>
+      <tr><td>{{t .Name}}</td><td>{{.Port}}</td>
+        <td>{{if .Running}}<span class="badge on">{{t "running"}}</span>{{else}}<span class="badge off">{{t "not running"}}</span> <span class="muted">{{.Error}}</span>{{end}}</td></tr>
     {{end}}
     </tbody>
   </table>

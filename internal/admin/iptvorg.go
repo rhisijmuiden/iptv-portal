@@ -2,7 +2,6 @@ package admin
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -59,7 +58,7 @@ func (h *Handler) iptvorgPage(w http.ResponseWriter, r *http.Request, sess store
 	defer cancel()
 	cat, err := h.iptvorg.Catalog(ctx, false)
 	if err != nil {
-		p.Error = "Could not load the iptv-org channel list: " + err.Error()
+		p.Error = tr(r, "Could not load the iptv-org channel list: %s", err.Error())
 		h.render(w, r, "iptvorg", p)
 		return
 	}
@@ -104,7 +103,7 @@ func (h *Handler) iptvorgReload(w http.ResponseWriter, r *http.Request, sess sto
 	back := backTo(r, "/iptv-org")
 	if _, err := h.iptvorg.Catalog(ctx, true); err != nil {
 		h.render(w, r, "iptvorg", page{Title: "Browse iptv-org", Nav: "iptvorg", Session: &sess,
-			Error: "Could not load the iptv-org channel list: " + err.Error()})
+			Error: tr(r, "Could not load the iptv-org channel list: %s", err.Error())})
 		return
 	}
 	http.Redirect(w, r, withFlash(back, "Channel list reloaded from iptv-org."), http.StatusSeeOther)
@@ -116,7 +115,7 @@ func (h *Handler) iptvorgAdd(w http.ResponseWriter, r *http.Request, sess store.
 	defer cancel()
 	cat, err := h.iptvorg.Catalog(ctx, false)
 	if err != nil {
-		http.Redirect(w, r, withFlash(back, "Could not load the iptv-org channel list: "+err.Error()), http.StatusSeeOther)
+		http.Redirect(w, r, withFlash(back, tr(r, "Could not load the iptv-org channel list: %s", err.Error())), http.StatusSeeOther)
 		return
 	}
 	if err := r.ParseForm(); err != nil {
@@ -212,12 +211,12 @@ func (h *Handler) iptvorgAdd(w http.ResponseWriter, r *http.Request, sess store.
 		return
 	}
 
-	msg := fmt.Sprintf("%d channels added, %d updated.", res.Added, res.Updated)
+	msg := tr(r, "%d channels added, %d updated.", res.Added, res.Updated)
 	if len(res.Skipped) > 0 {
-		msg += fmt.Sprintf(" %d skipped: %s", len(res.Skipped), strings.Join(res.Skipped, "; "))
+		msg += " " + tr(r, "%d skipped: %s", len(res.Skipped), strings.Join(res.Skipped, "; "))
 	}
 	if len(pkgIDs) > 0 && len(names) == 0 {
-		msg += " Channels without a category can't be added to a package; choose a category."
+		msg += " " + tr(r, "Channels without a category can't be added to a package; choose a category.")
 	}
 	http.Redirect(w, r, withFlash(back, msg), http.StatusSeeOther)
 }

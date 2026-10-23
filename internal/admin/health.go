@@ -2,7 +2,6 @@ package admin
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -120,8 +119,8 @@ func (h *Handler) channelCheck(w http.ResponseWriter, r *http.Request, sess stor
 		return
 	}
 	if !hl.OK {
-		redirectError(w, r, backTo(r, "/channels"), fmt.Sprintf("%s does not play: %s", c.Name, hl.Message))
+		redirectError(w, r, backTo(r, "/channels"), tr(r, "%s does not play: %s", c.Name, tr(r, hl.Message)))
 		return
 	}
-	redirectFlash(w, r, backTo(r, "/channels"), fmt.Sprintf("%s works: %s.", c.Name, hl.Message))
+	redirectFlash(w, r, backTo(r, "/channels"), tr(r, "%s works: %s.", c.Name, tr(r, hl.Message)))
 }
