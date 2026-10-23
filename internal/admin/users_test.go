@@ -15,7 +15,7 @@ func TestConnectionLimitForms(t *testing.T) {
 	}
 	render := func(name string, data any) string {
 		var b strings.Builder
-		err := h.pages[name].ExecuteTemplate(io.Writer(&b), "layout.html",
+		err := h.pages["en"][name].ExecuteTemplate(io.Writer(&b), "layout.html",
 			page{Title: name, Session: &store.Session{}, Data: data})
 		if err != nil {
 			t.Fatal(err)

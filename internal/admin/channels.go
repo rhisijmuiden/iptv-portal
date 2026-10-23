@@ -12,6 +12,7 @@ import (
 
 	"github.com/rhisijmuiden/iptv-portal/internal/m3u"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
+	"github.com/rhisijmuiden/iptv-portal/internal/web"
 )
 
 func pathID(r *http.Request) (int64, bool) {
@@ -143,7 +144,7 @@ func (h *Handler) channelSave(w http.ResponseWriter, r *http.Request, sess store
 		h.renderChannelForm(w, r, sess, c, err.Error())
 		return
 	}
-	redirectFlash(w, r, "/channels", fmt.Sprintf("Channel %q saved.", strings.TrimSpace(c.Name)))
+	redirectFlash(w, r, "/channels", tr(r, "Channel %q saved.", strings.TrimSpace(c.Name)))
 }
 
 func (h *Handler) channelToggle(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -183,8 +184,7 @@ func (h *Handler) channelDelete(w http.ResponseWriter, r *http.Request, sess sto
 
 // backTo returns the "back" form value when it is a local path.
 func backTo(r *http.Request, fallback string) string {
-	b := r.FormValue("back")
-	if strings.HasPrefix(b, "/") && !strings.HasPrefix(b, "//") && !strings.Contains(b, `\`) {
+	if b := r.FormValue("back"); web.IsLocalPath(b) {
 		return b
 	}
 	return fallback
@@ -254,7 +254,7 @@ func (h *Handler) importRun(w http.ResponseWriter, r *http.Request, sess store.S
 	pl, err := m3u.Parse(io.LimitReader(src, maxPlaylistSize))
 	entries := pl.Entries
 	if err != nil {
-		p.Error = "Could not read the playlist: " + err.Error()
+		p.Error = tr(r, "Could not read the playlist: %s", err.Error())
 		h.render(w, r, "import", p)
 		return
 	}

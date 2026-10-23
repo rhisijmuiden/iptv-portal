@@ -22,6 +22,7 @@ It can also offer the movies and series of your own **Jellyfin** or **Plex** ser
 - **Microsoft Entra sign-in** for the admin panel (optional), limited to the groups or app roles you choose, with local accounts as a fallback.
 - **Backups** to FTP, FTPS or SCP: full and incremental, scheduled or by hand, optionally encrypted, and restored from the admin panel.
 - **Updates from the admin panel** with release notes, stable and test release channels, an optional daily check and automatic rollback.
+- **English and Dutch.** English is the default; every admin picks a language at the bottom of the menu, and subscribers can switch on the invitation pages. See [Languages](#languages).
 - **Simple to host**: one Go binary with SQLite, an installer for any systemd Linux and a script for Proxmox VE LXC.
 
 See [The admin panel](#the-admin-panel) below for a page-by-page tour.
@@ -141,7 +142,7 @@ The link opens on the portal, not the admin panel. After signing up, the new use
 
 ### Settings
 
-Portal name, public URL (for a reverse proxy or your own domain), and the ports of the admin panel and the portal. A port change takes effect right away. See [Components](#components). The same page holds the [mail server](#sending-login-details-by-email) and [Microsoft Entra sign-in](#signing-in-with-microsoft-entra).
+Portal name, public URL (for a reverse proxy or your own domain), the default [language](#languages), and the ports of the admin panel and the portal. A port change takes effect right away. See [Components](#components). The same page holds the [mail server](#sending-login-details-by-email) and [Microsoft Entra sign-in](#signing-in-with-microsoft-entra).
 
 <details>
 <summary>Screenshot</summary>
@@ -274,6 +275,16 @@ Admins can sign in to the admin panel with their Microsoft work account (Entra I
 Behind a reverse proxy, fill in **Admin panel URL** with the address you open the panel on (for example `https://admin.tv.example.com`), so the redirect URI does not depend on how the proxy forwards the host name. The redirect URI in Entra must match it exactly.
 
 The first sign-in creates an admin account named after the Microsoft sign-in name (for example `jane@example.com`) with a random password, so that account can only be used through Microsoft. If a local admin account with that name already exists, it is used and keeps its password. Removing someone's role or group blocks their next sign-in; a session that is already open stays valid until they log out or it expires after 7 days without use. The client secret is stored in the portal database; Entra secrets expire, so renew it in time.
+
+## Languages
+
+The interface is available in English (the default) and Dutch.
+
+- **Admins** pick their language with the switch at the bottom of the menu (or below the login form). The choice is kept in a cookie per browser.
+- **Default language** under *Settings → General* is used for the login page, the invitation and welcome pages, the emails to users, and admins who did not pick a language.
+- **Subscribers** can switch language at the bottom of the invitation page. The login email they get after signing up is in the language they signed up in.
+
+Texts are written in English in the templates and Go code and translated through `internal/i18n/nl.json`, keyed by the English text. `go test ./internal/i18n` fails when a text in the interface has no Dutch translation, so new texts cannot slip through untranslated.
 
 ## Setting up a TV box
 

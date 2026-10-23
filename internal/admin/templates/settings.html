@@ -1,67 +1,71 @@
 {{define "content"}}
 <div class="titlebar">
   <div>
-    <h1>Settings</h1>
-    <p class="subtitle">How the portal presents itself, which ports it listens on, how it sends email and how admins sign in.</p>
+    <h1>{{t "Settings"}}</h1>
+    <p class="subtitle">{{t "How the portal presents itself, which ports it listens on, how it sends email and how admins sign in."}}</p>
   </div>
 </div>
 <form method="post" action="{{base}}/settings" class="stack">
   <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
   <section class="card stack-card">
-    <h2>General</h2>
-    <label>Portal name <input name="portal_name" value="{{.Data.PortalName}}" required></label>
-    <label>Public URL
+    <h2>{{t "General"}}</h2>
+    <label>{{t "Portal name"}} <input name="portal_name" value="{{.Data.PortalName}}" required></label>
+    <label>{{t "Public URL"}}
       <input type="url" name="public_url" value="{{.Data.PublicURL}}" placeholder="https://tv.example.com">
-      <small>The address users reach the portal on, without a trailing <code>/</code>. Behind a reverse proxy, enter the proxy address here (for example with https). Leave empty to use the server address and the portal port.</small>
+      <small>{{th `The address users reach the portal on, without a trailing <code>/</code>. Behind a reverse proxy, enter the proxy address here (for example with https). Leave empty to use the server address and the portal port.`}}</small>
+    </label>
+    <label>{{t "Default language"}}
+      <select name="language">{{range languages}}<option value="{{.Code}}"{{if eq .Code $.Data.Language}} selected{{end}}>{{.Name}}</option>{{end}}</select>
+      <small>{{t "Used for the invitation pages, the emails to users and the login page. Every admin can pick their own language at the bottom of the menu."}}</small>
     </label>
   </section>
   <section class="card stack-card">
-    <h2>Network</h2>
+    <h2>{{t "Network"}}</h2>
     <div class="row">
-      <label>Admin panel port <input type="number" name="admin_port" min="1" max="65535" value="{{.Data.AdminPort}}" required></label>
-      <label>Portal port (TV boxes) <input type="number" name="portal_port" min="1" max="65535" value="{{.Data.PortalPort}}" required></label>
+      <label>{{t "Admin panel port"}} <input type="number" name="admin_port" min="1" max="65535" value="{{.Data.AdminPort}}" required></label>
+      <label>{{t "Portal port (TV boxes)"}} <input type="number" name="portal_port" min="1" max="65535" value="{{.Data.PortalPort}}" required></label>
     </div>
-    <p class="muted"><small>After changing a port, that component restarts on the new port right away. Update your reverse proxy or firewall afterwards.</small></p>
+    <p class="muted"><small>{{t "After changing a port, that component restarts on the new port right away. Update your reverse proxy or firewall afterwards."}}</small></p>
   </section>
-  <div class="form-actions"><button>Save settings</button></div>
+  <div class="form-actions"><button>{{t "Save settings"}}</button></div>
 </form>
 {{with .Data.Mail}}
 <form method="post" action="{{base}}/settings/mail" class="stack spaced" id="mail">
   <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
   <section class="card stack-card">
-    <h2>Mail server</h2>
-    <p class="muted">Used to email users their login details and to send invitations. Leave the server empty to switch sending email off.</p>
+    <h2>{{t "Mail server"}}</h2>
+    <p class="muted">{{t "Used to email users their login details and to send invitations. Leave the server empty to switch sending email off."}}</p>
     <div class="row">
-      <label>SMTP server <input name="smtp_host" value="{{.Host}}" placeholder="smtp.example.com" autocomplete="off"></label>
-      <label>Security
+      <label>{{t "SMTP server"}} <input name="smtp_host" value="{{.Host}}" placeholder="smtp.example.com" autocomplete="off"></label>
+      <label>{{t "Security"}}
         <select name="smtp_security">
-          <option value="starttls" {{if eq .Security "starttls"}}selected{{end}}>STARTTLS (usually port 587)</option>
-          <option value="tls" {{if eq .Security "tls"}}selected{{end}}>TLS (usually port 465)</option>
-          <option value="none" {{if eq .Security "none"}}selected{{end}}>None (local relay only)</option>
+          <option value="starttls" {{if eq .Security "starttls"}}selected{{end}}>{{t "STARTTLS (usually port 587)"}}</option>
+          <option value="tls" {{if eq .Security "tls"}}selected{{end}}>{{t "TLS (usually port 465)"}}</option>
+          <option value="none" {{if eq .Security "none"}}selected{{end}}>{{t "None (local relay only)"}}</option>
         </select>
       </label>
-      <label>Port <input type="number" name="smtp_port" min="1" max="65535" value="{{if .Port}}{{.Port}}{{end}}" placeholder="587"></label>
+      <label>{{t "Port"}} <input type="number" name="smtp_port" min="1" max="65535" value="{{if .Port}}{{.Port}}{{end}}" placeholder="587"></label>
     </div>
     <div class="row">
-      <label>Username <input name="smtp_username" value="{{.Username}}" autocomplete="off"><small>Leave empty if the server does not need a login.</small></label>
-      <label>Password <input type="password" name="smtp_password" autocomplete="new-password" {{if .Password}}placeholder="unchanged"{{end}}>
-        <small>{{if .Password}}Leave empty to keep the stored password.{{else}}For example an app password from your mail provider.{{end}}</small></label>
+      <label>{{t "Username"}} <input name="smtp_username" value="{{.Username}}" autocomplete="off"><small>{{t "Leave empty if the server does not need a login."}}</small></label>
+      <label>{{t "Password"}} <input type="password" name="smtp_password" autocomplete="new-password" {{if .Password}}placeholder="{{t "unchanged"}}"{{end}}>
+        <small>{{if .Password}}{{t "Leave empty to keep the stored password."}}{{else}}{{t "For example an app password from your mail provider."}}{{end}}</small></label>
     </div>
-    {{if .Password}}<label class="check"><input type="checkbox" name="smtp_clear_password"> Remove the stored password</label>{{end}}
+    {{if .Password}}<label class="check"><input type="checkbox" name="smtp_clear_password"> {{t "Remove the stored password"}}</label>{{end}}
     <div class="row">
-      <label>Sender address <input type="email" name="smtp_from" value="{{.From}}" placeholder="tv@example.com"><small>Most providers only accept the address of the account you log in with.</small></label>
-      <label>Sender name <input name="smtp_from_name" value="{{.FromName}}" placeholder="{{$.PortalName}}"></label>
+      <label>{{t "Sender address"}} <input type="email" name="smtp_from" value="{{.From}}" placeholder="tv@example.com"><small>{{t "Most providers only accept the address of the account you log in with."}}</small></label>
+      <label>{{t "Sender name"}} <input name="smtp_from_name" value="{{.FromName}}" placeholder="{{$.PortalName}}"></label>
     </div>
   </section>
-  <div class="form-actions"><button>{{icon "mail"}}Save mail settings</button></div>
+  <div class="form-actions"><button>{{icon "mail"}}{{t "Save mail settings"}}</button></div>
 </form>
 {{if .Configured}}
 <section class="card stack-card spaced">
-  <h2>Send a test email</h2>
+  <h2>{{t "Send a test email"}}</h2>
   <form method="post" action="{{base}}/settings/mail/test" class="inline">
     <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
     <input type="email" name="to" placeholder="you@example.com" required>
-    <button class="secondary">{{icon "mail"}}Send test email</button>
+    <button class="secondary">{{icon "mail"}}{{t "Send test email"}}</button>
   </form>
 </section>
 {{end}}
@@ -70,32 +74,32 @@
 <form method="post" action="{{base}}/settings/sso" class="stack spaced" id="sso">
   <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
   <section class="card stack-card">
-    <h2>Microsoft Entra sign-in</h2>
-    <p class="muted">Lets admins sign in with their Microsoft work account. Local admin accounts keep working, so you can always log in with a password if Entra is unavailable.</p>
-    <label class="check"><input type="checkbox" name="sso_enabled" {{if .Enabled}}checked{{end}}> Show "Sign in with Microsoft" on the login page</label>
-    <label>Redirect URI
+    <h2>{{t "Microsoft Entra sign-in"}}</h2>
+    <p class="muted">{{t "Lets admins sign in with their Microsoft work account. Local admin accounts keep working, so you can always log in with a password if Entra is unavailable."}}</p>
+    <label class="check"><input type="checkbox" name="sso_enabled" {{if .Enabled}}checked{{end}}> {{t `Show "Sign in with Microsoft" on the login page`}}</label>
+    <label>{{t "Redirect URI"}}
       <div class="copy">
         <input id="sso-redirect" readonly value="{{$.Data.SSORedirectURL}}" onclick="this.select()">
-        <button type="button" class="secondary" onclick="navigator.clipboard.writeText(document.getElementById('sso-redirect').value).then(()=>this.lastChild.textContent='Copied')">{{icon "copy"}}<span>Copy</span></button>
+        <button type="button" class="secondary" onclick="navigator.clipboard.writeText(document.getElementById('sso-redirect').value).then(()=>this.lastChild.textContent='{{t "Copied"}}')">{{icon "copy"}}<span>{{t "Copy"}}</span></button>
       </div>
-      <small>Add this as a <em>Web</em> redirect URI in the app registration (Entra admin center &rarr; App registrations &rarr; Authentication).</small>
+      <small>{{th `Add this as a <em>Web</em> redirect URI in the app registration (Entra admin center &rarr; App registrations &rarr; Authentication).`}}</small>
     </label>
     <div class="row">
-      <label>Tenant ID <input name="sso_tenant_id" value="{{.TenantID}}" placeholder="00000000-0000-0000-0000-000000000000" autocomplete="off" spellcheck="false"><small>Directory (tenant) ID on the app's Overview page.</small></label>
-      <label>Client ID <input name="sso_client_id" value="{{.ClientID}}" placeholder="00000000-0000-0000-0000-000000000000" autocomplete="off" spellcheck="false"><small>Application (client) ID on the app's Overview page.</small></label>
+      <label>{{t "Tenant ID"}} <input name="sso_tenant_id" value="{{.TenantID}}" placeholder="00000000-0000-0000-0000-000000000000" autocomplete="off" spellcheck="false"><small>{{t "Directory (tenant) ID on the app's Overview page."}}</small></label>
+      <label>{{t "Client ID"}} <input name="sso_client_id" value="{{.ClientID}}" placeholder="00000000-0000-0000-0000-000000000000" autocomplete="off" spellcheck="false"><small>{{t "Application (client) ID on the app's Overview page."}}</small></label>
     </div>
-    <label>Client secret <input type="password" name="sso_client_secret" autocomplete="new-password" {{if .ClientSecret}}placeholder="unchanged"{{end}}>
-      <small>{{if .ClientSecret}}Leave empty to keep the stored secret.{{else}}The secret <em>Value</em> from Certificates &amp; secrets, not the secret ID.{{end}}</small></label>
-    <label>Admin panel URL <input type="url" name="sso_admin_url" value="{{.AdminURL}}" placeholder="https://admin.tv.example.com">
-      <small>The address you open the admin panel on, including any path. Set it when the panel is behind a reverse proxy, so the redirect URI stays the same. Leave empty to use the address of this page.</small></label>
-    <label>Allowed groups or app roles
-      <textarea name="sso_allowed_groups" rows="3" placeholder="Group object ID or app role value, one per line" spellcheck="false">{{range .AllowedGroups}}{{.}}
+    <label>{{t "Client secret"}} <input type="password" name="sso_client_secret" autocomplete="new-password" {{if .ClientSecret}}placeholder="{{t "unchanged"}}"{{end}}>
+      <small>{{if .ClientSecret}}{{t "Leave empty to keep the stored secret."}}{{else}}{{th `The secret <em>Value</em> from Certificates &amp; secrets, not the secret ID.`}}{{end}}</small></label>
+    <label>{{t "Admin panel URL"}} <input type="url" name="sso_admin_url" value="{{.AdminURL}}" placeholder="https://admin.tv.example.com">
+      <small>{{t "The address you open the admin panel on, including any path. Set it when the panel is behind a reverse proxy, so the redirect URI stays the same. Leave empty to use the address of this page."}}</small></label>
+    <label>{{t "Allowed groups or app roles"}}
+      <textarea name="sso_allowed_groups" rows="3" placeholder="{{t "Group object ID or app role value, one per line"}}" spellcheck="false">{{range .AllowedGroups}}{{.}}
 {{end}}</textarea>
-      <small>An account needs one of these to get in. Groups need the <em>groups</em> claim in Token configuration; app roles are assigned under Enterprise applications.</small></label>
-    <label class="check"><input type="checkbox" name="sso_allow_all" {{if .AllowAll}}checked{{end}}> Allow every account that can sign in to the app (turn on <em>Assignment required</em> in Entra to limit who that is)</label>
-    <p class="muted"><small>The first Microsoft sign-in creates an admin account named after the sign-in name, e.g. <code>jane@example.com</code>. An existing admin account with that name is used instead.</small></p>
+      <small>{{th `An account needs one of these to get in. Groups need the <em>groups</em> claim in Token configuration; app roles are assigned under Enterprise applications.`}}</small></label>
+    <label class="check"><input type="checkbox" name="sso_allow_all" {{if .AllowAll}}checked{{end}}> {{th `Allow every account that can sign in to the app (turn on <em>Assignment required</em> in Entra to limit who that is)`}}</label>
+    <p class="muted"><small>{{th `The first Microsoft sign-in creates an admin account named after the sign-in name, e.g. <code>jane@example.com</code>. An existing admin account with that name is used instead.`}}</small></p>
   </section>
-  <div class="form-actions"><button>{{icon "check"}}Save sign-in settings</button></div>
+  <div class="form-actions"><button>{{icon "check"}}{{t "Save sign-in settings"}}</button></div>
 </form>
 {{end}}
 {{end}}

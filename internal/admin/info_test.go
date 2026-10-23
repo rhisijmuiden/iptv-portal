@@ -16,7 +16,7 @@ func TestInfoReleaseChannel(t *testing.T) {
 	}
 	render := func(d infoData) string {
 		var b strings.Builder
-		err := h.pages["info"].ExecuteTemplate(io.Writer(&b), "layout.html",
+		err := h.pages["en"]["info"].ExecuteTemplate(io.Writer(&b), "layout.html",
 			page{Title: "Info & updates", Session: &store.Session{}, Data: d})
 		if err != nil {
 			t.Fatal(err)

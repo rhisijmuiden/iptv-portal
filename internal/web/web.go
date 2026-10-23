@@ -218,3 +218,17 @@ func Sentence(s string) string {
 	}
 	return s
 }
+
+// IsLocalPath reports whether p is a path on this server ("/users?q=x"),
+// so redirecting to it cannot send the visitor to another site.
+func IsLocalPath(p string) bool {
+	return strings.HasPrefix(p, "/") && !strings.HasPrefix(p, "//") && !strings.Contains(p, `\`)
+}
+
+// LocalPath returns p when it is a local path, otherwise "/".
+func LocalPath(p string) string {
+	if IsLocalPath(p) {
+		return p
+	}
+	return "/"
+}

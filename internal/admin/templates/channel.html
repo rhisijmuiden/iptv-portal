@@ -1,34 +1,34 @@
 {{define "content"}}
 {{$c := .Data.Channel}}
-<a class="back" href="{{base}}/channels">&larr; Channels</a>
-<h1>{{.Title}}</h1>
+<a class="back" href="{{base}}/channels">&larr; {{t "Channels"}}</a>
+<h1>{{t .Title}}</h1>
 <section class="card">
 <form method="post" action="{{if $c.ID}}/channels/{{$c.ID}}{{else}}/channels/new{{end}}" class="stack">
   <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
-  <label>Name <input name="name" value="{{$c.Name}}" required></label>
-  <label>Stream URL (m3u8)
+  <label>{{t "Name"}} <input name="name" value="{{$c.Name}}" required></label>
+  <label>{{t "Stream URL (m3u8)"}}
     <input type="url" name="stream_url" value="{{$c.StreamURL}}" placeholder="https://…/index.m3u8" required>
-    <small>TV boxes connect directly to this address.</small>
+    <small>{{t "TV boxes connect directly to this address."}}</small>
   </label>
-  <label>Logo URL <input type="url" name="logo_url" value="{{$c.LogoURL}}" placeholder="https://…/logo.png"></label>
-  <label>EPG ID (tvg-id)
+  <label>{{t "Logo URL"}} <input type="url" name="logo_url" value="{{$c.LogoURL}}" placeholder="https://…/logo.png"></label>
+  <label>{{t "EPG ID (tvg-id)"}}
     <input name="epg_id" value="{{$c.EPGID}}">
-    <small>Optional. Links the channel to the program guide.</small>
+    <small>{{t "Optional. Links the channel to the program guide."}}</small>
   </label>
   <div class="row">
-    <label>Category
+    <label>{{t "Category"}}
       <select name="category_id">
-        <option value="0">No category</option>
+        <option value="0">{{t "No category"}}</option>
         {{range .Data.Categories}}<option value="{{.ID}}" {{if eq $c.CategoryID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
       </select>
     </label>
-    <label>or new category <input name="new_category" placeholder="Name of a new category"></label>
+    <label>{{t "or new category"}} <input name="new_category" placeholder="{{t "Name of a new category"}}"></label>
   </div>
-  <label>Order <input type="number" name="sort_order" value="{{$c.SortOrder}}"><small>Lower numbers come first.</small></label>
-  <label class="check"><input type="checkbox" name="enabled" {{if $c.Enabled}}checked{{end}}> Enabled</label>
+  <label>{{t "Order"}} <input type="number" name="sort_order" value="{{$c.SortOrder}}"><small>{{t "Lower numbers come first."}}</small></label>
+  <label class="check"><input type="checkbox" name="enabled" {{if $c.Enabled}}checked{{end}}> {{t "Enabled"}}</label>
   <div class="form-actions">
-    <button>Save</button>
-    <a class="button secondary" href="{{base}}/channels">Cancel</a>
+    <button>{{t "Save"}}</button>
+    <a class="button secondary" href="{{base}}/channels">{{t "Cancel"}}</a>
   </div>
 </form>
 </section>

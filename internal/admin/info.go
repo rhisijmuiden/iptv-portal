@@ -49,7 +49,7 @@ func (h *Handler) infoCheck(w http.ResponseWriter, r *http.Request, sess store.S
 	}
 	msg := "You are running the latest version."
 	if st.Available() {
-		msg = "A new version is available: " + st.Latest().Tag + "."
+		msg = tr(r, "A new version is available: %s.", st.Latest().Tag)
 	}
 	redirectFlash(w, r, "/info", msg)
 }
@@ -81,7 +81,7 @@ func (h *Handler) infoChannel(w http.ResponseWriter, r *http.Request, sess store
 	}
 	// Load the releases of the new channel right away.
 	if st, err := h.updater.Check(r.Context()); err == nil && st.Available() {
-		msg += " Version " + st.Latest().Tag + " is available."
+		msg = tr(r, msg) + " " + tr(r, "Version %s is available.", st.Latest().Tag)
 	}
 	redirectFlash(w, r, "/info", msg)
 }
@@ -90,7 +90,7 @@ func (h *Handler) infoInstall(w http.ResponseWriter, r *http.Request, sess store
 	tag := r.FormValue("tag")
 	if err := h.updater.Install(r.Context(), tag); err != nil {
 		h.log.Warn("update failed", "version", tag, "err", err)
-		h.renderInfo(w, r, sess, "Update failed: "+err.Error())
+		h.renderInfo(w, r, sess, tr(r, "Update failed: %s", err.Error()))
 		return
 	}
 	h.log.Info("update installed, restarting", "from", version.Version, "to", tag)

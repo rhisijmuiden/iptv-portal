@@ -1,29 +1,29 @@
 {{define "content"}}
 <div class="titlebar">
   <div>
-    <h1>Browse iptv-org</h1>
-    <p class="subtitle">Pick channels from the public <a href="https://iptv-org.github.io/" target="_blank" rel="noopener">iptv-org</a> database and add them to the portal. Clients connect to the streams directly, so check that a stream plays before you hand it out.</p>
+    <h1>{{t "Browse iptv-org"}}</h1>
+    <p class="subtitle">{{th `Pick channels from the public <a href="https://iptv-org.github.io/" target="_blank" rel="noopener">iptv-org</a> database and add them to the portal. Clients connect to the streams directly, so check that a stream plays before you hand it out.`}}</p>
   </div>
   {{with .Data}}
   <form method="post" action="{{base}}/iptv-org/reload">
     <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
     <input type="hidden" name="back" value="{{.Back}}">
-    <button class="secondary" title="Loaded {{datetime (ptr .Loaded)}}">{{icon "refresh"}}Reload list</button>
+    <button class="secondary" title="{{tf "Loaded %s" (datetime (ptr .Loaded))}}">{{icon "refresh"}}{{t "Reload list"}}</button>
   </form>
   {{end}}
 </div>
 {{with .Data}}
 <form method="get" action="{{base}}/iptv-org" class="filters">
-  <input type="search" name="q" value="{{.Filter.Search}}" placeholder="Search by name">
+  <input type="search" name="q" value="{{.Filter.Search}}" placeholder="{{t "Search by name"}}">
   <select name="country" onchange="this.form.submit()">
-    <option value="">All countries</option>
+    <option value="">{{t "All countries"}}</option>
     {{range .Countries}}<option value="{{.Code}}" {{if eq $.Data.Filter.Country .Code}}selected{{end}}>{{.Flag}} {{.Name}} ({{.Count}})</option>{{end}}
   </select>
   <select name="category" onchange="this.form.submit()">
-    <option value="">All categories</option>
+    <option value="">{{t "All categories"}}</option>
     {{range .Categories}}<option value="{{.ID}}" {{if eq $.Data.Filter.Category .ID}}selected{{end}}>{{.Name}}</option>{{end}}
   </select>
-  <button class="secondary">{{icon "search"}}Filter</button>
+  <button class="secondary">{{icon "search"}}{{t "Filter"}}</button>
 </form>
 {{if .Rows}}
 <form method="post" action="{{base}}/iptv-org/add">
@@ -32,24 +32,24 @@
 <div class="card flush">
 <table class="iptvorg">
   <thead><tr>
-    <th></th><th>Channel</th>
-    <th><label class="check"><input type="checkbox" onchange="for (const c of this.form.querySelectorAll('input[name=stream]')) c.checked = this.checked"> Streams</label></th>
+    <th></th><th>{{t "Channel"}}</th>
+    <th><label class="check"><input type="checkbox" onchange="for (const c of this.form.querySelectorAll('input[name=stream]')) c.checked = this.checked"> {{t "Streams"}}</label></th>
   </tr></thead>
   <tbody>
   {{range .Rows}}
   <tr>
     <td class="logo">{{if .Logo}}<img src="{{.Logo}}" alt="" loading="lazy" referrerpolicy="no-referrer">{{end}}</td>
     <td>{{.Name}}
-      <div class="muted url">{{if .ID}}<code>{{.ID}}</code>{{else}}not linked to a channel{{end}}{{if .CategoryNames}} · {{.CategoryNames}}{{end}}</div>
+      <div class="muted url">{{if .ID}}<code>{{.ID}}</code>{{else}}{{t "not linked to a channel"}}{{end}}{{if .CategoryNames}} · {{.CategoryNames}}{{end}}</div>
     </td>
     <td>
       {{range .Streams}}
       <label class="check stream">
         <input type="checkbox" name="stream" value="{{.URL}}">
         <span>{{if .Feed}}{{.Feed}} {{end}}{{.Quality}}
-          {{if .Added}}<span class="badge on">in portal</span>{{end}}
+          {{if .Added}}<span class="badge on">{{t "in portal"}}</span>{{end}}
           {{range .Labels}}<span class="badge off">{{.}}</span>{{end}}
-          {{if .NeedsHeaders}}<span class="badge off" title="This stream needs a special User-Agent or Referer and may not play on all clients">needs headers</span>{{end}}
+          {{if .NeedsHeaders}}<span class="badge off" title="{{t "This stream needs a special User-Agent or Referer and may not play on all clients"}}">{{t "needs headers"}}</span>{{end}}
           <span class="muted url">{{.URL}}</span>
         </span>
       </label>
@@ -60,32 +60,32 @@
   </tbody>
 </table>
 </div>
-{{if .More}}<p class="muted">Only the first {{len .Rows}} channels are shown. Narrow the search to see the rest.</p>{{end}}
+{{if .More}}<p class="muted">{{tf "Only the first %d channels are shown. Narrow the search to see the rest." (len .Rows)}}</p>{{end}}
 <section class="card add-bar">
-  <h2>Add selected streams</h2>
+  <h2>{{t "Add selected streams"}}</h2>
   <div class="row">
-    <label>Category
+    <label>{{t "Category"}}
       <select name="target">
-        <option value="@category">Use the iptv-org category</option>
-        <option value="@country">Use the country</option>
-        <option value="">No category</option>
+        <option value="@category">{{t "Use the iptv-org category"}}</option>
+        <option value="@country">{{t "Use the country"}}</option>
+        <option value="">{{t "No category"}}</option>
         {{range .Own}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
       </select>
     </label>
-    <label>or a new category <input name="new_category" placeholder="Optional"></label>
+    <label>{{t "or a new category"}} <input name="new_category" placeholder="{{t "Optional"}}"></label>
   </div>
   {{if .Packages}}
   <fieldset>
-    <legend>Also add the category to these packages</legend>
-    {{range .Packages}}<label class="check"><input type="checkbox" name="package" value="{{.ID}}"> {{.Name}}{{if .AllChannels}} <span class="muted">(already has all channels)</span>{{end}}</label>{{end}}
+    <legend>{{t "Also add the category to these packages"}}</legend>
+    {{range .Packages}}<label class="check"><input type="checkbox" name="package" value="{{.ID}}"> {{.Name}}{{if .AllChannels}} <span class="muted">({{t "already has all channels"}})</span>{{end}}</label>{{end}}
   </fieldset>
   {{end}}
-  <p class="muted">A stream that is already in the portal is updated instead of added twice.</p>
-  <button>{{icon "plus"}}Add selected</button>
+  <p class="muted">{{t "A stream that is already in the portal is updated instead of added twice."}}</p>
+  <button>{{icon "plus"}}{{t "Add selected"}}</button>
 </section>
 </form>
 {{else}}
-<section class="card empty"><p>No channels match this filter.</p></section>
+<section class="card empty"><p>{{t "No channels match this filter."}}</p></section>
 {{end}}
 {{end}}
 {{end}}
