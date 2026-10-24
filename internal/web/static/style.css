@@ -88,6 +88,10 @@ small { color: var(--muted); font-weight: 400; }
 .account a span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .account a:hover { color: var(--link); text-decoration: none; }
 .account form { margin: 0; }
+.powered { display: flex; align-items: center; gap: .5rem; padding: .55rem .4rem 0 .65rem; font-size: .75rem; color: var(--side-muted); }
+.powered img { display: block; width: 20px; height: 20px; }
+.powered strong { color: var(--side-text); font-weight: 800; letter-spacing: .02em; }
+.powered:hover { text-decoration: none; color: var(--side-text); }
 /* Language switch: under the account in the menu, in the footer elsewhere. */
 .language { margin: 0; }
 .language label { display: inline-flex; flex-direction: row; align-items: center; gap: .4rem; margin: 0; font-weight: 500; color: var(--side-muted, var(--muted)); }

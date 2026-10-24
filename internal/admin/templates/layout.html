@@ -41,6 +41,7 @@
     <a href="{{base}}/password" title="{{t "Change password"}}">{{icon "user"}}<span>{{.Session.Admin.Username}}</span></a>
     <form method="post" action="{{base}}/logout"><input type="hidden" name="csrf" value="{{.Session.CSRF}}"><button class="icon-button" title="{{t "Log out"}}">{{icon "logout"}}</button></form>
   </div>
+  <a class="powered" href="https://www.rhis.nl" target="_blank" rel="noopener"><img src="{{base}}/static/brand/rhis-icon.svg" alt=""><span>{{t "Powered by"}} <strong>RHIS</strong></span></a>
   {{template "language" .}}
   <footer>IPTV Portal {{version}}</footer>
 </aside>
