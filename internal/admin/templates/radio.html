@@ -1,0 +1,32 @@
+{{define "content"}}
+{{$c := .Data.Channel}}
+<a class="back" href="{{base}}/radio">&larr; {{t "Radio stations"}}</a>
+<h1>{{t .Title}}</h1>
+<section class="card">
+<form method="post" action="{{base}}{{if $c.ID}}/radio/{{$c.ID}}{{else}}/radio/new{{end}}" class="stack">
+  <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+  <label>{{t "Name"}} <input name="name" value="{{$c.Name}}" placeholder="{{t "For example NPO Radio 1"}}" required></label>
+  <label>{{t "Stream URL"}}
+    <input type="url" name="stream_url" value="{{$c.StreamURL}}" placeholder="https://…/stream.mp3" required>
+    <small>{{t "The address of the audio stream (MP3, AAC or HLS). A link to a .pls, .m3u or .asx playlist is replaced by the stream inside it. Players connect directly to this address."}}</small>
+  </label>
+  <label>{{t "Logo URL"}} <input type="url" name="logo_url" value="{{$c.LogoURL}}" placeholder="https://…/logo.png"></label>
+  <div class="row">
+    <label>{{t "Category"}}
+      <select name="category_id">
+        <option value="0">{{t "No category"}}</option>
+        {{range .Data.Categories}}<option value="{{.ID}}" {{if eq $c.CategoryID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
+      </select>
+    </label>
+    <label>{{t "or new category"}} <input name="new_category" placeholder="{{t "For example Radio Pop"}}"></label>
+  </div>
+  <label>{{t "Order"}} <input type="number" name="sort_order" value="{{$c.SortOrder}}"><small>{{t "Lower numbers come first."}}</small></label>
+  <label class="check"><input type="checkbox" name="enabled" {{if $c.Enabled}}checked{{end}}> {{t "Enabled"}}</label>
+  {{if $c.SourceID}}<p class="muted">{{t "Imported from Radio Browser. Adding the station again from Radio Browser updates its name, stream and logo."}}</p>{{end}}
+  <div class="form-actions">
+    <button>{{t "Save"}}</button>
+    <a class="button secondary" href="{{base}}/radio">{{t "Cancel"}}</a>
+  </div>
+</form>
+</section>
+{{end}}

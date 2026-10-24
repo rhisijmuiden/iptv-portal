@@ -206,7 +206,7 @@ func (h *Handler) iptvorgAdd(w http.ResponseWriter, r *http.Request, sess store.
 	for g := range groups {
 		names = append(names, g)
 	}
-	if err := h.store.AddCategoriesToPackages(r.Context(), pkgIDs, names); err != nil {
+	if err := h.store.AddCategoriesToPackages(r.Context(), pkgIDs, store.KindTV, names); err != nil {
 		h.serverError(w, err)
 		return
 	}

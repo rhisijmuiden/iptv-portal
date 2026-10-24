@@ -88,6 +88,10 @@ small { color: var(--muted); font-weight: 400; }
 .account a span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .account a:hover { color: var(--link); text-decoration: none; }
 .account form { margin: 0; }
+.powered { display: flex; align-items: center; gap: .5rem; padding: .55rem .4rem 0 .65rem; font-size: .75rem; color: var(--side-muted); }
+.powered img { display: block; width: 20px; height: 20px; }
+.powered strong { color: var(--side-text); font-weight: 800; letter-spacing: .02em; }
+.powered:hover { text-decoration: none; color: var(--side-text); }
 /* Language switch: under the account in the menu, in the footer elsewhere. */
 .language { margin: 0; }
 .language label { display: inline-flex; flex-direction: row; align-items: center; gap: .4rem; margin: 0; font-weight: 500; color: var(--side-muted, var(--muted)); }
@@ -151,6 +155,7 @@ body:not(.app) > footer { text-align: center; color: var(--muted); font-size: .8
 form.stack { display: flex; flex-direction: column; gap: 1.1rem; }
 form.inline { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin: 0; }
 form.inline input:not(.small):not([type=checkbox]) { flex: 1; min-width: 10rem; }
+form.inline select { width: auto; }
 .filters { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
 .filters input { flex: 1; min-width: 12rem; }
 .filters select, .filters button { width: auto; }
@@ -195,6 +200,13 @@ td a.name { font-weight: 600; color: var(--text); }
 td a.name:hover { color: var(--link); }
 td.logo { width: 64px; }
 td.logo img { max-width: 48px; max-height: 32px; display: block; }
+td.logo .logo-placeholder { display: inline-flex; color: var(--muted); }
+td.logo .logo-placeholder .icon { width: 22px; height: 22px; }
+.chip { display: inline-block; font-size: .72rem; font-weight: 600; padding: .1rem .5rem; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+a.quiet { color: var(--muted); }
+a.quiet:hover { color: var(--link); }
+.tags { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .3rem; }
+.pager { display: flex; gap: .5rem; align-items: center; margin: .8rem 0; }
 .url { font-size: .8rem; word-break: break-all; }
 .health-msg { font-size: .8rem; max-width: 22rem; margin-top: .25rem; }
 table.details th { text-transform: none; letter-spacing: 0; font-size: .9rem; width: 40%; background: none; color: var(--muted); font-weight: 500; }
@@ -247,6 +259,7 @@ label.check.stream input { margin-top: .25rem; }
 }
 @media (max-width: 640px) {
   .channels th:nth-child(1), .channels td:nth-child(1), .channels th:nth-child(3), .channels td:nth-child(3) { display: none; }
+  .radios th:nth-child(1), .radios td:nth-child(1), .radios th:nth-child(3), .radios td:nth-child(3), .radios .chip { display: none; }
   th, td { padding: .6rem .7rem; }
 }
 

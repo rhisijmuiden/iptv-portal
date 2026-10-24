@@ -3,7 +3,7 @@
 <a class="back" href="{{base}}/channels">&larr; {{t "Channels"}}</a>
 <h1>{{t .Title}}</h1>
 <section class="card">
-<form method="post" action="{{if $c.ID}}/channels/{{$c.ID}}{{else}}/channels/new{{end}}" class="stack">
+<form method="post" action="{{base}}{{if $c.ID}}/channels/{{$c.ID}}{{else}}/channels/new{{end}}" class="stack">
   <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
   <label>{{t "Name"}} <input name="name" value="{{$c.Name}}" required></label>
   <label>{{t "Stream URL (m3u8)"}}

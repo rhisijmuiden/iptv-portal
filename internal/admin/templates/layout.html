@@ -28,6 +28,9 @@
     <p class="nav-group">{{t "Add channels"}}</p>
     <a href="{{base}}/import" {{if eq .Nav "import"}}class="active"{{end}}>{{icon "upload"}}{{t "Import playlist"}}</a>
     <a href="{{base}}/iptv-org" {{if eq .Nav "iptvorg"}}class="active"{{end}}>{{icon "globe"}}{{t "Browse iptv-org"}}</a>
+    <p class="nav-group">{{t "Radio"}}</p>
+    <a href="{{base}}/radio" {{if eq .Nav "radio"}}class="active"{{end}}>{{icon "radio"}}{{t "Radio stations"}}</a>
+    <a href="{{base}}/radio/browse" {{if eq .Nav "radiobrowse"}}class="active"{{end}}>{{icon "search"}}{{t "Find stations"}}</a>
     <p class="nav-group">{{t "Subscribers"}}</p>
     <a href="{{base}}/users" {{if eq .Nav "users"}}class="active"{{end}}>{{icon "users"}}{{t "Users"}}</a>
     <a href="{{base}}/packages" {{if eq .Nav "packages"}}class="active"{{end}}>{{icon "package"}}{{t "Packages"}}</a>
@@ -41,6 +44,7 @@
     <a href="{{base}}/password" title="{{t "Change password"}}">{{icon "user"}}<span>{{.Session.Admin.Username}}</span></a>
     <form method="post" action="{{base}}/logout"><input type="hidden" name="csrf" value="{{.Session.CSRF}}"><button class="icon-button" title="{{t "Log out"}}">{{icon "logout"}}</button></form>
   </div>
+  <a class="powered" href="https://www.rhis.nl" target="_blank" rel="noopener"><img src="{{base}}/static/brand/rhis-icon.svg" alt=""><span>{{t "Powered by"}} <strong>RHIS</strong></span></a>
   {{template "language" .}}
   <footer>IPTV Portal {{version}}</footer>
 </aside>

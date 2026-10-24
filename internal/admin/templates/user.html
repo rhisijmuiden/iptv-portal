@@ -3,7 +3,7 @@
 <a class="back" href="{{base}}/users">&larr; {{t "Users"}}</a>
 <h1>{{t .Title}}</h1>
 <section class="card">
-<form method="post" action="{{if $u.ID}}/users/{{$u.ID}}{{else}}/users/new{{end}}" class="stack">
+<form method="post" action="{{base}}{{if $u.ID}}/users/{{$u.ID}}{{else}}/users/new{{end}}" class="stack">
   <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
   <div class="row">
     <label>{{t "Username"}} <input name="username" value="{{$u.Username}}" pattern="[A-Za-z0-9._\-]{3,32}" autocomplete="off" required>

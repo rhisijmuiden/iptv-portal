@@ -278,13 +278,17 @@ func (c *Checker) get(ctx context.Context, u string, limit int64) ([]byte, *url.
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return nil, nil, "", fmt.Errorf("HTTP %s", resp.Status)
 	}
-	// A live MPEG-TS stream never ends, so only the start is read and a
-	// timeout after some data has arrived is fine.
+	// A live MPEG-TS or radio stream never ends, so only the start is read
+	// and a timeout after some data has arrived is fine.
+	ctype := strings.ToLower(resp.Header.Get("Content-Type"))
+	if (strings.HasPrefix(ctype, "audio/") && !strings.Contains(ctype, "mpegurl")) || strings.HasPrefix(ctype, "video/mp2t") {
+		limit = min(limit, 64<<10)
+	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, limit))
 	if err != nil && len(body) == 0 {
 		return nil, nil, "", describe(err)
 	}
-	return body, resp.Request.URL, resp.Header.Get("Content-Type"), nil
+	return body, resp.Request.URL, ctype, nil
 }
 
 // describe shortens network errors to what matters to an admin.

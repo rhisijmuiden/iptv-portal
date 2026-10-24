@@ -39,7 +39,8 @@ func (h *Handler) renderEPG(w http.ResponseWriter, r *http.Request, sess store.S
 		h.serverError(w, err)
 		return
 	}
-	chs, err := h.store.Channels(r.Context(), store.ChannelFilter{})
+	// Radio stations have no programme guide.
+	chs, err := h.store.Channels(r.Context(), store.ChannelFilter{Kind: store.KindTV})
 	if err != nil {
 		h.serverError(w, err)
 		return
