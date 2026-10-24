@@ -22,7 +22,7 @@ func TestDashboardViewers(t *testing.T) {
 		{UserID: 5, Username: "piet", IP: "10.0.0.2", LastSeen: now.Add(-2 * time.Hour)},
 	}}
 	var b strings.Builder
-	err := h.pages["dashboard"].ExecuteTemplate(io.Writer(&b), "layout.html",
+	err := h.pages["en"]["dashboard"].ExecuteTemplate(io.Writer(&b), "layout.html",
 		page{Title: "Dashboard", Session: &store.Session{}, Data: dashboardData{Activity: snap, Window: 15}})
 	if err != nil {
 		t.Fatal(err)

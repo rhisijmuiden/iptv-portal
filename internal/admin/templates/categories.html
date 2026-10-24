@@ -1,23 +1,27 @@
 {{define "content"}}
 <div class="titlebar">
   <div>
-    <h1>Categories</h1>
-    <p class="subtitle">Groups of channels, shown as folders on the TV box. Lower order numbers come first.</p>
+    <h1>{{t "Categories"}}</h1>
+    <p class="subtitle">{{t "Groups of channels or radio stations, shown as folders on the TV box. Lower order numbers come first."}}</p>
   </div>
 </div>
 <section class="card">
-  <h2>New category</h2>
+  <h2>{{t "New category"}}</h2>
   <form method="post" action="{{base}}/categories" class="inline">
     <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
-    <input name="name" placeholder="For example North Holland" required>
-    <input type="number" name="sort_order" value="0" title="Order" class="small">
-    <button>{{icon "plus"}}Add</button>
+    <input name="name" placeholder="{{t "For example North Holland"}}" required>
+    <select name="kind" title="{{t "Holds"}}" class="small">
+      <option value="tv">{{t "TV channels"}}</option>
+      <option value="radio">{{t "Radio stations"}}</option>
+    </select>
+    <input type="number" name="sort_order" value="0" title="{{t "Order"}}" class="small">
+    <button>{{icon "plus"}}{{t "Add"}}</button>
   </form>
 </section>
 {{if .Data}}
 <div class="card flush">
 <table>
-  <thead><tr><th>Name</th><th>Order</th><th>Channels</th><th></th></tr></thead>
+  <thead><tr><th>{{t "Name"}}</th><th>{{t "Order"}}</th><th>{{t "Holds"}}</th><th>{{t "Channels"}}</th><th></th></tr></thead>
   <tbody>
   {{range .Data}}
   <tr>
@@ -27,14 +31,15 @@
         <input type="hidden" name="id" value="{{.ID}}">
         <input name="name" value="{{.Name}}" required>
         <input type="number" name="sort_order" value="{{.SortOrder}}" class="small">
-        <button class="secondary sm">Save</button>
+        <button class="secondary sm">{{t "Save"}}</button>
       </form>
     </td>
-    <td><a href="{{base}}/channels?category={{.ID}}">{{.ChannelCount}}</a></td>
+    <td>{{if eq .Kind "radio"}}<span class="chip">{{t "Radio"}}</span>{{else}}<span class="chip">{{t "TV"}}</span>{{end}}</td>
+    <td><a href="{{base}}{{if eq .Kind "radio"}}/radio{{else}}/channels{{end}}?category={{.ID}}">{{.ChannelCount}}</a></td>
     <td class="actions">
-      <form method="post" action="{{base}}/categories/{{.ID}}/delete" onsubmit="return confirm('Delete this category? Its channels are kept.')">
+      <form method="post" action="{{base}}/categories/{{.ID}}/delete" onsubmit="return confirm('{{t "Delete this category? Its channels are kept."}}')">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
-        <button class="danger sm" title="Delete">{{icon "trash"}}<span class="label">Delete</span></button>
+        <button class="danger sm" title="{{t "Delete"}}">{{icon "trash"}}<span class="label">{{t "Delete"}}</span></button>
       </form>
     </td>
   </tr>

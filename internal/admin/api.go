@@ -89,7 +89,8 @@ func (h *Handler) apiError(w http.ResponseWriter, status int, err error) {
 }
 
 func (h *Handler) apiChannelList(w http.ResponseWriter, r *http.Request) {
-	chs, err := h.store.Channels(r.Context(), store.ChannelFilter{})
+	// The API manages TV channels only; radio stations are left out.
+	chs, err := h.store.Channels(r.Context(), store.ChannelFilter{Kind: store.KindTV})
 	if err != nil {
 		h.apiError(w, http.StatusInternalServerError, err)
 		return
@@ -112,6 +113,9 @@ func (h *Handler) apiChannelUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c, err := h.store.Channel(r.Context(), id)
+	if err == nil && c.IsRadio() {
+		err = store.ErrNotFound
+	}
 	if errors.Is(err, store.ErrNotFound) {
 		h.apiError(w, http.StatusNotFound, err)
 		return
@@ -141,7 +145,7 @@ func (h *Handler) apiChannelSave(w http.ResponseWriter, r *http.Request, c store
 		h.apiError(w, http.StatusBadRequest, err)
 		return
 	}
-	cat, err := h.store.EnsureCategory(r.Context(), in.Category)
+	cat, err := h.store.EnsureCategory(r.Context(), c.Kind, in.Category)
 	if err != nil {
 		h.apiError(w, http.StatusInternalServerError, err)
 		return

@@ -166,7 +166,7 @@ func TestAddCategoriesToPackages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.AddCategoriesToPackages(ctx, []int64{p, 999}, []string{"News", "Regional"}); err != nil {
+	if err := s.AddCategoriesToPackages(ctx, []int64{p, 999}, KindTV, []string{"News", "Regional"}); err != nil {
 		t.Fatal(err)
 	}
 	got, err := s.Package(ctx, p)
@@ -200,5 +200,48 @@ func TestUpdateChannel(t *testing.T) {
 	}
 	if err := s.SetUpdateChannel(ctx, "nightly"); err == nil {
 		t.Fatal("unknown channel accepted")
+	}
+}
+
+func TestRadioKinds(t *testing.T) {
+	s := openTest(t)
+	ctx := context.Background()
+	tv, err := s.EnsureCategory(ctx, KindTV, "News")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A radio category with the name of a TV category gets " (Radio)".
+	radio, err := s.EnsureCategory(ctx, KindRadio, "News")
+	if err != nil || radio == tv {
+		t.Fatalf("radio category %d, %v", radio, err)
+	}
+	if again, _ := s.EnsureCategory(ctx, KindRadio, "News"); again != radio {
+		t.Errorf("second lookup gave %d, want %d", again, radio)
+	}
+	cats, _ := s.CategoriesOf(ctx, KindRadio)
+	if len(cats) != 1 || cats[0].Name != "News (Radio)" || cats[0].Kind != KindRadio {
+		t.Fatalf("radio categories = %+v", cats)
+	}
+
+	// Importing by source id updates the station even when its stream
+	// moved.
+	in := []ImportEntry{{Kind: KindRadio, Name: "R1", StreamURL: "https://a.example/old.mp3", Group: "News", SourceID: "u1"}}
+	if res, err := s.ImportChannels(ctx, in); err != nil || res.Added != 1 {
+		t.Fatalf("import %+v, %v", res, err)
+	}
+	in[0].StreamURL, in[0].Name = "https://a.example/new.mp3", "Radio 1"
+	if res, err := s.ImportChannels(ctx, in); err != nil || res.Updated != 1 || res.Added != 0 {
+		t.Fatalf("re-import %+v, %v", res, err)
+	}
+	chs, _ := s.Channels(ctx, ChannelFilter{Kind: KindRadio})
+	if len(chs) != 1 || chs[0].StreamURL != "https://a.example/new.mp3" || chs[0].Name != "Radio 1" ||
+		chs[0].CategoryID != radio || !chs[0].IsRadio() || chs[0].SourceID != "u1" {
+		t.Fatalf("stations = %+v", chs)
+	}
+	if ids, _ := s.SourceIDs(ctx, KindRadio); !ids["u1"] {
+		t.Errorf("source ids = %v", ids)
+	}
+	if tvs, _ := s.Channels(ctx, ChannelFilter{Kind: KindTV}); len(tvs) != 0 {
+		t.Errorf("TV channels = %+v", tvs)
 	}
 }

@@ -22,7 +22,7 @@ func TestBackupPages(t *testing.T) {
 	render := func(name string, data any) string {
 		t.Helper()
 		var b strings.Builder
-		if err := h.pages[name].ExecuteTemplate(io.Writer(&b), "layout.html",
+		if err := h.pages["en"][name].ExecuteTemplate(io.Writer(&b), "layout.html",
 			page{Title: name, Nav: "backups", Session: &store.Session{}, Data: data}); err != nil {
 			t.Fatal(err)
 		}

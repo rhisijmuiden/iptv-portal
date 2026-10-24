@@ -172,7 +172,7 @@ func (h *Handler) userSave(w http.ResponseWriter, r *http.Request, sess store.Se
 		fail(err.Error())
 		return
 	}
-	msg := fmt.Sprintf("User %q saved.", strings.TrimSpace(u.Username))
+	msg := tr(r, "User %q saved.", strings.TrimSpace(u.Username))
 	if send {
 		saved, err := h.store.User(r.Context(), id)
 		if err != nil {
@@ -185,10 +185,10 @@ func (h *Handler) userSave(w http.ResponseWriter, r *http.Request, sess store.Se
 			return
 		}
 		if err := h.sendLogin(r, st, saved, password); err != nil {
-			h.renderUserForm(w, r, sess, saved, "The user was saved, but the login details could not be emailed: "+err.Error())
+			h.renderUserForm(w, r, sess, saved, tr(r, "The user was saved, but the login details could not be emailed: %s", err.Error()))
 			return
 		}
-		msg = fmt.Sprintf("User %q saved and the login details emailed to %s.", saved.Username, saved.Email)
+		msg = tr(r, "User %q saved and the login details emailed to %s.", saved.Username, saved.Email)
 	}
 	redirectFlash(w, r, "/users", msg)
 }
@@ -228,7 +228,7 @@ func (h *Handler) userRelease(w http.ResponseWriter, r *http.Request, sess store
 		return
 	}
 	h.activity.Release(id)
-	redirectFlash(w, r, fmt.Sprintf("/users/%d", id), fmt.Sprintf("Connections of %q released.", u.Username))
+	redirectFlash(w, r, fmt.Sprintf("/users/%d", id), tr(r, "Connections of %q released.", u.Username))
 }
 
 func (h *Handler) userDelete(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -335,7 +335,7 @@ func (h *Handler) packageSave(w http.ResponseWriter, r *http.Request, sess store
 		h.renderPackageForm(w, r, sess, p, err.Error())
 		return
 	}
-	redirectFlash(w, r, "/packages", fmt.Sprintf("Package %q saved.", strings.TrimSpace(p.Name)))
+	redirectFlash(w, r, "/packages", tr(r, "Package %q saved.", strings.TrimSpace(p.Name)))
 }
 
 func (h *Handler) packageDelete(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -419,10 +419,10 @@ func (h *Handler) inviteCreate(w http.ResponseWriter, r *http.Request, sess stor
 		return
 	}
 	if err := h.sendInvite(r, created, to); err != nil {
-		h.renderInvites(w, r, sess, &created, "The invitation was created, but could not be emailed: "+err.Error())
+		h.renderInvites(w, r, sess, &created, tr(r, "The invitation was created, but could not be emailed: %s", err.Error()))
 		return
 	}
-	redirectFlash(w, r, "/invites", fmt.Sprintf("Invitation created and emailed to %s.", to))
+	redirectFlash(w, r, "/invites", tr(r, "Invitation created and emailed to %s.", to))
 }
 
 func (h *Handler) inviteRevoke(w http.ResponseWriter, r *http.Request, sess store.Session) {

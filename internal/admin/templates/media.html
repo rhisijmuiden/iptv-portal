@@ -2,46 +2,46 @@
 {{$d := .Data}}
 <div class="titlebar">
   <div>
-    <h1>On Demand</h1>
-    <p class="subtitle">Offer the movies and series of your Jellyfin or Plex server. They appear under Movies (VOD) and Series on the TV boxes and are read again every hour.</p>
+    <h1>{{t "On Demand"}}</h1>
+    <p class="subtitle">{{t "Offer the movies and series of your Jellyfin or Plex server. They appear under Movies (VOD) and Series on the TV boxes and are read again every hour."}}</p>
   </div>
   <div class="buttons">
     {{if $d.Servers}}
     <form method="post" action="{{base}}/media/refresh">
       <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
-      <button class="secondary" {{if $d.Refreshing}}disabled{{end}}>{{icon "refresh"}}{{if $d.Refreshing}}Refreshing…{{else}}Refresh now{{end}}</button>
+      <button class="secondary" {{if $d.Refreshing}}disabled{{end}}>{{icon "refresh"}}{{if $d.Refreshing}}{{t "Refreshing…"}}{{else}}{{t "Refresh now"}}{{end}}</button>
     </form>
     {{end}}
-    <a class="button" href="{{base}}/media/new">{{icon "plus"}}Add media server</a>
+    <a class="button" href="{{base}}/media/new">{{icon "plus"}}{{t "Add media server"}}</a>
   </div>
 </div>
 {{if and $d.Servers (not $d.Packages)}}
-<p class="flash warn">No package includes On Demand yet, so nobody can see the movies and series. Tick On Demand in a <a href="{{base}}/packages">package</a>.</p>
+<p class="flash warn">{{th `No package includes On Demand yet, so nobody can see the movies and series. Tick On Demand in a <a href="%s/packages">package</a>.` base}}</p>
 {{end}}
 {{if $d.Servers}}
 <div class="card flush">
 <table>
-  <thead><tr><th>Name</th><th>Server</th><th>Playback</th><th>Movies</th><th>Series</th><th>Episodes</th><th>Status</th><th></th></tr></thead>
+  <thead><tr><th>{{t "Name"}}</th><th>{{t "Server"}}</th><th>{{t "Playback"}}</th><th>{{t "Movies"}}</th><th>{{t "Series"}}</th><th>{{t "Episodes"}}</th><th>{{t "Status"}}</th><th></th></tr></thead>
   <tbody>
   {{range $d.Servers}}
   <tr>
     <td><a class="name" href="{{base}}/media/{{.Server.ID}}">{{.Server.Name}}</a></td>
     <td>{{.Server.KindName}} <span class="muted url">{{.Server.URL}}</span></td>
-    <td>{{if .Server.Direct}}direct{{else}}through the portal{{end}}</td>
+    <td>{{if .Server.Direct}}{{t "direct"}}{{else}}{{t "through the portal"}}{{end}}</td>
     <td>{{.Status.Movies}}</td>
     <td>{{.Status.Shows}}</td>
     <td>{{.Status.Episodes}}</td>
     <td>
-      {{if not .Server.Enabled}}<span class="badge off">disabled</span>
-      {{else if .Status.Error}}<span class="badge off">failed</span> <span class="muted">{{.Status.Error}}</span>
-      {{else if .Status.UpdatedAt.IsZero}}<span class="muted">not read yet</span>
-      {{else}}<span class="badge on">ok</span> <span class="muted">{{datetime (ptr .Status.UpdatedAt)}}</span>{{end}}
+      {{if not .Server.Enabled}}<span class="badge off">{{t "disabled"}}</span>
+      {{else if .Status.Error}}<span class="badge off">{{t "failed"}}</span> <span class="muted">{{.Status.Error}}</span>
+      {{else if .Status.UpdatedAt.IsZero}}<span class="muted">{{t "not read yet"}}</span>
+      {{else}}<span class="badge on">{{t "ok"}}</span> <span class="muted">{{datetime (ptr .Status.UpdatedAt)}}</span>{{end}}
     </td>
     <td class="actions">
-      <a class="button secondary sm" href="{{base}}/media/{{.Server.ID}}" title="Edit">{{icon "edit"}}<span class="label">Edit</span></a>
-      <form method="post" action="{{base}}/media/{{.Server.ID}}/delete" onsubmit="return confirm('Delete this media server? Its movies and series disappear from the boxes.')">
+      <a class="button secondary sm" href="{{base}}/media/{{.Server.ID}}" title="{{t "Edit"}}">{{icon "edit"}}<span class="label">{{t "Edit"}}</span></a>
+      <form method="post" action="{{base}}/media/{{.Server.ID}}/delete" onsubmit="return confirm('{{t "Delete this media server? Its movies and series disappear from the boxes."}}')">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
-        <button class="danger sm" title="Delete">{{icon "trash"}}<span class="label">Delete</span></button>
+        <button class="danger sm" title="{{t "Delete"}}">{{icon "trash"}}<span class="label">{{t "Delete"}}</span></button>
       </form>
     </td>
   </tr>
@@ -50,6 +50,6 @@
 </table>
 </div>
 {{else}}
-<section class="card empty"><p>No media servers yet. <a href="{{base}}/media/new">Add your Jellyfin or Plex server</a>.</p></section>
+<section class="card empty"><p>{{th `No media servers yet. <a href="%s/media/new">Add your Jellyfin or Plex server</a>.` base}}</p></section>
 {{end}}
 {{end}}

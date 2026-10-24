@@ -1,44 +1,44 @@
 {{define "content"}}
 <div class="titlebar">
   <div>
-    <h1>Users</h1>
-    <p class="subtitle">Accounts that can log in on a TV box. Invite people to let them choose their own login.</p>
+    <h1>{{t "Users"}}</h1>
+    <p class="subtitle">{{t "Accounts that can log in on a TV box. Invite people to let them choose their own login."}}</p>
   </div>
   <div class="buttons">
-    <a class="button secondary" href="{{base}}/invites">{{icon "mail"}}Invite someone</a>
-    <a class="button" href="{{base}}/users/new">{{icon "plus"}}Add user</a>
+    <a class="button secondary" href="{{base}}/invites">{{icon "mail"}}{{t "Invite someone"}}</a>
+    <a class="button" href="{{base}}/users/new">{{icon "plus"}}{{t "Add user"}}</a>
   </div>
 </div>
 <form method="get" action="{{base}}/users" class="filters">
-  <input type="search" name="q" value="{{.Data.Search}}" placeholder="Search by username, email or note">
-  <button class="secondary">{{icon "search"}}Search</button>
+  <input type="search" name="q" value="{{.Data.Search}}" placeholder="{{t "Search by username, email or note"}}">
+  <button class="secondary">{{icon "search"}}{{t "Search"}}</button>
 </form>
 {{if .Data.Users}}
 <div class="card flush">
 <table>
-  <thead><tr><th>Username</th><th>Packages</th><th>Expires</th><th>Last seen</th><th>Status</th><th></th></tr></thead>
+  <thead><tr><th>{{t "Username"}}</th><th>{{t "Packages"}}</th><th>{{t "Expires"}}</th><th>{{t "Last seen"}}</th><th>{{t "Status"}}</th><th></th></tr></thead>
   <tbody>
   {{range .Data.Users}}
   <tr>
     <td><a class="name" href="{{base}}/users/{{.ID}}">{{.Username}}</a>{{if .Email}}<div class="muted url">{{.Email}}</div>{{end}}{{if .Note}}<div class="muted url">{{.Note}}</div>{{end}}</td>
-    <td>{{range $i, $p := .Packages}}{{if $i}}, {{end}}{{$p}}{{else}}<span class="muted">none</span>{{end}}</td>
-    <td>{{with .ExpiresAt}}{{date .}}{{else}}<span class="muted">never</span>{{end}}</td>
-    <td>{{with .LastSeenAt}}{{datetime .}}{{else}}<span class="muted">never</span>{{end}}</td>
+    <td>{{range $i, $p := .Packages}}{{if $i}}, {{end}}{{$p}}{{else}}<span class="muted">{{t "none"}}</span>{{end}}</td>
+    <td>{{with .ExpiresAt}}{{date .}}{{else}}<span class="muted">{{t "never"}}</span>{{end}}</td>
+    <td>{{with .LastSeenAt}}{{datetime .}}{{else}}<span class="muted">{{t "never"}}</span>{{end}}</td>
     <td>
-      {{if .Expired}}<span class="badge off">expired</span>{{else}}
+      {{if .Expired}}<span class="badge off">{{t "expired"}}</span>{{else}}
       <form method="post" action="{{base}}/users/{{.ID}}/toggle">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
         <input type="hidden" name="back" value="{{$.Data.Back}}">
-        {{if .Enabled}}<input type="hidden" name="enabled" value="0"><button class="badge on" title="Disable">enabled</button>
-        {{else}}<input type="hidden" name="enabled" value="1"><button class="badge off" title="Enable">disabled</button>{{end}}
+        {{if .Enabled}}<input type="hidden" name="enabled" value="0"><button class="badge on" title="{{t "Disable"}}">{{t "enabled"}}</button>
+        {{else}}<input type="hidden" name="enabled" value="1"><button class="badge off" title="{{t "Enable"}}">{{t "disabled"}}</button>{{end}}
       </form>
       {{end}}
     </td>
     <td class="actions">
-      <a class="button secondary sm" href="{{base}}/users/{{.ID}}" title="Edit">{{icon "edit"}}<span class="label">Edit</span></a>
-      <form method="post" action="{{base}}/users/{{.ID}}/delete" onsubmit="return confirm('Delete this user?')">
+      <a class="button secondary sm" href="{{base}}/users/{{.ID}}" title="{{t "Edit"}}">{{icon "edit"}}<span class="label">{{t "Edit"}}</span></a>
+      <form method="post" action="{{base}}/users/{{.ID}}/delete" onsubmit="return confirm('{{t "Delete this user?"}}')">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
-        <button class="danger sm" title="Delete">{{icon "trash"}}<span class="label">Delete</span></button>
+        <button class="danger sm" title="{{t "Delete"}}">{{icon "trash"}}<span class="label">{{t "Delete"}}</span></button>
       </form>
     </td>
   </tr>
@@ -48,8 +48,8 @@
 </div>
 {{else}}
 <section class="card empty">
-  <p>No users{{if .Data.Search}} match this search{{else}} yet{{end}}.</p>
-  <p><a href="{{base}}/invites">Send an invitation</a> or <a href="{{base}}/users/new">add a user</a>.</p>
+  <p>{{if .Data.Search}}{{t "No users match this search."}}{{else}}{{t "No users yet."}}{{end}}</p>
+  <p>{{th `<a href="%[1]s/invites">Send an invitation</a> or <a href="%[1]s/users/new">add a user</a>.` base}}</p>
 </section>
 {{end}}
 {{end}}

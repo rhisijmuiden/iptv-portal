@@ -14,6 +14,7 @@ It can also offer the movies and series of your own **Jellyfin** or **Plex** ser
 
 - **Channels as an index, not a proxy.** Store the m3u8 address, logo, category and EPG ID of each channel. Players are redirected to the source, so the server needs almost no bandwidth.
 - **Imports** from an M3U file, pasted text or a URL, and a built-in browser for the public [iptv-org](https://github.com/iptv-org/iptv) channel database.
+- **Radio**: pick stations from the public [Radio Browser](https://www.radio-browser.info/) database or add them by their stream URL, in radio categories of your own that you put in packages.
 - **Users, packages and invitations.** Decide per user which channels they see, set expiry dates and connection limits, switch accounts off, and send invitation links so people create their own login.
 - **Xtream Codes API, M3U and XMLTV.** Works with MyTVOnline (Formuler), TiviMate, IPTV Smarters and most other players.
 - **Program guide** merged from your own XMLTV sources and filtered per user.
@@ -22,6 +23,7 @@ It can also offer the movies and series of your own **Jellyfin** or **Plex** ser
 - **Microsoft Entra sign-in** for the admin panel (optional), limited to the groups or app roles you choose, with local accounts as a fallback.
 - **Backups** to FTP, FTPS or SCP: full and incremental, scheduled or by hand, optionally encrypted, and restored from the admin panel.
 - **Updates from the admin panel** with release notes, stable and test release channels, an optional daily check and automatic rollback.
+- **English and Dutch.** English is the default; every admin picks a language at the bottom of the menu, and subscribers can switch on the invitation pages. See [Languages](#languages).
 - **Simple to host**: one Go binary with SQLite, an installer for any systemd Linux and a script for Proxmox VE LXC.
 
 See [The admin panel](#the-admin-panel) below for a page-by-page tour.
@@ -90,6 +92,10 @@ Browse the public iptv-org channel database, filtered by country (the Netherland
 
 ![iptv-org browser](docs/screenshots/iptv-org.png)
 
+### Radio
+
+**Radio stations** lists your stations; **Find stations** searches the public Radio Browser database. See [Radio](#radio-1).
+
 ### Guide
 
 Add XMLTV sources and see, per channel, whether the guide has data for it. The guide refreshes every 6 hours or with **Refresh now**. See [Program guide (EPG)](#program-guide-epg).
@@ -141,7 +147,7 @@ The link opens on the portal, not the admin panel. After signing up, the new use
 
 ### Settings
 
-Portal name, public URL (for a reverse proxy or your own domain), and the ports of the admin panel and the portal. A port change takes effect right away. See [Components](#components). The same page holds the [mail server](#sending-login-details-by-email) and [Microsoft Entra sign-in](#signing-in-with-microsoft-entra).
+Portal name, public URL (for a reverse proxy or your own domain), the default [language](#languages), and the ports of the admin panel and the portal. A port change takes effect right away. See [Components](#components). The same page holds the [mail server](#sending-login-details-by-email) and [Microsoft Entra sign-in](#signing-in-with-microsoft-entra).
 
 <details>
 <summary>Screenshot</summary>
@@ -275,6 +281,16 @@ Behind a reverse proxy, fill in **Admin panel URL** with the address you open th
 
 The first sign-in creates an admin account named after the Microsoft sign-in name (for example `jane@example.com`) with a random password, so that account can only be used through Microsoft. If a local admin account with that name already exists, it is used and keeps its password. Removing someone's role or group blocks their next sign-in; a session that is already open stays valid until they log out or it expires after 7 days without use. The client secret is stored in the portal database; Entra secrets expire, so renew it in time.
 
+## Languages
+
+The interface is available in English (the default) and Dutch.
+
+- **Admins** pick their language with the switch at the bottom of the menu (or below the login form). The choice is kept in a cookie per browser.
+- **Default language** under *Settings → General* is used for the login page, the invitation and welcome pages, the emails to users, and admins who did not pick a language.
+- **Subscribers** can switch language at the bottom of the invitation page. The login email they get after signing up is in the language they signed up in.
+
+Texts are written in English in the templates and Go code and translated through `internal/i18n/nl.json`, keyed by the English text. `go test ./internal/i18n` fails when a text in the interface has no Dutch translation, so new texts cannot slip through untranslated.
+
 ## Setting up a TV box
 
 Users add the portal as an **Xtream Codes** login (called *XC* in some apps) with:
@@ -345,3 +361,15 @@ Under **Import** you can upload an M3U playlist, paste one, or have it downloade
 Under **iptv-org** you browse the public channel database of [iptv-org](https://iptv-org.github.io/). It opens on the Netherlands; filter by country, category or name, tick the streams you want and choose where they go: the iptv-org category, the country name, one of your own categories or a new one. You can also add that category to one or more packages straight away, so the channels show up for the users who have those packages. Each channel keeps its name, logo and iptv-org id as EPG ID (for example `NPO1.nl@SD`). Labels such as *Geo-blocked* or *Not 24/7* and streams that need special headers are marked, because TV boxes connect to the stream directly.
 
 The list is downloaded from `https://iptv-org.github.io/api` and kept in memory for 12 hours; **Reload list** fetches it again. Set `IPTV_PORTAL_IPTVORG_API` to use a mirror.
+
+## Radio
+
+Radio stations live next to the TV channels, in categories of their own. Under **Radio → Find stations** you search the public [Radio Browser](https://www.radio-browser.info/) database of more than 50,000 stations by name, country (the Netherlands by default), language or genre, sorted by popularity, listeners, name or quality. Stations whose stream failed Radio Browser's last check are left out. Tick the stations you want and choose their category: the genre (when you searched for one, that genre; otherwise each station's first), the country, the language, one of your radio categories or a new one. Categories made this way are called *Radio Pop*, *Radio The Netherlands* and so on. You can add the category to packages straight away. A station that is already in the portal is updated (name, stream, logo) instead of added twice.
+
+You can also add a single station by hand under **Radio stations → Add radio station** with its stream URL (MP3, AAC or HLS). A link to a `.pls`, `.m3u` or `.asx` playlist is replaced by the stream inside it.
+
+When you create a category under **Categories**, choose whether it holds TV channels or radio stations. A package that has *all channels* includes the radio stations too; otherwise add the radio categories you want to it.
+
+Players see radio stations as live channels in their radio categories, so they work on every Xtream Codes player (MyTVOnline, TiviMate, IPTV Smarters). In the M3U playlist they carry `radio="true"`, which Kodi and TiviMate use to show them as radio. Like TV channels, players connect to the station's stream directly, and the stream health check tests them too.
+
+The portal picks a Radio Browser server from the list Radio Browser publishes in DNS. Set `IPTV_PORTAL_RADIOBROWSER_API` (for example `https://de1.api.radio-browser.info`) to always use one server.

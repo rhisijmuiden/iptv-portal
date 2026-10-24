@@ -2,11 +2,11 @@ package admin
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/rhisijmuiden/iptv-portal/internal/i18n"
 	"github.com/rhisijmuiden/iptv-portal/internal/mail"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 )
@@ -59,12 +59,12 @@ func (h *Handler) mailTest(w http.ResponseWriter, r *http.Request, sess store.Se
 		return
 	}
 	to := r.FormValue("to")
-	if err := mail.Send(r.Context(), st.Mail, mail.TestMessage(to, st.PortalName)); err != nil {
+	if err := mail.Send(r.Context(), st.Mail, mail.TestMessage(i18n.FromContext(r.Context()), to, st.PortalName)); err != nil {
 		h.log.Warn("sending test email", "to", to, "err", err)
-		h.render(w, r, "settings", h.settingsPage(r, sess, st, "The test email could not be sent: "+err.Error()))
+		h.render(w, r, "settings", h.settingsPage(r, sess, st, tr(r, "The test email could not be sent: %s", err.Error())))
 		return
 	}
-	redirectFlash(w, r, "/settings", fmt.Sprintf("Test email sent to %s.", strings.TrimSpace(to)))
+	redirectFlash(w, r, "/settings", tr(r, "Test email sent to %s.", strings.TrimSpace(to)))
 }
 
 // ---- sending login details and invitations ----
@@ -74,7 +74,7 @@ func (h *Handler) sendLogin(r *http.Request, st store.Settings, u store.User, pa
 	if u.Email == "" {
 		return errors.New("this user has no email address")
 	}
-	msg := mail.LoginMessage(u.Email, mail.Login{PortalName: st.PortalName, PortalURL: PortalURL(st, r),
+	msg := mail.LoginMessage(st.Language, u.Email, mail.Login{PortalName: st.PortalName, PortalURL: PortalURL(st, r),
 		Username: u.Username, Password: password, ExpiresAt: u.ExpiresAt})
 	if err := mail.Send(r.Context(), st.Mail, msg); err != nil {
 		h.log.Warn("emailing login details", "username", u.Username, "err", err)
@@ -116,11 +116,11 @@ func (h *Handler) userSendLogin(w http.ResponseWriter, r *http.Request, sess sto
 		return
 	}
 	if err := h.sendLogin(r, st, u, password); err != nil {
-		h.renderUserForm(w, r, sess, u, fmt.Sprintf(
+		h.renderUserForm(w, r, sess, u, tr(r,
 			"The password was changed to %s, but the email could not be sent: %v", password, err))
 		return
 	}
-	redirectFlash(w, r, "/users/"+strconv.FormatInt(id, 10), fmt.Sprintf("A new password was emailed to %s.", u.Email))
+	redirectFlash(w, r, "/users/"+strconv.FormatInt(id, 10), tr(r, "A new password was emailed to %s.", u.Email))
 }
 
 func (h *Handler) inviteSend(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -143,10 +143,10 @@ func (h *Handler) inviteSend(w http.ResponseWriter, r *http.Request, sess store.
 		return
 	}
 	if err := h.sendInvite(r, inv, r.FormValue("email")); err != nil {
-		h.renderInvites(w, r, sess, &inv, "The invitation could not be emailed: "+err.Error())
+		h.renderInvites(w, r, sess, &inv, tr(r, "The invitation could not be emailed: %s", err.Error()))
 		return
 	}
-	redirectFlash(w, r, "/invites", fmt.Sprintf("Invitation emailed to %s.", strings.TrimSpace(r.FormValue("email"))))
+	redirectFlash(w, r, "/invites", tr(r, "Invitation emailed to %s.", strings.TrimSpace(r.FormValue("email"))))
 }
 
 func (h *Handler) sendInvite(r *http.Request, inv store.Invite, to string) error {
@@ -155,7 +155,7 @@ func (h *Handler) sendInvite(r *http.Request, inv store.Invite, to string) error
 		return err
 	}
 	link := PortalURL(st, r) + "/invite/" + inv.Token
-	if err := mail.Send(r.Context(), st.Mail, mail.InviteMessage(to, st.PortalName, link)); err != nil {
+	if err := mail.Send(r.Context(), st.Mail, mail.InviteMessage(st.Language, to, st.PortalName, link)); err != nil {
 		h.log.Warn("emailing invitation", "to", to, "err", err)
 		return err
 	}

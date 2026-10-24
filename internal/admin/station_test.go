@@ -169,7 +169,7 @@ func TestBasePath(t *testing.T) {
 	}
 	w = do(h, "GET", "/portal-admin/login", "", "")
 	body := w.Body.String()
-	for _, want := range []string{`href="/portal-admin/static/style.css"`, `action="/portal-admin/login"`, `href="/portal-admin/static/icons.svg#tv"`} {
+	for _, want := range []string{`href="/portal-admin/static/style.css"`, `action="/portal-admin/login"`, `src="/portal-admin/static/brand/rhis-icon.svg"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("login page is missing %q", want)
 		}

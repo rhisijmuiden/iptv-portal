@@ -2,63 +2,63 @@
 {{$d := .Data}}
 <div class="titlebar">
   <div>
-    <h1>Info &amp; updates</h1>
-    <p class="subtitle">The installed version, updates and what changed in each release.</p>
+    <h1>{{t "Info & updates"}}</h1>
+    <p class="subtitle">{{t "The installed version, updates and what changed in each release."}}</p>
   </div>
   <form method="post" action="{{base}}/info/check">
     <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
-    <button class="secondary">{{icon "refresh"}}Check for updates</button>
+    <button class="secondary">{{icon "refresh"}}{{t "Check for updates"}}</button>
   </form>
 </div>
 <section class="card">
-  <h2>Version</h2>
+  <h2>{{t "Version"}}</h2>
   <table class="details">
-    <tr><th>Installed</th><td><code>{{$d.Version}}</code>{{if $d.DevBuild}} <span class="muted">(development build, updates are not installed automatically)</span>{{end}}</td></tr>
-    <tr><th>Release channel</th><td>{{if eq (print $d.Status.Channel) "test"}}<span class="badge warn">test</span> <span class="muted">stable releases and pre-releases</span>{{else}}<span class="badge on">stable</span> <span class="muted">stable releases only</span>{{end}}</td></tr>
-    <tr><th>Latest release</th><td>{{with $d.Status.Latest}}<code>{{.Tag}}</code>{{if .Prerelease}} <span class="badge warn">pre-release</span>{{end}} <span class="muted">published {{date (ptr .PublishedAt)}}</span>{{else}}<span class="muted">unknown, check for updates</span>{{end}}</td></tr>
-    <tr><th>Last checked</th><td>{{if $d.Status.CheckedAt.IsZero}}<span class="muted">never</span>{{else}}{{datetime (ptr $d.Status.CheckedAt)}}{{end}}</td></tr>
+    <tr><th>{{t "Installed"}}</th><td><code>{{$d.Version}}</code>{{if $d.DevBuild}} <span class="muted">({{t "development build, updates are not installed automatically"}})</span>{{end}}</td></tr>
+    <tr><th>{{t "Release channel"}}</th><td>{{if eq (print $d.Status.Channel) "test"}}<span class="badge warn">{{t "test"}}</span> <span class="muted">{{t "stable releases and pre-releases"}}</span>{{else}}<span class="badge on">{{t "stable"}}</span> <span class="muted">{{t "stable releases only"}}</span>{{end}}</td></tr>
+    <tr><th>{{t "Latest release"}}</th><td>{{with $d.Status.Latest}}<code>{{.Tag}}</code>{{if .Prerelease}} <span class="badge warn">{{t "pre-release"}}</span>{{end}} <span class="muted">{{tf "published %s" (date (ptr .PublishedAt))}}</span>{{else}}<span class="muted">{{t "unknown, check for updates"}}</span>{{end}}</td></tr>
+    <tr><th>{{t "Last checked"}}</th><td>{{if $d.Status.CheckedAt.IsZero}}<span class="muted">{{t "never"}}</span>{{else}}{{datetime (ptr $d.Status.CheckedAt)}}{{end}}</td></tr>
   </table>
   {{if and $d.Prerelease (ne (print $d.Status.Channel) "test")}}
-  <p class="muted">You are running a pre-release on the stable channel. The portal stays on this version until a newer stable release is published.</p>
+  <p class="muted">{{t "You are running a pre-release on the stable channel. The portal stays on this version until a newer stable release is published."}}</p>
   {{end}}
   {{if $d.Status.Available}}
   <div class="flash ok update">
-    <p><strong>Version {{$d.Status.Latest.Tag}} is available.</strong> Updating downloads it from GitHub, checks it and restarts the portal. TV boxes reconnect by themselves; the previous version is kept as a backup.</p>
-    <form method="post" action="{{base}}/info/install" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='Updating…'">
+    <p><strong>{{tf "Version %s is available." $d.Status.Latest.Tag}}</strong> {{t "Updating downloads it from GitHub, checks it and restarts the portal. TV boxes reconnect by themselves; the previous version is kept as a backup."}}</p>
+    <form method="post" action="{{base}}/info/install" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='{{t "Updating…"}}'">
       <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
       <input type="hidden" name="tag" value="{{$d.Status.Latest.Tag}}">
-      <button>{{icon "download"}}Update to {{$d.Status.Latest.Tag}}</button>
+      <button>{{icon "download"}}{{tf "Update to %s" $d.Status.Latest.Tag}}</button>
     </form>
   </div>
   {{end}}
   <div class="buttons wrap">
     <form method="post" action="{{base}}/info/channel" class="inline">
       <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
-      <label class="check">Release channel
+      <label class="check">{{t "Release channel"}}
         <select name="channel" onchange="this.form.submit()">
-          <option value="stable"{{if ne (print $d.Status.Channel) "test"}} selected{{end}}>Stable</option>
-          <option value="test"{{if eq (print $d.Status.Channel) "test"}} selected{{end}}>Test (pre-releases)</option>
+          <option value="stable"{{if ne (print $d.Status.Channel) "test"}} selected{{end}}>{{t "Stable"}}</option>
+          <option value="test"{{if eq (print $d.Status.Channel) "test"}} selected{{end}}>{{t "Test (pre-releases)"}}</option>
         </select>
       </label>
-      <noscript><button class="secondary">Save</button></noscript>
+      <noscript><button class="secondary">{{t "Save"}}</button></noscript>
     </form>
     <form method="post" action="{{base}}/info/auto" class="inline">
       <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
-      <label class="check"><input type="checkbox" name="auto" {{if $d.AutoCheck}}checked{{end}} onchange="this.form.submit()"> Check automatically every 24 hours</label>
-      <noscript><button class="secondary">Save</button></noscript>
+      <label class="check"><input type="checkbox" name="auto" {{if $d.AutoCheck}}checked{{end}} onchange="this.form.submit()"> {{t "Check automatically every 24 hours"}}</label>
+      <noscript><button class="secondary">{{t "Save"}}</button></noscript>
     </form>
   </div>
 </section>
-<h2 class="section-title">Release notes</h2>
+<h2 class="section-title">{{t "Release notes"}}</h2>
 {{range $d.Status.Releases}}
 <section class="card release">
   <div class="card-head">
-    <h2>{{if .Name}}{{.Name}}{{else}}{{.Tag}}{{end}} {{if .Prerelease}}<span class="badge warn">pre-release</span>{{end}} {{if eq .Tag $d.Version}}<span class="badge on">installed</span>{{end}}</h2>
-    <span class="muted">{{date (ptr .PublishedAt)}} · <a href="{{.URL}}" target="_blank" rel="noopener">on GitHub</a></span>
+    <h2>{{if .Name}}{{.Name}}{{else}}{{.Tag}}{{end}} {{if .Prerelease}}<span class="badge warn">{{t "pre-release"}}</span>{{end}} {{if eq .Tag $d.Version}}<span class="badge on">{{t "installed"}}</span>{{end}}</h2>
+    <span class="muted">{{date (ptr .PublishedAt)}} · <a href="{{.URL}}" target="_blank" rel="noopener">{{t "on GitHub"}}</a></span>
   </div>
-  <div class="notes">{{if .Notes}}{{notes .Notes}}{{else}}<p class="muted">No release notes.</p>{{end}}</div>
+  <div class="notes">{{if .Notes}}{{notes .Notes}}{{else}}<p class="muted">{{t "No release notes."}}</p>{{end}}</div>
 </section>
 {{else}}
-<section class="card empty"><p>Click <em>Check for updates</em> to load the release notes from GitHub.</p></section>
+<section class="card empty"><p>{{th `Click <em>Check for updates</em> to load the release notes from GitHub.`}}</p></section>
 {{end}}
 {{end}}

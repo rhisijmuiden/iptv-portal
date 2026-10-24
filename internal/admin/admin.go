@@ -22,8 +22,10 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/entra"
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
 	"github.com/rhisijmuiden/iptv-portal/internal/health"
+	"github.com/rhisijmuiden/iptv-portal/internal/i18n"
 	"github.com/rhisijmuiden/iptv-portal/internal/iptvorg"
 	"github.com/rhisijmuiden/iptv-portal/internal/media"
+	"github.com/rhisijmuiden/iptv-portal/internal/radiobrowser"
 	"github.com/rhisijmuiden/iptv-portal/internal/server"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 	"github.com/rhisijmuiden/iptv-portal/internal/update"
@@ -45,10 +47,11 @@ type Listeners interface {
 
 // Handler is the admin panel HTTP handler.
 type Handler struct {
-	store        *store.Store
-	listeners    Listeners
-	log          *slog.Logger
-	pages        map[string]*template.Template
+	store     *store.Store
+	listeners Listeners
+	log       *slog.Logger
+	// pages holds every template once per language: pages[lang][name].
+	pages        map[string]map[string]*template.Template
 	mux          *http.ServeMux
 	limiter      *web.Limiter
 	guide        *epg.Guide
@@ -56,6 +59,7 @@ type Handler struct {
 	updater      *update.Updater
 	restart      func()
 	iptvorg      *iptvorg.Client
+	radio        *radiobrowser.Client
 	media        *media.Catalog
 	refreshMedia chan<- struct{}
 	activity     *activity.Tracker
@@ -78,6 +82,8 @@ type Config struct {
 	Restart func()
 	// IPTVOrg reads the iptv-org channel list; nil uses the public API.
 	IPTVOrg *iptvorg.Client
+	// Radio searches Radio Browser; nil uses the public API.
+	Radio *radiobrowser.Client
 	// Media is the On Demand catalog; RefreshMedia receives a value when
 	// it should reload.
 	Media        *media.Catalog
@@ -101,6 +107,7 @@ type Config struct {
 func New(c Config) (*Handler, error) {
 	h := &Handler{store: c.Store, listeners: c.Listeners, log: c.Log, limiter: web.NewLimiter(10, 15*time.Minute),
 		guide: c.Guide, refresh: c.RefreshGuide, updater: c.Updater, restart: c.Restart, iptvorg: c.IPTVOrg,
+		radio: c.Radio,
 		media: c.Media, refreshMedia: c.RefreshMedia, activity: c.Activity, entra: c.Entra, backups: c.Backups,
 		health: c.Health, base: c.BasePath}
 	if h.activity == nil {
@@ -114,6 +121,9 @@ func New(c Config) (*Handler, error) {
 	}
 	if h.iptvorg == nil {
 		h.iptvorg = iptvorg.NewClient()
+	}
+	if h.radio == nil {
+		h.radio = radiobrowser.NewClient()
 	}
 	if h.backups == nil && c.Store != nil {
 		h.backups = backup.New(c.Store, c.Log)
@@ -129,6 +139,19 @@ func New(c Config) (*Handler, error) {
 }
 
 func (h *Handler) parseTemplates() error {
+	h.pages = map[string]map[string]*template.Template{}
+	for _, l := range i18n.Languages {
+		pages, err := h.parseLanguage(l.Code)
+		if err != nil {
+			return err
+		}
+		h.pages[l.Code] = pages
+	}
+	return nil
+}
+
+// parseLanguage parses the templates with the text functions of lang.
+func (h *Handler) parseLanguage(lang string) (map[string]*template.Template, error) {
 	funcs := template.FuncMap{
 		"version": func() string { return version.Version },
 		// base is the path the panel is served under; every link starts
@@ -162,18 +185,20 @@ func (h *Handler) parseTemplates() error {
 			}
 			return t.Local().Format("2006-01-02 15:04")
 		},
-		"ago":  ago,
 		"size": formatSize,
+	}
+	for k, v := range i18n.Funcs(lang) {
+		funcs[k] = v
 	}
 	layout, err := template.New("layout.html").Funcs(funcs).ParseFS(templateFS, "templates/layout.html")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	names, err := fs.Glob(templateFS, "templates/*.html")
 	if err != nil {
-		return err
+		return nil, err
 	}
-	h.pages = map[string]*template.Template{}
+	pages := map[string]*template.Template{}
 	for _, n := range names {
 		name := strings.TrimSuffix(strings.TrimPrefix(n, "templates/"), ".html")
 		if name == "layout" {
@@ -181,17 +206,18 @@ func (h *Handler) parseTemplates() error {
 		}
 		t, err := template.Must(layout.Clone()).ParseFS(templateFS, n)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		h.pages[name] = t
+		pages[name] = t
 	}
-	return nil
+	return pages, nil
 }
 
 func (h *Handler) routes() {
 	m := http.NewServeMux()
 	m.Handle("GET /static/", web.Static())
 	m.HandleFunc("GET /healthz", web.Health)
+	m.HandleFunc("GET /language", h.setLanguage)
 	m.HandleFunc("GET /login", h.loginForm)
 	m.HandleFunc("POST /login", h.login)
 	m.HandleFunc("GET /login/entra", h.ssoStart)
@@ -223,6 +249,14 @@ func (h *Handler) routes() {
 	auth("GET /iptv-org", h.iptvorgPage)
 	auth("POST /iptv-org/add", h.iptvorgAdd)
 	auth("POST /iptv-org/reload", h.iptvorgReload)
+	auth("GET /radio", h.radioList)
+	auth("GET /radio/new", h.radioForm)
+	auth("POST /radio/new", h.radioSave)
+	auth("GET /radio/browse", h.radioBrowse)
+	auth("POST /radio/browse/add", h.radioBrowseAdd)
+	auth("GET /radio/{id}", h.radioForm)
+	auth("POST /radio/{id}", h.radioSave)
+	auth("POST /radio/{id}/delete", h.radioDelete)
 	auth("GET /users", h.userList)
 	auth("GET /users/new", h.userForm)
 	auth("POST /users/new", h.userSave)
@@ -280,6 +314,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Frame-Options", "DENY")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "same-origin")
+	r = r.WithContext(i18n.WithLanguage(r.Context(), h.language(r)))
 	if h.base == "" {
 		h.mux.ServeHTTP(w, r)
 		return
@@ -372,6 +407,32 @@ func (h *Handler) redirectLogin(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
+// language is the language the admin picked, or the portal's default.
+func (h *Handler) language(r *http.Request) string {
+	fallback := ""
+	if _, err := r.Cookie(i18n.Cookie); err != nil && h.store != nil {
+		if st, err := h.store.Settings(r.Context()); err == nil {
+			fallback = st.Language
+		}
+	}
+	return i18n.FromRequest(r, fallback)
+}
+
+// setLanguage stores the language picked in the menu and goes back to the
+// page it was picked on.
+func (h *Handler) setLanguage(w http.ResponseWriter, r *http.Request) {
+	if l := i18n.Match(r.FormValue("lang")); l != "" {
+		i18n.Remember(w, l, h.cookiePath(), web.IsHTTPS(r))
+	}
+	http.Redirect(w, r, web.LocalPath(r.FormValue("next")), http.StatusSeeOther)
+}
+
+// tr translates a message into the language of the request; with args it
+// is a format for fmt.Sprintf.
+func tr(r *http.Request, msg string, args ...any) string {
+	return i18n.Tf(i18n.FromContext(r.Context()), msg, args...)
+}
+
 // page is the data every template receives.
 type page struct {
 	Title      string
@@ -380,11 +441,15 @@ type page struct {
 	Session    *store.Session
 	Flash      string
 	Error      string
-	Data       any
+	// Path is the address of the page, used to come back after switching
+	// language.
+	Path string
+	Data any
 }
 
 func (h *Handler) render(w http.ResponseWriter, r *http.Request, name string, p page) {
-	t, ok := h.pages[name]
+	lang := i18n.FromContext(r.Context())
+	t, ok := h.pages[lang][name]
 	if !ok {
 		h.serverError(w, errors.New("unknown template "+name))
 		return
@@ -400,12 +465,28 @@ func (h *Handler) render(w http.ResponseWriter, r *http.Request, name string, p 
 	if p.Error == "" {
 		p.Error = r.URL.Query().Get("err")
 	}
-	p.Error = web.Sentence(p.Error)
+	// Messages are written in English; those with a translation are shown
+	// in the language of the page.
+	p.Flash = i18n.T(lang, p.Flash)
+	p.Error = i18n.T(lang, web.Sentence(p.Error))
+	p.Path = pagePath(r)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	if err := t.ExecuteTemplate(w, "layout.html", p); err != nil {
 		h.log.Error("rendering template", "page", name, "err", err)
 	}
+}
+
+// pagePath is the path and query of the request without the one-off
+// messages, so switching language does not show them again.
+func pagePath(r *http.Request) string {
+	q := r.URL.Query()
+	q.Del("ok")
+	q.Del("err")
+	if len(q) == 0 {
+		return r.URL.Path
+	}
+	return r.URL.Path + "?" + q.Encode()
 }
 
 func (h *Handler) serverError(w http.ResponseWriter, err error) {
@@ -508,8 +589,9 @@ func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request, sess st
 // ---- dashboard ----
 
 type dashboardData struct {
-	Channels   int
-	Enabled    int
+	Channels   int // TV channels
+	Enabled    int // enabled TV channels
+	Radio      int // radio stations
 	Categories int
 	Users      int
 	Active     int
@@ -541,34 +623,27 @@ func (h *Handler) dashboard(w http.ResponseWriter, r *http.Request, sess store.S
 		h.serverError(w, err)
 		return
 	}
-	d := dashboardData{Channels: len(chs), Categories: len(cats), Users: total, Active: active,
+	d := dashboardData{Categories: len(cats), Users: total, Active: active,
 		Listeners: h.listeners.Status(), PortalURL: PortalURL(st, r),
 		Activity: h.activity.Snapshot(), Window: int(activity.OnlineWindow / time.Minute)}
 	if us := h.updater.Status(); us.Available() {
 		d.Update = us.Latest()
 	}
 	for _, c := range chs {
-		if c.Enabled {
+		switch {
+		case c.IsRadio():
+			d.Radio++
+		case c.Enabled:
+			d.Channels++
 			d.Enabled++
+		default:
+			d.Channels++
 		}
 	}
 	h.render(w, r, "dashboard", page{Title: "Dashboard", Nav: "dashboard", Session: &sess, Data: d})
 }
 
 // ago describes how long before now t was, e.g. "3 min ago".
-func ago(now, t time.Time) string {
-	d := now.Sub(t)
-	switch {
-	case d < time.Minute:
-		return "just now"
-	case d < time.Hour:
-		return strconv.Itoa(int(d/time.Minute)) + " min ago"
-	case d < 24*time.Hour:
-		return strconv.Itoa(int(d/time.Hour)) + " h ago"
-	}
-	return t.Local().Format("2006-01-02 15:04")
-}
-
 // PortalURL is the address clients enter in their player. It is the public
 // URL when set, otherwise the host of the current request on the portal
 // port.
@@ -621,6 +696,7 @@ func (h *Handler) settingsSave(w http.ResponseWriter, r *http.Request, sess stor
 	st := old
 	st.PortalName = r.FormValue("portal_name")
 	st.PublicURL = r.FormValue("public_url")
+	st.Language = r.FormValue("language")
 	st.AdminPort, _ = strconv.Atoi(r.FormValue("admin_port"))
 	st.PortalPort, _ = strconv.Atoi(r.FormValue("portal_port"))
 	err = st.Validate()

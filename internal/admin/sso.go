@@ -51,7 +51,7 @@ func (h *Handler) ssoStart(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.log.Warn("starting Microsoft sign-in", "err", err)
 		w.WriteHeader(http.StatusBadGateway)
-		h.render(w, r, "login", h.loginPage(r, "Sign-in with Microsoft could not be started: "+err.Error()))
+		h.render(w, r, "login", h.loginPage(r, tr(r, "Sign-in with Microsoft could not be started: %s", err.Error())))
 		return
 	}
 	// Lax lets the cookie come along on the top-level redirect back from
@@ -73,7 +73,7 @@ func (h *Handler) ssoCallback(w http.ResponseWriter, r *http.Request) {
 		}
 		h.log.Warn("Microsoft sign-in refused", "error", e, "description", desc)
 		w.WriteHeader(http.StatusUnauthorized)
-		h.render(w, r, "login", h.loginPage(r, "Microsoft refused the sign-in: "+strings.TrimSpace(desc)))
+		h.render(w, r, "login", h.loginPage(r, tr(r, "Microsoft refused the sign-in: %s", strings.TrimSpace(desc))))
 		return
 	}
 	state := q.Get("state")

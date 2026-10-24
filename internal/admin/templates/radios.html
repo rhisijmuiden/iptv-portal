@@ -1,0 +1,74 @@
+{{define "content"}}
+<div class="titlebar">
+  <div>
+    <h1>{{t "Radio stations"}}</h1>
+    <p class="subtitle">{{t "Radio stations your users find next to the TV channels, in their own categories. Click a status to switch a station on or off."}}</p>
+  </div>
+  <div class="buttons">
+    <a class="button secondary" href="{{base}}/radio/browse">{{icon "search"}}{{t "Browse Radio Browser"}}</a>
+    <a class="button" href="{{base}}/radio/new">{{icon "plus"}}{{t "Add radio station"}}</a>
+  </div>
+</div>
+<form method="get" action="{{base}}/radio" class="filters">
+  <input type="search" name="q" value="{{.Data.Filter.Search}}" placeholder="{{t "Search by name or URL"}}">
+  <select name="category" onchange="this.form.submit()">
+    <option value="0">{{t "All categories"}}</option>
+    <option value="-1" {{if eq .Data.Filter.CategoryID -1}}selected{{end}}>{{t "Uncategorized"}}</option>
+    {{range .Data.Categories}}<option value="{{.ID}}" {{if eq $.Data.Filter.CategoryID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
+  </select>
+  <select name="health" onchange="this.form.submit()">
+    <option value="">{{t "Any stream health"}}</option>
+    <option value="ok" {{if eq .Data.HealthOnly "ok"}}selected{{end}}>{{t "Working"}}</option>
+    <option value="failing" {{if eq .Data.HealthOnly "failing"}}selected{{end}}>{{t "Failing"}}</option>
+    <option value="unchecked" {{if eq .Data.HealthOnly "unchecked"}}selected{{end}}>{{t "Not checked yet"}}</option>
+  </select>
+  <button class="secondary">{{icon "search"}}{{t "Filter"}}</button>
+</form>
+{{if .Data.Channels}}
+<div class="card flush">
+<table class="radios">
+  <thead><tr><th></th><th>{{t "Name"}}</th><th>{{t "Category"}}</th><th>{{t "Stream"}}</th><th>{{t "Status"}}</th><th></th></tr></thead>
+  <tbody>
+  {{range .Data.Channels}}
+  <tr>
+    <td class="logo">{{if .LogoURL}}<img src="{{.LogoURL}}" alt="" loading="lazy" referrerpolicy="no-referrer">{{else}}<span class="logo-placeholder">{{icon "radio"}}</span>{{end}}</td>
+    <td><a class="name" href="{{base}}/radio/{{.ID}}">{{.Name}}</a>{{if .SourceID}} <span class="chip" title="{{t "Imported from Radio Browser"}}">Radio Browser</span>{{end}}<div class="muted url">{{.StreamURL}}</div></td>
+    <td>{{if .Category}}{{.Category}}{{else}}<span class="muted">{{t "none"}}</span>{{end}}</td>
+    <td>{{$hl := index $.Data.Health .ID}}
+      {{if $hl.CheckedAt.IsZero}}<span class="badge idle" title="{{t "This stream has not been checked yet"}}">{{t "unchecked"}}</span>
+      {{else if $hl.OK}}<span class="badge on" title="{{t $hl.Message}} · {{tf "checked %s" (ago $.Data.Now $hl.CheckedAt)}}">{{t "working"}}</span>
+      {{else}}<span class="badge off" title="{{t $hl.Message}} · {{tf "checked %s" (ago $.Data.Now $hl.CheckedAt)}}">{{t "failing"}}</span>
+        <div class="muted health-msg">{{t $hl.Message}}{{if gt $hl.Failures 1}} · {{tf "%d checks in a row" $hl.Failures}}{{end}}{{if $hl.AutoDisabled}} · {{t "switched off automatically"}}{{end}}</div>{{end}}
+    </td>
+    <td>
+      <form method="post" action="{{base}}/channels/{{.ID}}/toggle">
+        <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+        <input type="hidden" name="back" value="{{$.Data.Back}}">
+        {{if .Enabled}}<input type="hidden" name="enabled" value="0"><button class="badge on" title="{{t "Disable"}}">{{t "enabled"}}</button>
+        {{else}}<input type="hidden" name="enabled" value="1"><button class="badge off" title="{{t "Enable"}}">{{t "disabled"}}</button>{{end}}
+      </form>
+    </td>
+    <td class="actions">
+      <form method="post" action="{{base}}/channels/{{.ID}}/check">
+        <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+        <input type="hidden" name="back" value="{{$.Data.Back}}">
+        <button class="secondary sm" title="{{t "Check this stream now"}}">{{icon "activity"}}<span class="label">{{t "Check"}}</span></button>
+      </form>
+      <a class="button secondary sm" href="{{base}}/radio/{{.ID}}" title="{{t "Edit"}}">{{icon "edit"}}<span class="label">{{t "Edit"}}</span></a>
+      <form method="post" action="{{base}}/radio/{{.ID}}/delete" onsubmit="return confirm('{{t "Delete this radio station?"}}')">
+        <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+        <button class="danger sm" title="{{t "Delete"}}">{{icon "trash"}}<span class="label">{{t "Delete"}}</span></button>
+      </form>
+    </td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+</div>
+{{else}}
+<section class="card empty">
+  <p>{{if or .Data.Filter.Search .Data.Filter.CategoryID .Data.HealthOnly}}{{t "No radio stations match this filter."}}{{else}}{{t "No radio stations yet."}}{{end}}</p>
+  <p>{{th `<a href="%[1]s/radio/browse">Pick stations from Radio Browser</a> or <a href="%[1]s/radio/new">add a station by its stream URL</a>.` base}}</p>
+</section>
+{{end}}
+{{end}}

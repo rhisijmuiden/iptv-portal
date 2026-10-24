@@ -1,52 +1,52 @@
 {{define "content"}}
 {{$d := .Data}}
 {{$s := $d.Server}}
-<a class="back" href="{{base}}/media">&larr; On Demand</a>
-<h1>{{.Title}}</h1>
+<a class="back" href="{{base}}/media">&larr; {{t "On Demand"}}</a>
+<h1>{{t .Title}}</h1>
 <section class="card">
-<form method="post" action="{{if $s.ID}}/media/{{$s.ID}}{{else}}/media/new{{end}}" class="stack">
+<form method="post" action="{{base}}{{if $s.ID}}/media/{{$s.ID}}{{else}}/media/new{{end}}" class="stack">
   <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
   <div class="row">
-    <label>Name <input name="name" value="{{$s.Name}}" placeholder="For example Home server" required></label>
-    <label>Software
+    <label>{{t "Name"}} <input name="name" value="{{$s.Name}}" placeholder="{{t "For example Home server"}}" required></label>
+    <label>{{t "Software"}}
       <select name="kind">
         <option value="jellyfin" {{if eq $s.Kind "jellyfin"}}selected{{end}}>Jellyfin</option>
         <option value="plex" {{if eq $s.Kind "plex"}}selected{{end}}>Plex</option>
       </select>
     </label>
   </div>
-  <label>Server address
+  <label>{{t "Server address"}}
     <input type="url" name="url" value="{{$s.URL}}" placeholder="http://192.168.1.10:8096" required>
-    <small>The address this portal uses to reach the server, for example <code>http://192.168.1.10:8096</code> for Jellyfin or <code>http://192.168.1.10:32400</code> for Plex. Prefer the server's local address over a public domain name: many routers do not let machines inside the network reach their own public address.</small>
+    <small>{{th `The address this portal uses to reach the server, for example <code>http://192.168.1.10:8096</code> for Jellyfin or <code>http://192.168.1.10:32400</code> for Plex. Prefer the server's local address over a public domain name: many routers do not let machines inside the network reach their own public address.`}}</small>
   </label>
-  <label>API key or token
-    <input type="password" name="token" autocomplete="off" {{if not $s.ID}}required{{else}}placeholder="Leave empty to keep the current one"{{end}}>
-    <small>Jellyfin: create an API key under Dashboard &gt; API Keys. Plex: use the X-Plex-Token of the server owner (see Plex's support article "Finding an authentication token").</small>
+  <label>{{t "API key or token"}}
+    <input type="password" name="token" autocomplete="off" {{if not $s.ID}}required{{else}}placeholder="{{t "Leave empty to keep the current one"}}"{{end}}>
+    <small>{{t `Jellyfin: create an API key under Dashboard > API Keys. Plex: use the X-Plex-Token of the server owner (see Plex's support article "Finding an authentication token").`}}</small>
   </label>
   <fieldset>
-    <legend>Playback</legend>
-    <label class="check"><input type="radio" name="direct" value="0" {{if not $s.Direct}}checked{{end}}> Through the portal (recommended). The boxes only talk to the portal: the token stays private and the media server does not have to be reachable from the internet. All video passes through the portal.</label>
-    <label class="check"><input type="radio" name="direct" value="1" {{if $s.Direct}}checked{{end}}> Directly from the media server. The boxes are sent to the server address above, which must be reachable from the boxes, and the token is part of the stream address the boxes see.</label>
+    <legend>{{t "Playback"}}</legend>
+    <label class="check"><input type="radio" name="direct" value="0" {{if not $s.Direct}}checked{{end}}> {{t "Through the portal (recommended). The boxes only talk to the portal: the token stays private and the media server does not have to be reachable from the internet. All video passes through the portal."}}</label>
+    <label class="check"><input type="radio" name="direct" value="1" {{if $s.Direct}}checked{{end}}> {{t "Directly from the media server. The boxes are sent to the server address above, which must be reachable from the boxes, and the token is part of the stream address the boxes see."}}</label>
   </fieldset>
   {{if $s.ID}}
   <fieldset>
-    <legend>Libraries to offer</legend>
+    <legend>{{t "Libraries to offer"}}</legend>
     {{if $d.LibraryError}}
-    <p class="flash err">Could not read the libraries: {{$d.LibraryError}} The current choice is kept.</p>
+    <p class="flash err">{{tf "Could not read the libraries: %s The current choice is kept." $d.LibraryError}}</p>
     {{else}}
     <input type="hidden" name="libraries_shown" value="1">
     {{range $d.Libraries}}
-    <label class="check"><input type="checkbox" name="library" value="{{.ID}}" {{if $s.HasLibrary .ID}}checked{{end}}> {{.Name}} <span class="muted">({{if eq .Type "movies"}}movies{{else}}series{{end}})</span></label>
+    <label class="check"><input type="checkbox" name="library" value="{{.ID}}" {{if $s.HasLibrary .ID}}checked{{end}}> {{.Name}} <span class="muted">({{if eq .Type "movies"}}{{t "movies"}}{{else}}{{t "series"}}{{end}})</span></label>
     {{end}}
     {{end}}
   </fieldset>
   {{end}}
-  <label class="check"><input type="checkbox" name="enabled" {{if $s.Enabled}}checked{{end}}> Enabled</label>
+  <label class="check"><input type="checkbox" name="enabled" {{if $s.Enabled}}checked{{end}}> {{t "Enabled"}}</label>
   <div class="form-actions">
-    <button>{{if $s.ID}}Save{{else}}Connect and add{{end}}</button>
-    <a class="button secondary" href="{{base}}/media">Cancel</a>
+    <button>{{if $s.ID}}{{t "Save"}}{{else}}{{t "Connect and add"}}{{end}}</button>
+    <a class="button secondary" href="{{base}}/media">{{t "Cancel"}}</a>
   </div>
 </form>
 </section>
-<p class="muted">Which users see On Demand is set per <a href="{{base}}/packages">package</a>.</p>
+<p class="muted">{{th `Which users see On Demand is set per <a href="%s/packages">package</a>.` base}}</p>
 {{end}}

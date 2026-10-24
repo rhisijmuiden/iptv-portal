@@ -1,30 +1,30 @@
 {{define "content"}}
 {{$d := .Data}}
-<a class="back" href="{{base}}/backups">&larr; Backups</a>
+<a class="back" href="{{base}}/backups">&larr; {{t "Backups"}}</a>
 <div class="titlebar">
   <div>
-    <h1>Restore a backup</h1>
-    <p class="subtitle">Backups on {{$d.Config.Location.String}}. Restoring replaces all portal data with the data of the backup, then restarts the portal.</p>
+    <h1>{{t "Restore a backup"}}</h1>
+    <p class="subtitle">{{tf "Backups on %s. Restoring replaces all portal data with the data of the backup, then restarts the portal." $d.Config.Location.String}}</p>
   </div>
 </div>
 {{if $d.Files}}
-<p class="flash warn">Everything changed after the chosen backup is lost, including admin accounts and passwords: you log in with the admin password of the backup. The current database is kept on this server as <code>portal.db.before-restore</code>.</p>
+<p class="flash warn">{{th `Everything changed after the chosen backup is lost, including admin accounts and passwords: you log in with the admin password of the backup. The current database is kept on this server as <code>portal.db.before-restore</code>.`}}</p>
 <div class="card flush">
 <table>
-  <thead><tr><th>Made</th><th>Type</th><th>Size</th><th>Restores</th><th></th></tr></thead>
+  <thead><tr><th>{{t "Made"}}</th><th>{{t "Type"}}</th><th>{{t "Size"}}</th><th>{{t "Restores"}}</th><th></th></tr></thead>
   <tbody>
   {{range $d.Files}}
   <tr>
     <td><strong>{{datetime (ptr .Created)}}</strong><br><span class="muted url">{{.Name}}</span></td>
-    <td>{{if eq .Kind "full"}}<span class="badge on">full</span>{{else}}<span class="badge idle">incremental</span>{{end}}{{if .Encrypted}} <span class="badge warn">encrypted</span>{{end}}</td>
+    <td>{{if eq .Kind "full"}}<span class="badge on">{{t "full"}}</span>{{else}}<span class="badge idle">{{t "incremental"}}</span>{{end}}{{if .Encrypted}} <span class="badge warn">{{t "encrypted"}}</span>{{end}}</td>
     <td class="nowrap">{{size .Size}}</td>
-    <td class="muted">{{if eq .Steps 1}}this backup{{else}}the full backup and {{.Incrementals}} incremental{{end}}</td>
+    <td class="muted">{{if eq .Steps 1}}{{t "this backup"}}{{else}}{{tf "the full backup and %d incremental" .Incrementals}}{{end}}</td>
     <td class="actions">
-      <form method="post" action="{{base}}/backups/restore" onsubmit="return confirm('Replace all portal data with the backup of {{datetime (ptr .Created)}}? The portal restarts.')">
+      <form method="post" action="{{base}}/backups/restore" onsubmit="return confirm('{{tf "Replace all portal data with the backup of %s? The portal restarts." (datetime (ptr .Created))}}')">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
         <input type="hidden" name="name" value="{{.Name}}">
         <input type="hidden" name="confirm" value="on">
-        <button class="danger sm">{{icon "restore"}}<span class="label">Restore</span></button>
+        <button class="danger sm">{{icon "restore"}}<span class="label">{{t "Restore"}}</span></button>
       </form>
     </td>
   </tr>
@@ -33,8 +33,8 @@
 </table>
 </div>
 {{else if $d.Loaded}}
-<section class="card empty"><p>There are no backups on the remote location yet. <a href="{{base}}/backups">Make one</a>.</p></section>
+<section class="card empty"><p>{{th `There are no backups on the remote location yet. <a href="%s/backups">Make one</a>.` base}}</p></section>
 {{else}}
-<section class="card empty"><p>Check the <a href="{{base}}/backups#location">remote location</a> and try again.</p></section>
+<section class="card empty"><p>{{th `Check the <a href="%s/backups#location">remote location</a> and try again.` base}}</p></section>
 {{end}}
 {{end}}

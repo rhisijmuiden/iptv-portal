@@ -166,6 +166,11 @@ var migrations = []string{
 		last_ok_at    DATETIME,
 		auto_disabled INTEGER NOT NULL DEFAULT 0
 	);`,
+
+	`ALTER TABLE channels ADD COLUMN kind TEXT NOT NULL DEFAULT 'tv';
+	ALTER TABLE channels ADD COLUMN source_id TEXT NOT NULL DEFAULT '';
+	ALTER TABLE categories ADD COLUMN kind TEXT NOT NULL DEFAULT 'tv';
+	CREATE INDEX channels_source ON channels(source_id) WHERE source_id <> '';`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

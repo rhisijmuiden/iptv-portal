@@ -1,69 +1,69 @@
 {{define "content"}}
 <div class="titlebar">
   <div>
-    <h1>Channels</h1>
-    <p class="subtitle">The streams your users see. Click a status to switch a channel on or off.</p>
+    <h1>{{t "Channels"}}</h1>
+    <p class="subtitle">{{t "The streams your users see. Click a status to switch a channel on or off."}}</p>
   </div>
   <div class="buttons">
     <form method="post" action="{{base}}/health/run">
       <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
       <input type="hidden" name="back" value="{{.Data.Back}}">
-      <button class="secondary" title="Test every stream now">{{icon "activity"}}Check streams</button>
+      <button class="secondary" title="{{t "Test every stream now"}}">{{icon "activity"}}{{t "Check streams"}}</button>
     </form>
-    <a class="button secondary" href="{{base}}/import">{{icon "upload"}}Import</a>
-    <a class="button" href="{{base}}/channels/new">{{icon "plus"}}Add channel</a>
+    <a class="button secondary" href="{{base}}/import">{{icon "upload"}}{{t "Import"}}</a>
+    <a class="button" href="{{base}}/channels/new">{{icon "plus"}}{{t "Add channel"}}</a>
   </div>
 </div>
 <form method="get" action="{{base}}/channels" class="filters">
-  <input type="search" name="q" value="{{.Data.Filter.Search}}" placeholder="Search by name or URL">
+  <input type="search" name="q" value="{{.Data.Filter.Search}}" placeholder="{{t "Search by name or URL"}}">
   <select name="category" onchange="this.form.submit()">
-    <option value="0">All categories</option>
-    <option value="-1" {{if eq .Data.Filter.CategoryID -1}}selected{{end}}>Uncategorized</option>
+    <option value="0">{{t "All categories"}}</option>
+    <option value="-1" {{if eq .Data.Filter.CategoryID -1}}selected{{end}}>{{t "Uncategorized"}}</option>
     {{range .Data.Categories}}<option value="{{.ID}}" {{if eq $.Data.Filter.CategoryID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
   </select>
   <select name="health" onchange="this.form.submit()">
-    <option value="">Any stream health</option>
-    <option value="ok" {{if eq .Data.HealthOnly "ok"}}selected{{end}}>Working</option>
-    <option value="failing" {{if eq .Data.HealthOnly "failing"}}selected{{end}}>Failing</option>
-    <option value="unchecked" {{if eq .Data.HealthOnly "unchecked"}}selected{{end}}>Not checked yet</option>
+    <option value="">{{t "Any stream health"}}</option>
+    <option value="ok" {{if eq .Data.HealthOnly "ok"}}selected{{end}}>{{t "Working"}}</option>
+    <option value="failing" {{if eq .Data.HealthOnly "failing"}}selected{{end}}>{{t "Failing"}}</option>
+    <option value="unchecked" {{if eq .Data.HealthOnly "unchecked"}}selected{{end}}>{{t "Not checked yet"}}</option>
   </select>
-  <button class="secondary">{{icon "search"}}Filter</button>
+  <button class="secondary">{{icon "search"}}{{t "Filter"}}</button>
 </form>
 {{if .Data.Channels}}
 <div class="card flush">
 <table class="channels">
-  <thead><tr><th></th><th>Name</th><th>Category</th><th>EPG ID</th><th>Stream</th><th>Status</th><th></th></tr></thead>
+  <thead><tr><th></th><th>{{t "Name"}}</th><th>{{t "Category"}}</th><th>{{t "EPG ID"}}</th><th>{{t "Stream"}}</th><th>{{t "Status"}}</th><th></th></tr></thead>
   <tbody>
   {{range .Data.Channels}}
   <tr>
     <td class="logo">{{if .LogoURL}}<img src="{{.LogoURL}}" alt="" loading="lazy" referrerpolicy="no-referrer">{{end}}</td>
     <td><a class="name" href="{{base}}/channels/{{.ID}}">{{.Name}}</a><div class="muted url">{{.StreamURL}}</div></td>
-    <td>{{if .Category}}{{.Category}}{{else}}<span class="muted">none</span>{{end}}</td>
-    <td>{{if .EPGID}}<code>{{.EPGID}}</code>{{else}}<span class="muted">none</span>{{end}}</td>
+    <td>{{if .Category}}{{.Category}}{{else}}<span class="muted">{{t "none"}}</span>{{end}}</td>
+    <td>{{if .EPGID}}<code>{{.EPGID}}</code>{{else}}<span class="muted">{{t "none"}}</span>{{end}}</td>
     <td>{{$hl := index $.Data.Health .ID}}
-      {{if $hl.CheckedAt.IsZero}}<span class="badge idle" title="This stream has not been checked yet">unchecked</span>
-      {{else if $hl.OK}}<span class="badge on" title="{{$hl.Message}} · checked {{ago $.Data.Now $hl.CheckedAt}}">working</span>
-      {{else}}<span class="badge off" title="{{$hl.Message}} · checked {{ago $.Data.Now $hl.CheckedAt}}">failing</span>
-        <div class="muted health-msg">{{$hl.Message}}{{if gt $hl.Failures 1}} · {{$hl.Failures}} checks in a row{{end}}{{if $hl.AutoDisabled}} · switched off automatically{{end}}</div>{{end}}
+      {{if $hl.CheckedAt.IsZero}}<span class="badge idle" title="{{t "This stream has not been checked yet"}}">{{t "unchecked"}}</span>
+      {{else if $hl.OK}}<span class="badge on" title="{{t $hl.Message}} · {{tf "checked %s" (ago $.Data.Now $hl.CheckedAt)}}">{{t "working"}}</span>
+      {{else}}<span class="badge off" title="{{t $hl.Message}} · {{tf "checked %s" (ago $.Data.Now $hl.CheckedAt)}}">{{t "failing"}}</span>
+        <div class="muted health-msg">{{t $hl.Message}}{{if gt $hl.Failures 1}} · {{tf "%d checks in a row" $hl.Failures}}{{end}}{{if $hl.AutoDisabled}} · {{t "switched off automatically"}}{{end}}</div>{{end}}
     </td>
     <td>
       <form method="post" action="{{base}}/channels/{{.ID}}/toggle">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
         <input type="hidden" name="back" value="{{$.Data.Back}}">
-        {{if .Enabled}}<input type="hidden" name="enabled" value="0"><button class="badge on" title="Disable">enabled</button>
-        {{else}}<input type="hidden" name="enabled" value="1"><button class="badge off" title="Enable">disabled</button>{{end}}
+        {{if .Enabled}}<input type="hidden" name="enabled" value="0"><button class="badge on" title="{{t "Disable"}}">{{t "enabled"}}</button>
+        {{else}}<input type="hidden" name="enabled" value="1"><button class="badge off" title="{{t "Enable"}}">{{t "disabled"}}</button>{{end}}
       </form>
     </td>
     <td class="actions">
       <form method="post" action="{{base}}/channels/{{.ID}}/check">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
         <input type="hidden" name="back" value="{{$.Data.Back}}">
-        <button class="secondary sm" title="Check this stream now">{{icon "activity"}}<span class="label">Check</span></button>
+        <button class="secondary sm" title="{{t "Check this stream now"}}">{{icon "activity"}}<span class="label">{{t "Check"}}</span></button>
       </form>
-      <a class="button secondary sm" href="{{base}}/channels/{{.ID}}" title="Edit">{{icon "edit"}}<span class="label">Edit</span></a>
-      <form method="post" action="{{base}}/channels/{{.ID}}/delete" onsubmit="return confirm('Delete this channel?')">
+      <a class="button secondary sm" href="{{base}}/channels/{{.ID}}" title="{{t "Edit"}}">{{icon "edit"}}<span class="label">{{t "Edit"}}</span></a>
+      <form method="post" action="{{base}}/channels/{{.ID}}/delete" onsubmit="return confirm('{{t "Delete this channel?"}}')">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
-        <button class="danger sm" title="Delete">{{icon "trash"}}<span class="label">Delete</span></button>
+        <button class="danger sm" title="{{t "Delete"}}">{{icon "trash"}}<span class="label">{{t "Delete"}}</span></button>
       </form>
     </td>
   </tr>
@@ -73,8 +73,8 @@
 </div>
 {{else}}
 <section class="card empty">
-  <p>No channels{{if or .Data.Filter.Search .Data.Filter.CategoryID .Data.HealthOnly}} match this filter{{else}} yet{{end}}.</p>
-  <p><a href="{{base}}/channels/new">Add a channel</a> or <a href="{{base}}/import">import an M3U playlist</a>.</p>
+  <p>{{if or .Data.Filter.Search .Data.Filter.CategoryID .Data.HealthOnly}}{{t "No channels match this filter."}}{{else}}{{t "No channels yet."}}{{end}}</p>
+  <p>{{th `<a href="%[1]s/channels/new">Add a channel</a> or <a href="%[1]s/import">import an M3U playlist</a>.` base}}</p>
 </section>
 {{end}}
 {{end}}

@@ -1,0 +1,95 @@
+{{define "content"}}
+<div class="titlebar">
+  <div>
+    <h1>{{t "Browse Radio Browser"}}</h1>
+    <p class="subtitle">{{th `Search the public <a href="https://www.radio-browser.info/" target="_blank" rel="noopener">Radio Browser</a> database of more than 50,000 stations and add the ones you want. Players connect to the streams directly.`}}</p>
+  </div>
+  <a class="button secondary" href="{{base}}/radio/new">{{icon "plus"}}{{t "Add a station by hand"}}</a>
+</div>
+{{with .Data}}
+<form method="get" action="{{base}}/radio/browse" class="filters">
+  <input type="search" name="q" value="{{.Filter.Name}}" placeholder="{{t "Search by name"}}">
+  <select name="country" onchange="this.form.submit()">
+    <option value="">{{t "All countries"}}</option>
+    {{range .Countries}}<option value="{{.Code}}" {{if eq $.Data.Filter.CountryCode .Code}}selected{{end}}>{{.Name}} ({{.Count}})</option>{{end}}
+  </select>
+  <select name="language" onchange="this.form.submit()">
+    <option value="">{{t "All languages"}}</option>
+    {{range .Languages}}<option value="{{.Name}}" {{if eq $.Data.Filter.Language .Name}}selected{{end}}>{{.Name}} ({{.Count}})</option>{{end}}
+  </select>
+  <input name="tag" value="{{.Filter.Tag}}" list="radio-tags" placeholder="{{t "Genre or tag, e.g. pop"}}">
+  <datalist id="radio-tags">{{range .Tags}}<option value="{{.Name}}">{{.Name}} ({{.Count}})</option>{{end}}</datalist>
+  <select name="order" onchange="this.form.submit()">
+    <option value="votes" {{if eq .Filter.Order "votes"}}selected{{end}}>{{t "Most popular"}}</option>
+    <option value="clickcount" {{if eq .Filter.Order "clickcount"}}selected{{end}}>{{t "Most listened"}}</option>
+    <option value="name" {{if eq .Filter.Order "name"}}selected{{end}}>{{t "Name"}}</option>
+    <option value="bitrate" {{if eq .Filter.Order "bitrate"}}selected{{end}}>{{t "Best quality"}}</option>
+  </select>
+  <button class="secondary">{{icon "search"}}{{t "Filter"}}</button>
+</form>
+{{if .Rows}}
+<form method="post" action="{{base}}/radio/browse/add">
+<input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+<input type="hidden" name="back" value="{{.Back}}">
+<input type="hidden" name="filter_tag" value="{{.Filter.Tag}}">
+<div class="card flush">
+<table class="iptvorg">
+  <thead><tr>
+    <th><input type="checkbox" title="{{t "Select all"}}" onchange="for (const c of this.form.querySelectorAll('input[name=station]')) c.checked = this.checked"></th>
+    <th></th><th>{{t "Station"}}</th><th>{{t "Country"}}</th><th>{{t "Quality"}}</th><th>{{t "Votes"}}</th>
+  </tr></thead>
+  <tbody>
+  {{range .Rows}}
+  <tr>
+    <td><input type="checkbox" name="station" value="{{.UUID}}" aria-label="{{.Name}}"></td>
+    <td class="logo">{{if .Favicon}}<img src="{{.Favicon}}" alt="" loading="lazy" referrerpolicy="no-referrer">{{else}}<span class="logo-placeholder">{{icon "radio"}}</span>{{end}}</td>
+    <td>{{.Name}}
+      {{if .Added}}<span class="badge on">{{t "in portal"}}</span>{{end}}
+      {{if .Homepage}}<a class="quiet" href="{{.Homepage}}" target="_blank" rel="noopener noreferrer" title="{{t "Website"}}">{{icon "link"}}</a>{{end}}
+      <div class="muted url">{{.URL}}</div>
+      {{if .Tags}}<div class="tags">{{range .Tags}}<span class="chip">{{.}}</span>{{end}}</div>{{end}}
+    </td>
+    <td>{{if .CountryCode}}<span title="{{.Country}}">{{.CountryCode}}</span>{{end}}{{range $i, $l := .Languages}}{{if not $i}}<div class="muted">{{$l}}</div>{{end}}{{end}}</td>
+    <td>{{if .HLS}}HLS{{else}}{{.Codec}}{{end}}{{if .Bitrate}} <span class="muted">{{.Bitrate}} kbit/s</span>{{end}}</td>
+    <td>{{.Votes}}</td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+</div>
+{{if or .PrevURL .NextURL}}
+<p class="pager">
+  {{if .PrevURL}}<a class="button secondary sm" href="{{base}}{{.PrevURL}}">&larr; {{t "Previous"}}</a>{{end}}
+  <span class="muted">{{tf "Page %d" .Page}}</span>
+  {{if .NextURL}}<a class="button secondary sm" href="{{base}}{{.NextURL}}">{{t "Next"}} &rarr;</a>{{end}}
+</p>
+{{end}}
+<section class="card add-bar">
+  <h2>{{t "Add selected stations"}}</h2>
+  <div class="row">
+    <label>{{t "Category"}}
+      <select name="target">
+        <option value="@tag">{{if .Genre}}{{tf "Use the genre (%s)" .Genre}}{{else}}{{t "Use the first genre of each station"}}{{end}}</option>
+        <option value="@country">{{t "Use the country"}}</option>
+        <option value="@language">{{t "Use the language"}}</option>
+        <option value="">{{t "No category"}}</option>
+        {{range .Own}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+      </select>
+    </label>
+    <label>{{t "or a new category"}} <input name="new_category" placeholder="{{t "For example Radio Pop"}}"></label>
+  </div>
+  {{if .Packages}}
+  <fieldset>
+    <legend>{{t "Also add the category to these packages"}}</legend>
+    {{range .Packages}}<label class="check"><input type="checkbox" name="package" value="{{.ID}}"> {{.Name}}{{if .AllChannels}} <span class="muted">({{t "already has all channels"}})</span>{{end}}</label>{{end}}
+  </fieldset>
+  {{end}}
+  <p class="muted">{{t "A station that is already in the portal is updated instead of added twice."}}</p>
+  <button>{{icon "plus"}}{{t "Add selected"}}</button>
+</section>
+</form>
+{{else}}
+<section class="card empty"><p>{{t "No stations match this filter."}}</p>{{if gt .Page 1}}<p><a href="{{base}}/radio/browse">{{t "Back to the first page"}}</a></p>{{end}}</section>
+{{end}}
+{{end}}
+{{end}}

@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/rhisijmuiden/iptv-portal/internal/m3u"
+	"github.com/rhisijmuiden/iptv-portal/internal/radiobrowser"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
+	"github.com/rhisijmuiden/iptv-portal/internal/web"
 )
 
 func pathID(r *http.Request) (int64, bool) {
@@ -20,6 +22,33 @@ func pathID(r *http.Request) (int64, bool) {
 }
 
 // ---- channels ----
+
+// section is the part of the panel a channel belongs to: TV channels
+// under /channels or radio stations under /radio. Both share the handlers.
+type section struct {
+	Kind string // store.KindTV or store.KindRadio
+	Path string // "/channels" or "/radio"
+	Nav  string
+	List string // templates and titles
+	Form string
+	Name string // "Channels" or "Radio stations"
+	New  string // title of the form for a new entry
+	Edit string
+}
+
+var (
+	tvSection = section{Kind: store.KindTV, Path: "/channels", Nav: "channels", List: "channels", Form: "channel",
+		Name: "Channels", New: "Add channel", Edit: "Edit channel"}
+	radioSection = section{Kind: store.KindRadio, Path: "/radio", Nav: "radio", List: "radios", Form: "radio",
+		Name: "Radio stations", New: "Add radio station", Edit: "Edit radio station"}
+)
+
+func sectionOf(c store.Channel) section {
+	if c.IsRadio() {
+		return radioSection
+	}
+	return tvSection
+}
 
 type channelListData struct {
 	Channels   []store.Channel
@@ -32,14 +61,22 @@ type channelListData struct {
 }
 
 func (h *Handler) channelList(w http.ResponseWriter, r *http.Request, sess store.Session) {
-	f := store.ChannelFilter{Search: r.URL.Query().Get("q")}
+	h.listChannels(w, r, sess, tvSection)
+}
+
+func (h *Handler) radioList(w http.ResponseWriter, r *http.Request, sess store.Session) {
+	h.listChannels(w, r, sess, radioSection)
+}
+
+func (h *Handler) listChannels(w http.ResponseWriter, r *http.Request, sess store.Session, sec section) {
+	f := store.ChannelFilter{Kind: sec.Kind, Search: r.URL.Query().Get("q")}
 	f.CategoryID, _ = strconv.ParseInt(r.URL.Query().Get("category"), 10, 64)
 	chs, err := h.store.Channels(r.Context(), f)
 	if err != nil {
 		h.serverError(w, err)
 		return
 	}
-	cats, err := h.store.Categories(r.Context())
+	cats, err := h.store.CategoriesOf(r.Context(), sec.Kind)
 	if err != nil {
 		h.serverError(w, err)
 		return
@@ -67,7 +104,7 @@ func (h *Handler) channelList(w http.ResponseWriter, r *http.Request, sess store
 		}
 		chs = keep
 	}
-	h.render(w, r, "channels", page{Title: "Channels", Nav: "channels", Session: &sess,
+	h.render(w, r, sec.List, page{Title: sec.Name, Nav: sec.Nav, Session: &sess,
 		Data: channelListData{Channels: chs, Categories: cats, Filter: f, Health: hl, HealthOnly: only,
 			Now: time.Now(), Back: r.URL.RequestURI()}})
 }
@@ -78,7 +115,15 @@ type channelFormData struct {
 }
 
 func (h *Handler) channelForm(w http.ResponseWriter, r *http.Request, sess store.Session) {
-	c := store.Channel{Enabled: true}
+	h.showChannelForm(w, r, sess, tvSection)
+}
+
+func (h *Handler) radioForm(w http.ResponseWriter, r *http.Request, sess store.Session) {
+	h.showChannelForm(w, r, sess, radioSection)
+}
+
+func (h *Handler) showChannelForm(w http.ResponseWriter, r *http.Request, sess store.Session, sec section) {
+	c := store.Channel{Kind: sec.Kind, Enabled: true}
 	if id, ok := pathID(r); ok {
 		var err error
 		c, err = h.store.Channel(r.Context(), id)
@@ -90,6 +135,11 @@ func (h *Handler) channelForm(w http.ResponseWriter, r *http.Request, sess store
 			h.serverError(w, err)
 			return
 		}
+		if other := sectionOf(c); other.Kind != sec.Kind {
+			// A radio station opened as a channel or the other way round.
+			http.Redirect(w, r, other.Path+"/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
+			return
+		}
 	} else if r.PathValue("id") != "" {
 		http.NotFound(w, r)
 		return
@@ -98,21 +148,31 @@ func (h *Handler) channelForm(w http.ResponseWriter, r *http.Request, sess store
 }
 
 func (h *Handler) renderChannelForm(w http.ResponseWriter, r *http.Request, sess store.Session, c store.Channel, errMsg string) {
-	cats, err := h.store.Categories(r.Context())
+	sec := sectionOf(c)
+	cats, err := h.store.CategoriesOf(r.Context(), sec.Kind)
 	if err != nil {
 		h.serverError(w, err)
 		return
 	}
-	title := "Add channel"
+	title := sec.New
 	if c.ID != 0 {
-		title = "Edit channel"
+		title = sec.Edit
 	}
-	h.render(w, r, "channel", page{Title: title, Nav: "channels", Session: &sess, Error: errMsg,
+	h.render(w, r, sec.Form, page{Title: title, Nav: sec.Nav, Session: &sess, Error: errMsg,
 		Data: channelFormData{Channel: c, Categories: cats}})
 }
 
 func (h *Handler) channelSave(w http.ResponseWriter, r *http.Request, sess store.Session) {
+	h.saveChannel(w, r, sess, tvSection)
+}
+
+func (h *Handler) radioSave(w http.ResponseWriter, r *http.Request, sess store.Session) {
+	h.saveChannel(w, r, sess, radioSection)
+}
+
+func (h *Handler) saveChannel(w http.ResponseWriter, r *http.Request, sess store.Session, sec section) {
 	c := store.Channel{
+		Kind:      sec.Kind,
 		Name:      r.FormValue("name"),
 		StreamURL: r.FormValue("stream_url"),
 		LogoURL:   r.FormValue("logo_url"),
@@ -120,6 +180,15 @@ func (h *Handler) channelSave(w http.ResponseWriter, r *http.Request, sess store
 		Enabled:   r.FormValue("enabled") == "on",
 	}
 	if id, ok := pathID(r); ok {
+		old, err := h.store.Channel(r.Context(), id)
+		if errors.Is(err, store.ErrNotFound) || (err == nil && old.Kind != sec.Kind) {
+			http.NotFound(w, r)
+			return
+		}
+		if err != nil {
+			h.serverError(w, err)
+			return
+		}
 		c.ID = id
 	} else if r.PathValue("id") != "" {
 		http.NotFound(w, r)
@@ -127,8 +196,20 @@ func (h *Handler) channelSave(w http.ResponseWriter, r *http.Request, sess store
 	}
 	c.CategoryID, _ = strconv.ParseInt(r.FormValue("category_id"), 10, 64)
 	c.SortOrder, _ = strconv.Atoi(r.FormValue("sort_order"))
+	if c.IsRadio() {
+		// Stations often publish a .pls or .m3u file; players want the
+		// stream inside it.
+		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+		c.StreamURL = radiobrowser.ResolvePlaylist(ctx, http.DefaultClient, strings.TrimSpace(c.StreamURL))
+		cancel()
+	}
 	if name := strings.TrimSpace(r.FormValue("new_category")); name != "" {
-		id, err := h.store.SaveCategory(r.Context(), store.Category{Name: name})
+		if err := c.Validate(); err != nil {
+			// Check first, so a rejected entry leaves no new category behind.
+			h.renderChannelForm(w, r, sess, c, err.Error())
+			return
+		}
+		id, err := h.store.SaveCategory(r.Context(), store.Category{Name: name, Kind: sec.Kind})
 		if err != nil {
 			h.renderChannelForm(w, r, sess, c, err.Error())
 			return
@@ -143,7 +224,11 @@ func (h *Handler) channelSave(w http.ResponseWriter, r *http.Request, sess store
 		h.renderChannelForm(w, r, sess, c, err.Error())
 		return
 	}
-	redirectFlash(w, r, "/channels", fmt.Sprintf("Channel %q saved.", strings.TrimSpace(c.Name)))
+	msg := "Channel %q saved."
+	if c.IsRadio() {
+		msg = "Radio station %q saved."
+	}
+	redirectFlash(w, r, sec.Path, tr(r, msg, strings.TrimSpace(c.Name)))
 }
 
 func (h *Handler) channelToggle(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -168,6 +253,19 @@ func (h *Handler) channelToggle(w http.ResponseWriter, r *http.Request, sess sto
 	http.Redirect(w, r, backTo(r, "/channels"), http.StatusSeeOther)
 }
 
+func (h *Handler) radioDelete(w http.ResponseWriter, r *http.Request, sess store.Session) {
+	id, ok := pathID(r)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	if err := h.store.DeleteChannel(r.Context(), id); err != nil && !errors.Is(err, store.ErrNotFound) {
+		h.serverError(w, err)
+		return
+	}
+	redirectFlash(w, r, "/radio", "Radio station deleted.")
+}
+
 func (h *Handler) channelDelete(w http.ResponseWriter, r *http.Request, sess store.Session) {
 	id, ok := pathID(r)
 	if !ok {
@@ -183,8 +281,7 @@ func (h *Handler) channelDelete(w http.ResponseWriter, r *http.Request, sess sto
 
 // backTo returns the "back" form value when it is a local path.
 func backTo(r *http.Request, fallback string) string {
-	b := r.FormValue("back")
-	if strings.HasPrefix(b, "/") && !strings.HasPrefix(b, "//") && !strings.Contains(b, `\`) {
+	if b := r.FormValue("back"); web.IsLocalPath(b) {
 		return b
 	}
 	return fallback
@@ -206,7 +303,7 @@ func (h *Handler) renderCategories(w http.ResponseWriter, r *http.Request, sess 
 }
 
 func (h *Handler) categorySave(w http.ResponseWriter, r *http.Request, sess store.Session) {
-	c := store.Category{Name: r.FormValue("name")}
+	c := store.Category{Name: r.FormValue("name"), Kind: r.FormValue("kind")}
 	c.ID, _ = strconv.ParseInt(r.FormValue("id"), 10, 64)
 	c.SortOrder, _ = strconv.Atoi(r.FormValue("sort_order"))
 	if _, err := h.store.SaveCategory(r.Context(), c); err != nil {
@@ -254,7 +351,7 @@ func (h *Handler) importRun(w http.ResponseWriter, r *http.Request, sess store.S
 	pl, err := m3u.Parse(io.LimitReader(src, maxPlaylistSize))
 	entries := pl.Entries
 	if err != nil {
-		p.Error = "Could not read the playlist: " + err.Error()
+		p.Error = tr(r, "Could not read the playlist: %s", err.Error())
 		h.render(w, r, "import", p)
 		return
 	}

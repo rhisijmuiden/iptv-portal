@@ -1,28 +1,28 @@
 {{define "content"}}
 <div class="titlebar">
   <div>
-    <h1>Packages</h1>
-    <p class="subtitle">A package is a set of channels you give to users: either every channel, or the channels in the categories you choose, and optionally On Demand.</p>
+    <h1>{{t "Packages"}}</h1>
+    <p class="subtitle">{{t "A package is a set of channels you give to users: either every channel, or the channels in the categories you choose, and optionally On Demand."}}</p>
   </div>
-  <a class="button" href="{{base}}/packages/new">{{icon "plus"}}Add package</a>
+  <a class="button" href="{{base}}/packages/new">{{icon "plus"}}{{t "Add package"}}</a>
 </div>
 {{if .Data.Packages}}
 <div class="card flush">
 <table>
-  <thead><tr><th>Name</th><th>Channels</th><th>On Demand</th><th>Connections</th><th>Users</th><th></th></tr></thead>
+  <thead><tr><th>{{t "Name"}}</th><th>{{t "Channels"}}</th><th>{{t "On Demand"}}</th><th>{{t "Connections"}}</th><th>{{t "Users"}}</th><th></th></tr></thead>
   <tbody>
   {{range .Data.Packages}}
   <tr>
     <td><a class="name" href="{{base}}/packages/{{.ID}}">{{.Name}}</a></td>
-    <td>{{if .AllChannels}}All channels{{else}}{{range $i, $c := .CategoryIDs}}{{if $i}}, {{end}}{{index $.Data.Categories $c}}{{end}}{{end}}</td>
-    <td>{{if .OnDemand}}<span class="badge on">yes</span>{{else}}<span class="muted">no</span>{{end}}</td>
-    <td>{{if .MaxConnections}}{{.MaxConnections}}{{else}}<span class="muted">no limit</span>{{end}}</td>
+    <td>{{if .AllChannels}}{{t "All channels"}}{{else}}{{range $i, $c := .CategoryIDs}}{{if $i}}, {{end}}{{index $.Data.Categories $c}}{{end}}{{end}}</td>
+    <td>{{if .OnDemand}}<span class="badge on">{{t "yes"}}</span>{{else}}<span class="muted">{{t "no"}}</span>{{end}}</td>
+    <td>{{if .MaxConnections}}{{.MaxConnections}}{{else}}<span class="muted">{{t "no limit"}}</span>{{end}}</td>
     <td>{{.UserCount}}</td>
     <td class="actions">
-      <a class="button secondary sm" href="{{base}}/packages/{{.ID}}" title="Edit">{{icon "edit"}}<span class="label">Edit</span></a>
-      <form method="post" action="{{base}}/packages/{{.ID}}/delete" onsubmit="return confirm('Delete this package? Users lose the channels it gave them.')">
+      <a class="button secondary sm" href="{{base}}/packages/{{.ID}}" title="{{t "Edit"}}">{{icon "edit"}}<span class="label">{{t "Edit"}}</span></a>
+      <form method="post" action="{{base}}/packages/{{.ID}}/delete" onsubmit="return confirm('{{t "Delete this package? Users lose the channels it gave them."}}')">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
-        <button class="danger sm" title="Delete">{{icon "trash"}}<span class="label">Delete</span></button>
+        <button class="danger sm" title="{{t "Delete"}}">{{icon "trash"}}<span class="label">{{t "Delete"}}</span></button>
       </form>
     </td>
   </tr>
@@ -31,6 +31,6 @@
 </table>
 </div>
 {{else}}
-<section class="card empty"><p>No packages yet. <a href="{{base}}/packages/new">Add a package</a>.</p></section>
+<section class="card empty"><p>{{th `No packages yet. <a href="%s/packages/new">Add a package</a>.` base}}</p></section>
 {{end}}
 {{end}}
