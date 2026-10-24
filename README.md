@@ -14,6 +14,7 @@ It can also offer the movies and series of your own **Jellyfin** or **Plex** ser
 
 - **Channels as an index, not a proxy.** Store the m3u8 address, logo, category and EPG ID of each channel. Players are redirected to the source, so the server needs almost no bandwidth.
 - **Imports** from an M3U file, pasted text or a URL, and a built-in browser for the public [iptv-org](https://github.com/iptv-org/iptv) channel database.
+- **Radio**: pick stations from the public [Radio Browser](https://www.radio-browser.info/) database or add them by their stream URL, in radio categories of your own that you put in packages.
 - **Users, packages and invitations.** Decide per user which channels they see, set expiry dates and connection limits, switch accounts off, and send invitation links so people create their own login.
 - **Xtream Codes API, M3U and XMLTV.** Works with MyTVOnline (Formuler), TiviMate, IPTV Smarters and most other players.
 - **Program guide** merged from your own XMLTV sources and filtered per user.
@@ -90,6 +91,10 @@ Upload an M3U playlist, paste one, or have it downloaded from a URL. `tvg-id`, `
 Browse the public iptv-org channel database, filtered by country (the Netherlands by default), category or name. Tick the streams you want, choose their category and, optionally, the packages that get it. See [From iptv-org](#from-iptv-org).
 
 ![iptv-org browser](docs/screenshots/iptv-org.png)
+
+### Radio
+
+**Radio stations** lists your stations; **Find stations** searches the public Radio Browser database. See [Radio](#radio-1).
 
 ### Guide
 
@@ -356,3 +361,15 @@ Under **Import** you can upload an M3U playlist, paste one, or have it downloade
 Under **iptv-org** you browse the public channel database of [iptv-org](https://iptv-org.github.io/). It opens on the Netherlands; filter by country, category or name, tick the streams you want and choose where they go: the iptv-org category, the country name, one of your own categories or a new one. You can also add that category to one or more packages straight away, so the channels show up for the users who have those packages. Each channel keeps its name, logo and iptv-org id as EPG ID (for example `NPO1.nl@SD`). Labels such as *Geo-blocked* or *Not 24/7* and streams that need special headers are marked, because TV boxes connect to the stream directly.
 
 The list is downloaded from `https://iptv-org.github.io/api` and kept in memory for 12 hours; **Reload list** fetches it again. Set `IPTV_PORTAL_IPTVORG_API` to use a mirror.
+
+## Radio
+
+Radio stations live next to the TV channels, in categories of their own. Under **Radio → Find stations** you search the public [Radio Browser](https://www.radio-browser.info/) database of more than 50,000 stations by name, country (the Netherlands by default), language or genre, sorted by popularity, listeners, name or quality. Stations whose stream failed Radio Browser's last check are left out. Tick the stations you want and choose their category: the genre (when you searched for one, that genre; otherwise each station's first), the country, the language, one of your radio categories or a new one. Categories made this way are called *Radio Pop*, *Radio The Netherlands* and so on. You can add the category to packages straight away. A station that is already in the portal is updated (name, stream, logo) instead of added twice.
+
+You can also add a single station by hand under **Radio stations → Add radio station** with its stream URL (MP3, AAC or HLS). A link to a `.pls`, `.m3u` or `.asx` playlist is replaced by the stream inside it.
+
+When you create a category under **Categories**, choose whether it holds TV channels or radio stations. A package that has *all channels* includes the radio stations too; otherwise add the radio categories you want to it.
+
+Players see radio stations as live channels in their radio categories, so they work on every Xtream Codes player (MyTVOnline, TiviMate, IPTV Smarters). In the M3U playlist they carry `radio="true"`, which Kodi and TiviMate use to show them as radio. Like TV channels, players connect to the station's stream directly, and the stream health check tests them too.
+
+The portal picks a Radio Browser server from the list Radio Browser publishes in DNS. Set `IPTV_PORTAL_RADIOBROWSER_API` (for example `https://de1.api.radio-browser.info`) to always use one server.

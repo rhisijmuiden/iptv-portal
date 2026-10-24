@@ -25,6 +25,7 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/i18n"
 	"github.com/rhisijmuiden/iptv-portal/internal/iptvorg"
 	"github.com/rhisijmuiden/iptv-portal/internal/media"
+	"github.com/rhisijmuiden/iptv-portal/internal/radiobrowser"
 	"github.com/rhisijmuiden/iptv-portal/internal/server"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 	"github.com/rhisijmuiden/iptv-portal/internal/update"
@@ -58,6 +59,7 @@ type Handler struct {
 	updater      *update.Updater
 	restart      func()
 	iptvorg      *iptvorg.Client
+	radio        *radiobrowser.Client
 	media        *media.Catalog
 	refreshMedia chan<- struct{}
 	activity     *activity.Tracker
@@ -80,6 +82,8 @@ type Config struct {
 	Restart func()
 	// IPTVOrg reads the iptv-org channel list; nil uses the public API.
 	IPTVOrg *iptvorg.Client
+	// Radio searches Radio Browser; nil uses the public API.
+	Radio *radiobrowser.Client
 	// Media is the On Demand catalog; RefreshMedia receives a value when
 	// it should reload.
 	Media        *media.Catalog
@@ -103,6 +107,7 @@ type Config struct {
 func New(c Config) (*Handler, error) {
 	h := &Handler{store: c.Store, listeners: c.Listeners, log: c.Log, limiter: web.NewLimiter(10, 15*time.Minute),
 		guide: c.Guide, refresh: c.RefreshGuide, updater: c.Updater, restart: c.Restart, iptvorg: c.IPTVOrg,
+		radio: c.Radio,
 		media: c.Media, refreshMedia: c.RefreshMedia, activity: c.Activity, entra: c.Entra, backups: c.Backups,
 		health: c.Health, base: c.BasePath}
 	if h.activity == nil {
@@ -116,6 +121,9 @@ func New(c Config) (*Handler, error) {
 	}
 	if h.iptvorg == nil {
 		h.iptvorg = iptvorg.NewClient()
+	}
+	if h.radio == nil {
+		h.radio = radiobrowser.NewClient()
 	}
 	if h.backups == nil && c.Store != nil {
 		h.backups = backup.New(c.Store, c.Log)
@@ -241,6 +249,14 @@ func (h *Handler) routes() {
 	auth("GET /iptv-org", h.iptvorgPage)
 	auth("POST /iptv-org/add", h.iptvorgAdd)
 	auth("POST /iptv-org/reload", h.iptvorgReload)
+	auth("GET /radio", h.radioList)
+	auth("GET /radio/new", h.radioForm)
+	auth("POST /radio/new", h.radioSave)
+	auth("GET /radio/browse", h.radioBrowse)
+	auth("POST /radio/browse/add", h.radioBrowseAdd)
+	auth("GET /radio/{id}", h.radioForm)
+	auth("POST /radio/{id}", h.radioSave)
+	auth("POST /radio/{id}/delete", h.radioDelete)
 	auth("GET /users", h.userList)
 	auth("GET /users/new", h.userForm)
 	auth("POST /users/new", h.userSave)
@@ -573,8 +589,9 @@ func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request, sess st
 // ---- dashboard ----
 
 type dashboardData struct {
-	Channels   int
-	Enabled    int
+	Channels   int // TV channels
+	Enabled    int // enabled TV channels
+	Radio      int // radio stations
 	Categories int
 	Users      int
 	Active     int
@@ -606,15 +623,21 @@ func (h *Handler) dashboard(w http.ResponseWriter, r *http.Request, sess store.S
 		h.serverError(w, err)
 		return
 	}
-	d := dashboardData{Channels: len(chs), Categories: len(cats), Users: total, Active: active,
+	d := dashboardData{Categories: len(cats), Users: total, Active: active,
 		Listeners: h.listeners.Status(), PortalURL: PortalURL(st, r),
 		Activity: h.activity.Snapshot(), Window: int(activity.OnlineWindow / time.Minute)}
 	if us := h.updater.Status(); us.Available() {
 		d.Update = us.Latest()
 	}
 	for _, c := range chs {
-		if c.Enabled {
+		switch {
+		case c.IsRadio():
+			d.Radio++
+		case c.Enabled:
+			d.Channels++
 			d.Enabled++
+		default:
+			d.Channels++
 		}
 	}
 	h.render(w, r, "dashboard", page{Title: "Dashboard", Nav: "dashboard", Session: &sess, Data: d})

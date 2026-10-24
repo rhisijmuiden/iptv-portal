@@ -3,14 +3,14 @@
 <a class="back" href="{{base}}/packages">&larr; {{t "Packages"}}</a>
 <h1>{{t .Title}}</h1>
 <section class="card">
-<form method="post" action="{{if $p.ID}}/packages/{{$p.ID}}{{else}}/packages/new{{end}}" class="stack">
+<form method="post" action="{{base}}{{if $p.ID}}/packages/{{$p.ID}}{{else}}/packages/new{{end}}" class="stack">
   <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
   <label>{{t "Name"}} <input name="name" value="{{$p.Name}}" placeholder="{{t "For example Regional"}}" required></label>
-  <label class="check"><input type="checkbox" name="all_channels" {{if $p.AllChannels}}checked{{end}}> {{t "All channels, including channels added later"}}</label>
+  <label class="check"><input type="checkbox" name="all_channels" {{if $p.AllChannels}}checked{{end}}> {{t "All channels and radio stations, including those added later"}}</label>
   <fieldset>
     <legend>{{t "Or only these categories"}}</legend>
     {{range .Data.Categories}}
-    <label class="check"><input type="checkbox" name="category" value="{{.ID}}" {{if has $p.CategoryIDs .ID}}checked{{end}}> {{.Name}} <span class="muted">({{.ChannelCount}})</span></label>
+    <label class="check"><input type="checkbox" name="category" value="{{.ID}}" {{if has $p.CategoryIDs .ID}}checked{{end}}> {{.Name}} {{if eq .Kind "radio"}}<span class="chip">{{t "Radio"}}</span> {{end}}<span class="muted">({{.ChannelCount}})</span></label>
     {{else}}
     <p class="muted">{{th `There are no categories yet. <a href="%s/categories">Add categories</a> first.` base}}</p>
     {{end}}

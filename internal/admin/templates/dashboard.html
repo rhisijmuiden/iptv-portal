@@ -9,6 +9,7 @@
 <div class="stats">
   <a class="card stat" href="{{base}}/channels"><span class="stat-icon">{{icon "tv"}}</span><div><strong>{{.Data.Channels}}</strong><span>{{t "channels"}}</span></div></a>
   <a class="card stat" href="{{base}}/channels"><span class="stat-icon">{{icon "check"}}</span><div><strong>{{.Data.Enabled}}</strong><span>{{t "enabled"}}</span></div></a>
+  <a class="card stat" href="{{base}}/radio"><span class="stat-icon">{{icon "radio"}}</span><div><strong>{{.Data.Radio}}</strong><span>{{t "radio stations"}}</span></div></a>
   <a class="card stat" href="{{base}}/categories"><span class="stat-icon">{{icon "tag"}}</span><div><strong>{{.Data.Categories}}</strong><span>{{t "categories"}}</span></div></a>
   <a class="card stat" href="{{base}}/users"><span class="stat-icon">{{icon "users"}}</span><div><strong>{{.Data.Active}}</strong><span>{{if ne .Data.Active .Data.Users}}{{tf "active users of %d" .Data.Users}}{{else}}{{t "active users"}}{{end}}</span></div></a>
   <a class="card stat" href="#viewers"><span class="stat-icon">{{icon "activity"}}</span><div><strong>{{.Data.Activity.OnlineUsers}}</strong><span>{{if .Data.Activity.Watching}}{{tf "online now, %d watching" .Data.Activity.Watching}}{{else}}{{t "online now"}}{{end}}</span></div></a>
@@ -29,6 +30,7 @@
       <a class="action" href="{{base}}/channels/new">{{icon "plus"}}{{t "Add channel"}}</a>
       <a class="action" href="{{base}}/import">{{icon "upload"}}{{t "Import playlist"}}</a>
       <a class="action" href="{{base}}/iptv-org">{{icon "globe"}}{{t "Browse iptv-org"}}</a>
+      <a class="action" href="{{base}}/radio/browse">{{icon "radio"}}{{t "Add radio stations"}}</a>
       <a class="action" href="{{base}}/invites">{{icon "mail"}}{{t "Invite someone"}}</a>
     </div>
   </section>

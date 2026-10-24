@@ -399,8 +399,14 @@ func (h *Handler) getPlaylist(w http.ResponseWriter, r *http.Request) {
 	bw.WriteString(`#EXTM3U url-tvg="` + epgURL + `" x-tvg-url="` + epgURL + "\"\n")
 	for _, c := range chs {
 		if plus {
+			// radio="true" lets players that know it (Kodi, TiviMate) show
+			// the station as radio; others ignore it.
+			radio := ""
+			if c.IsRadio() {
+				radio = ` radio="true"`
+			}
 			bw.WriteString(`#EXTINF:-1 tvg-id="` + m3uAttr(c.EPGID) + `" tvg-name="` + m3uAttr(c.Name) +
-				`" tvg-logo="` + m3uAttr(c.LogoURL) + `" group-title="` + m3uAttr(c.Category) + `",` + m3uAttr(c.Name) + "\n")
+				`" tvg-logo="` + m3uAttr(c.LogoURL) + `" group-title="` + m3uAttr(c.Category) + `"` + radio + `,` + m3uAttr(c.Name) + "\n")
 		} else {
 			bw.WriteString("#EXTINF:-1," + m3uAttr(c.Name) + "\n")
 		}

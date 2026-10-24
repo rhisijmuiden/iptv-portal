@@ -4,7 +4,7 @@
 <a class="back" href="{{base}}/media">&larr; {{t "On Demand"}}</a>
 <h1>{{t .Title}}</h1>
 <section class="card">
-<form method="post" action="{{if $s.ID}}/media/{{$s.ID}}{{else}}/media/new{{end}}" class="stack">
+<form method="post" action="{{base}}{{if $s.ID}}/media/{{$s.ID}}{{else}}/media/new{{end}}" class="stack">
   <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
   <div class="row">
     <label>{{t "Name"}} <input name="name" value="{{$s.Name}}" placeholder="{{t "For example Home server"}}" required></label>
