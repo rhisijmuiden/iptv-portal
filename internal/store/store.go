@@ -1,6 +1,7 @@
 // Package store holds all persistent state of the portal in a single SQLite
 // database: settings, admin accounts, sessions, categories, channels,
-// users, media servers, stream health and viewing statistics.
+// users and their account sessions, media servers, stream health and
+// viewing statistics.
 package store
 
 import (
@@ -207,6 +208,20 @@ var migrations = []string{
 		UNIQUE(channel_id, stream_url)
 	);
 	ALTER TABLE channel_health ADD COLUMN searched_at DATETIME;`,
+
+	`CREATE TABLE user_sessions (
+		token      TEXT PRIMARY KEY,
+		user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		csrf       TEXT NOT NULL,
+		expires_at DATETIME NOT NULL
+	);
+	CREATE INDEX user_sessions_user ON user_sessions(user_id);
+	CREATE TABLE password_resets (
+		token_hash TEXT PRIMARY KEY,
+		user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		expires_at DATETIME NOT NULL
+	);
+	CREATE INDEX password_resets_user ON password_resets(user_id);`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

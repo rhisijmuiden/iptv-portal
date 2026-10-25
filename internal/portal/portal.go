@@ -1,6 +1,7 @@
 // Package portal serves the client side: the address users enter in their
-// IPTV player (Xtream Codes API, M3U playlist, XMLTV guide) and the
-// invitation pages where they create an account.
+// IPTV player (Xtream Codes API, M3U playlist, XMLTV guide), the
+// invitation pages where they create an account and the account pages
+// where they look after it.
 package portal
 
 import (
@@ -10,6 +11,8 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/rhisijmuiden/iptv-portal/internal/activity"
@@ -55,17 +58,8 @@ func New(st *store.Store, guide *epg.Guide, tracker *activity.Tracker, vod *medi
 	h := &Handler{store: st, log: log, mux: http.NewServeMux(), guide: guide, activity: tracker, vod: vod,
 		nowPlaying: nowplaying.New(), logos: logos.New(),
 		limiter: web.NewLimiter(20, 15*time.Minute), authLimiter: web.NewLimiter(30, 15*time.Minute)}
-	h.pages = map[string]map[string]*template.Template{}
-	for _, l := range i18n.Languages {
-		h.pages[l.Code] = map[string]*template.Template{}
-		for _, name := range []string{"invite", "welcome"} {
-			t, err := template.New("layout.html").Funcs(i18n.Funcs(l.Code)).
-				ParseFS(templateFS, "templates/layout.html", "templates/"+name+".html")
-			if err != nil {
-				return nil, err
-			}
-			h.pages[l.Code][name] = t
-		}
+	if err := h.parseTemplates(); err != nil {
+		return nil, err
 	}
 	h.mux.Handle("GET /static/", web.Static())
 	h.mux.HandleFunc("GET /healthz", web.Health)
@@ -81,7 +75,64 @@ func New(st *store.Store, guide *epg.Guide, tracker *activity.Tracker, vod *medi
 	h.mux.HandleFunc("GET /series/{user}/{pass}/{file}", h.vodPlay(media.Episode))
 	h.mux.HandleFunc("GET /vod-image/{id}/{kind}", h.vodImage)
 	h.mux.HandleFunc("GET /logo/{file}", h.logo)
+	h.accountRoutes()
 	return h, nil
+}
+
+// parseTemplates parses every page once per language. The pages of a
+// logged-in user get the layout with the menu (app.html), the others the
+// plain layout. app.html defines "layout.html" itself, so every page is
+// rendered by executing "layout.html".
+func (h *Handler) parseTemplates() error {
+	plain := []string{"invite", "welcome", "login", "forgot", "reset"}
+	app := []string{"account", "setup", "history", "profile"}
+	h.pages = map[string]map[string]*template.Template{}
+	for _, l := range i18n.Languages {
+		funcs := templateFuncs(l.Code)
+		h.pages[l.Code] = map[string]*template.Template{}
+		for _, name := range append(plain, app...) {
+			layout := "layout.html"
+			if slices.Contains(app, name) {
+				layout = "app.html"
+			}
+			t, err := template.New("layout.html").Funcs(funcs).
+				ParseFS(templateFS, "templates/"+layout, "templates/"+name+".html")
+			if err != nil {
+				return err
+			}
+			h.pages[l.Code][name] = t
+		}
+	}
+	return nil
+}
+
+// templateFuncs are the template functions for lang.
+func templateFuncs(lang string) template.FuncMap {
+	funcs := template.FuncMap{
+		// icon draws a symbol from /static/icons.svg.
+		"icon": func(name string) template.HTML {
+			return template.HTML(`<svg class="icon" aria-hidden="true"><use href="/static/icons.svg#` +
+				template.HTMLEscapeString(name) + `"/></svg>`)
+		},
+		"datetime": func(t time.Time) string { return t.Local().Format("2006-01-02 15:04") },
+		// duration shows a viewing time, e.g. "3 h 20 min".
+		"duration": func(d time.Duration) string {
+			m := int(d / time.Minute)
+			switch {
+			case m < 1:
+				return i18n.T(lang, "under a minute")
+			case m < 60:
+				return i18n.Tf(lang, "%d min", m)
+			case m < 100*60:
+				return i18n.Tf(lang, "%d h %d min", m/60, m%60)
+			}
+			return i18n.Tf(lang, "%d h", m/60)
+		},
+	}
+	for k, v := range i18n.Funcs(lang) {
+		funcs[k] = v
+	}
+	return funcs
 }
 
 // ServeHTTP implements http.Handler.
@@ -98,6 +149,12 @@ func (h *Handler) index(w http.ResponseWriter, r *http.Request) {
 	st, err := h.store.Settings(r.Context())
 	if err != nil {
 		h.serverError(w, err)
+		return
+	}
+	// A browser goes to the account pages; players and scripts get the
+	// name of the portal as before.
+	if st.AccountPortal && strings.Contains(r.Header.Get("Accept"), "text/html") {
+		http.Redirect(w, r, "/account", http.StatusSeeOther)
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -129,7 +186,9 @@ type invitePage struct {
 	Email      string
 	Base       string
 	ExpiresAt  string
-	MailOn     bool   // a mail server is configured
+	MailOn     bool // a mail server is configured
+	AccountOn  bool // the account pages are turned on
+	Flash      string
 	MailedTo   string // the address the login details are being sent to
 	Path       string // the address of the page, to come back to after switching language
 	expires    *time.Time
@@ -144,6 +203,7 @@ func (h *Handler) render(w http.ResponseWriter, r *http.Request, name string, st
 	p.PortalName = st.PortalName
 	p.Base = web.BaseURL(st.PublicURL, r)
 	p.MailOn = st.Mail.Configured()
+	p.AccountOn = st.AccountPortal
 	p.Path = r.URL.Path
 	lang := h.language(r, st)
 	if p.expires != nil {
@@ -207,8 +267,12 @@ func (h *Handler) inviteRedeem(w http.ResponseWriter, r *http.Request) {
 			// Sent in the background so a slow mail server does not hold
 			// up the welcome page; failures only end up in the log. The
 			// email is in the language the account was created in.
-			msg := mail.LoginMessage(h.language(r, st), u.Email, mail.Login{PortalName: st.PortalName,
-				PortalURL: web.BaseURL(st.PublicURL, r), Username: u.Username, Password: password, ExpiresAt: u.ExpiresAt})
+			l := mail.Login{PortalName: st.PortalName, PortalURL: web.BaseURL(st.PublicURL, r),
+				Username: u.Username, Password: password, ExpiresAt: u.ExpiresAt}
+			if st.AccountPortal {
+				l.AccountURL = l.PortalURL + "/account"
+			}
+			msg := mail.LoginMessage(h.language(r, st), u.Email, l)
 			go func() {
 				if err := mail.Send(context.Background(), st.Mail, msg); err != nil {
 					h.log.Warn("emailing login details", "username", u.Username, "err", err)

@@ -739,11 +739,13 @@ type settingsData struct {
 	store.Settings
 	// SSORedirectURL is the redirect URI to register in Entra.
 	SSORedirectURL string
+	// PortalURL is the address users reach the portal on.
+	PortalURL string
 }
 
 func (h *Handler) settingsPage(r *http.Request, sess store.Session, st store.Settings, msg string) page {
 	return page{Title: "Settings", Nav: "settings", Session: &sess, Error: msg,
-		Data: settingsData{Settings: st, SSORedirectURL: h.ssoRedirectURL(st.SSO, r)}}
+		Data: settingsData{Settings: st, SSORedirectURL: h.ssoRedirectURL(st.SSO, r), PortalURL: PortalURL(st, r)}}
 }
 
 func (h *Handler) settingsSave(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -756,6 +758,7 @@ func (h *Handler) settingsSave(w http.ResponseWriter, r *http.Request, sess stor
 	st.PortalName = r.FormValue("portal_name")
 	st.PublicURL = r.FormValue("public_url")
 	st.Language = r.FormValue("language")
+	st.AccountPortal = r.FormValue("account_portal") == "1"
 	st.AdminPort, _ = strconv.Atoi(r.FormValue("admin_port"))
 	st.PortalPort, _ = strconv.Atoi(r.FormValue("portal_port"))
 	err = st.Validate()

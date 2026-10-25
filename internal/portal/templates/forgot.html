@@ -1,0 +1,17 @@
+{{define "content"}}
+<section class="card narrow">
+  <h1>{{t "Forgot your password?"}}</h1>
+  {{if not .MailOn}}
+  <p>{{t "This portal cannot send email, so a forgotten password cannot be reset here. Ask the person who gave you access to set a new password for you."}}</p>
+  {{else if eq .Data "sent"}}
+  <p>{{tf "The link works once and for %d minutes. Did not get an email? Then your account has no email address: ask the person who gave you access to set a new password for you." 60}}</p>
+  {{else}}
+  <p>{{t "Enter your username or the email address of your account. We email you a link to choose a new password."}}</p>
+  <form method="post" action="/account/forgot" class="stack">
+    <label>{{t "Username or email address"}} <input name="login" value="{{.Data}}" autocomplete="username" autocapitalize="none" required autofocus></label>
+    <button>{{t "Send reset link"}}</button>
+  </form>
+  {{end}}
+  <p class="center"><a href="/account/login">{{t "Back to log in"}}</a></p>
+</section>
+{{end}}

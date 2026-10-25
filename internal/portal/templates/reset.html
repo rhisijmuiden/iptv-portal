@@ -1,0 +1,18 @@
+{{define "content"}}
+<section class="card narrow">
+  <h1>{{t "Choose a new password"}}</h1>
+  {{with .Data}}
+  <p>{{th "Choose a new password for <strong>%s</strong>. Afterwards, enter it in your TV box or IPTV app as well." .}}</p>
+  <form method="post" class="stack">
+    <input type="text" name="username" value="{{.}}" autocomplete="username" hidden>
+    <label>{{t "New password"}} <input type="password" name="password" autocomplete="new-password" minlength="6" maxlength="64" required autofocus>
+      <small>{{t `6-64 characters, no spaces or / ? # % & \ " '. You will type it on your TV, so keep it simple to enter.`}}</small></label>
+    <label>{{t "Repeat password"}} <input type="password" name="confirm" autocomplete="new-password" minlength="6" maxlength="64" required></label>
+    <button>{{t "Save password"}}</button>
+  </form>
+  {{else}}
+  <p>{{t "This link is no longer valid: it was already used or is older than an hour. Request a new one."}}</p>
+  <p><a class="button" href="/account/forgot">{{t "Request a new link"}}</a></p>
+  {{end}}
+</section>
+{{end}}

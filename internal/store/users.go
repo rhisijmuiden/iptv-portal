@@ -362,7 +362,7 @@ func (s *Store) SaveUser(ctx context.Context, u User, password string) (int64, e
 				return err
 			}
 			if hash != nil {
-				if _, err := tx.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, string(hash), u.ID); err != nil {
+				if err := setUserPassword(ctx, tx, u.ID, hash, ""); err != nil {
 					return err
 				}
 			}
@@ -753,10 +753,7 @@ func (s *Store) ResetUserPassword(ctx context.Context, id int64) (string, error)
 	if err != nil {
 		return "", err
 	}
-	res, err := s.db.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, string(hash), id)
-	if err != nil {
-		return "", err
-	}
+	err = s.withTx(ctx, func(tx *sql.Tx) error { return setUserPassword(ctx, tx, id, hash, "") })
 	s.authCache.forget(id)
-	return password, mustAffect(res)
+	return password, err
 }

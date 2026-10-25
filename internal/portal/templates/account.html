@@ -1,0 +1,39 @@
+{{define "content"}}
+{{$d := .Data}}{{$u := $d.User}}
+<div class="titlebar">
+  <div>
+    <h1>{{tf "Hello, %s" $u.Username}}</h1>
+    <p class="subtitle">{{t "Your account at a glance: until when it is valid, what it includes and how much you watched."}}</p>
+  </div>
+  <div class="buttons"><a class="button" href="/account/setup">{{icon "tv"}}{{t "Set up your TV"}}</a></div>
+</div>
+{{if not $u.Enabled}}
+<p class="flash err">{{t "Your account is disabled, so your TV box cannot play anything. Contact the person who gave you access."}}</p>
+{{else if $u.Expired}}
+<p class="flash err">{{t "Your account has expired, so your TV box cannot play anything. Contact the person who gave you access to extend it."}}</p>
+{{else if and $u.ExpiresAt (lt $d.DaysLeft 14)}}
+<p class="flash warn">{{if le $d.DaysLeft 1}}{{t "Your account expires within a day. Contact the person who gave you access to extend it."}}{{else}}{{tf "Your account expires in %d days. Contact the person who gave you access to extend it." $d.DaysLeft}}{{end}}</p>
+{{end}}
+<div class="stats">
+  <div class="card stat"><span class="stat-icon">{{icon "check"}}</span><div>
+    <strong>{{if not $u.Enabled}}{{t "Disabled"}}{{else if $u.Expired}}{{t "Expired"}}{{else}}{{t "Active"}}{{end}}</strong>
+    <span>{{with $u.ExpiresAt}}{{if $u.Expired}}{{tf "since %s" (longdate .)}}{{else}}{{tf "until %s" (longdate .)}}{{end}}{{else}}{{t "no end date"}}{{end}}</span></div></div>
+  <div class="card stat"><span class="stat-icon">{{icon "tv"}}</span><div><strong>{{$d.TV}}</strong><span>{{t "TV channels"}}</span></div></div>
+  {{if $d.Radio}}<div class="card stat"><span class="stat-icon">{{icon "radio"}}</span><div><strong>{{$d.Radio}}</strong><span>{{t "radio stations"}}</span></div></div>{{end}}
+  <a class="card stat" href="/account/history"><span class="stat-icon">{{icon "chart"}}</span><div><strong>{{duration $d.Watched.Time}}</strong><span>{{t "watched in the last 30 days"}}</span></div></a>
+</div>
+<section class="card">
+  <h2>{{t "Your subscription"}}</h2>
+  <table class="details">
+    <tr><th>{{t "Username"}}</th><td><code>{{$u.Username}}</code></td></tr>
+    <tr><th>{{t "Status"}}</th><td>{{if not $u.Enabled}}<span class="badge off">{{t "Disabled"}}</span>{{else if $u.Expired}}<span class="badge off">{{t "Expired"}}</span>{{else}}<span class="badge on">{{t "Active"}}</span>{{end}}</td></tr>
+    <tr><th>{{t "Valid until"}}</th><td>{{with $u.ExpiresAt}}{{longdate .}}{{else}}{{t "No end date"}}{{end}}</td></tr>
+    <tr><th>{{t "Packages"}}</th><td>{{range $i, $p := $u.Packages}}{{if $i}}, {{end}}{{$p}}{{else}}<span class="muted">{{t "none"}}</span>{{end}}</td></tr>
+    <tr><th>{{t "On Demand (movies and series)"}}</th><td>{{if $d.OnDemand}}{{t "Included"}}{{else}}{{t "Not included"}}{{end}}</td></tr>
+    <tr><th>{{t "Devices at the same time"}}</th><td>{{with $u.ConnectionLimit}}{{if eq . 1}}{{t "1 device"}}{{else}}{{tf "%d devices" .}}{{end}}{{else}}{{t "No limit"}}{{end}}</td></tr>
+    <tr><th>{{t "Member since"}}</th><td>{{longdate $u.CreatedAt}}</td></tr>
+    <tr><th>{{t "Last used by your TV box"}}</th><td>{{with $u.LastSeenAt}}{{ago $d.Now .}}{{else}}<span class="muted">{{t "never"}}</span>{{end}}</td></tr>
+    <tr><th>{{t "Email"}}</th><td>{{with $u.Email}}{{.}}{{else}}<span class="muted">{{t "none"}}</span>{{end}} · <a href="/account/settings">{{t "Change"}}</a></td></tr>
+  </table>
+</section>
+{{end}}

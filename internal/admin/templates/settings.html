@@ -18,6 +18,8 @@
       <select name="language">{{range languages}}<option value="{{.Code}}"{{if eq .Code $.Data.Language}} selected{{end}}>{{.Name}}</option>{{end}}</select>
       <small>{{t "Used for the invitation pages, the emails to users and the login page. Every admin can pick their own language at the bottom of the menu."}}</small>
     </label>
+    <label class="check"><input type="checkbox" name="account_portal" value="1" {{if .Data.AccountPortal}}checked{{end}}> {{t "Account pages for users"}}</label>
+    <p class="muted"><small>{{th `Users log in at <code>%s/account</code> with the username and password of their player to see until when their account is valid, find their player details and viewing history, and change their password. With a mail server they can also reset a forgotten password.` .Data.PortalURL}}</small></p>
   </section>
   <section class="card stack-card">
     <h2>{{t "Network"}}</h2>
