@@ -21,5 +21,6 @@
   <div class="copy"><input readonly value="{{.Base}}/xmltv.php?username={{.Username}}&amp;password={{t "YOUR_PASSWORD"}}" onclick="this.select()"></div>
   <p class="muted">{{t "Replace YOUR_PASSWORD with your password. With an Xtream Codes login the guide is loaded automatically."}}</p>
   {{with .ExpiresAt}}<p>{{th "Your account is valid until <strong>%s</strong>." .}}</p>{{end}}
+  {{if .AccountOn}}<p class="muted">{{th `You can find these details again on <a href="%s">your account page</a>, where you can also change your password.` "/account/login"}}</p>{{end}}
 </section>
 {{end}}

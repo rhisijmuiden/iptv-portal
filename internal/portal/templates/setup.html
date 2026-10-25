@@ -1,0 +1,50 @@
+{{define "content"}}
+<div class="titlebar">
+  <div>
+    <h1>{{t "Set up your TV"}}</h1>
+    <p class="subtitle">{{t "Add the portal to your TV box or IPTV app with these details."}}</p>
+  </div>
+</div>
+<section class="card">
+  <h2>{{t "Xtream Codes login (recommended)"}}</h2>
+  <p class="muted">{{t "For MyTVOnline (Formuler), TiviMate, IPTV Smarters and most other apps."}}</p>
+  <table class="details">
+    <tr><th>{{t "Server / portal URL"}}</th><td><code>{{.Base}}</code></td></tr>
+    <tr><th>{{t "Username"}}</th><td><code>{{.Session.User.Username}}</code></td></tr>
+    <tr><th>{{t "Password"}}</th><td>{{t "The password you log in here with"}}</td></tr>
+  </table>
+  <p class="muted">{{th "On a Formuler with MyTVOnline: <em>Add portal</em> → choose <em>Xtream Codes</em> (or <em>XC</em>) → enter the details above."}}</p>
+</section>
+<section class="card spaced">
+  <h2>{{t "M3U playlist and program guide"}}</h2>
+  <p class="muted">{{t "For apps that only accept a playlist link. The links contain your password: type it below to fill it in. It stays on this page and is not sent anywhere."}}</p>
+  <div class="fields">
+  <label>{{t "Your password"}} <input type="password" id="fill-password" autocomplete="current-password" placeholder="{{t "YOUR_PASSWORD"}}"></label>
+  <label>{{t "M3U playlist"}}
+    <div class="copy"><input readonly class="fill-link" data-link="{{.Base}}/get.php?username={{.Session.User.Username}}&amp;password=@&amp;type=m3u_plus&amp;output=m3u8" value="{{.Base}}/get.php?username={{.Session.User.Username}}&amp;password={{t "YOUR_PASSWORD"}}&amp;type=m3u_plus&amp;output=m3u8" onclick="this.select()"><button type="button" class="secondary copy-button" title="{{t "Copy"}}">{{icon "copy"}}</button></div></label>
+  <label>{{t "Program guide (EPG)"}}
+    <div class="copy"><input readonly class="fill-link" data-link="{{.Base}}/xmltv.php?username={{.Session.User.Username}}&amp;password=@" value="{{.Base}}/xmltv.php?username={{.Session.User.Username}}&amp;password={{t "YOUR_PASSWORD"}}" onclick="this.select()"><button type="button" class="secondary copy-button" title="{{t "Copy"}}">{{icon "copy"}}</button></div></label>
+  </div>
+  <p class="muted"><small>{{t "With an Xtream Codes login the guide is loaded automatically."}}</small></p>
+</section>
+<section class="card spaced">
+  <h2>{{t "Changed your password?"}}</h2>
+  <p>{{t "Your TV box uses the same password. After changing it, enter the new password in your TV box or IPTV app as well, or it stops playing."}}</p>
+</section>
+<script>
+(function () {
+  var pw = document.getElementById("fill-password"), placeholder = pw.placeholder;
+  var links = document.querySelectorAll(".fill-link");
+  pw.addEventListener("input", function () {
+    links.forEach(function (l) { l.value = l.dataset.link.replace("password=@", "password=" + encodeURIComponent(pw.value || placeholder)); });
+  });
+  document.querySelectorAll(".copy-button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var input = b.previousElementSibling;
+      input.select();
+      if (navigator.clipboard) { navigator.clipboard.writeText(input.value); } else { document.execCommand("copy"); }
+    });
+  });
+})();
+</script>
+{{end}}

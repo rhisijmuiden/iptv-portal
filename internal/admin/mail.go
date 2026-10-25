@@ -74,8 +74,12 @@ func (h *Handler) sendLogin(r *http.Request, st store.Settings, u store.User, pa
 	if u.Email == "" {
 		return errors.New("this user has no email address")
 	}
-	msg := mail.LoginMessage(st.Language, u.Email, mail.Login{PortalName: st.PortalName, PortalURL: PortalURL(st, r),
-		Username: u.Username, Password: password, ExpiresAt: u.ExpiresAt})
+	l := mail.Login{PortalName: st.PortalName, PortalURL: PortalURL(st, r),
+		Username: u.Username, Password: password, ExpiresAt: u.ExpiresAt}
+	if st.AccountPortal {
+		l.AccountURL = l.PortalURL + "/account"
+	}
+	msg := mail.LoginMessage(st.Language, u.Email, l)
 	if err := mail.Send(r.Context(), st.Mail, msg); err != nil {
 		h.log.Warn("emailing login details", "username", u.Username, "err", err)
 		return err

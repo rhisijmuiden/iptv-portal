@@ -1,0 +1,12 @@
+{{define "content"}}
+<section class="card narrow">
+  <h1>{{t "My account"}}</h1>
+  <p class="muted">{{tf "Log in to %s with the username and password of your TV box or IPTV app." .PortalName}}</p>
+  <form method="post" action="/account/login" class="stack">
+    <label>{{t "Username"}} <input name="username" value="{{.Data}}" autocomplete="username" autocapitalize="none" required autofocus></label>
+    <label>{{t "Password"}} <input type="password" name="password" autocomplete="current-password" required></label>
+    <button>{{t "Log in"}}</button>
+  </form>
+  <p class="center"><a href="/account/forgot">{{t "Forgot your password?"}}</a></p>
+</section>
+{{end}}

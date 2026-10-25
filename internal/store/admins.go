@@ -191,10 +191,16 @@ func (s *Store) DeleteSession(ctx context.Context, token string) error {
 	return err
 }
 
-// PurgeExpiredSessions removes sessions that are past their expiry.
+// PurgeExpiredSessions removes admin and account sessions and password
+// reset links that are past their expiry.
 func (s *Store) PurgeExpiredSessions(ctx context.Context) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE expires_at <= ?`, time.Now().UTC())
-	return err
+	now := time.Now().UTC()
+	for _, table := range []string{"sessions", "user_sessions", "password_resets"} {
+		if _, err := s.db.ExecContext(ctx, `DELETE FROM `+table+` WHERE expires_at <= ?`, now); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ChangeOwnPassword lets a logged-in admin set a new password. The current

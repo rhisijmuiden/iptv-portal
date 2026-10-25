@@ -16,6 +16,8 @@ type Login struct {
 	Username   string
 	Password   string
 	ExpiresAt  *time.Time // nil = never
+	// AccountURL is the user's account page; empty leaves it out.
+	AccountURL string
 }
 
 // LoginMessage is the email, in language lang, that hands a user their
@@ -38,8 +40,27 @@ func LoginMessage(lang, to string, l Login) Message {
 	if l.ExpiresAt != nil {
 		fmt.Fprintf(&b, t("Your account is valid until %s.\n\n"), i18n.LongDate(lang, l.ExpiresAt.Local()))
 	}
+	if l.AccountURL != "" {
+		fmt.Fprintf(&b, t("See your account, change your password or reset a forgotten one at:\n\n  %s\n\n"), l.AccountURL)
+	}
 	b.WriteString(t("Keep this email private: anyone with these details can use your account.\n"))
 	return Message{To: to, Subject: i18n.Tf(lang, "Your login details for %s", l.PortalName), Body: b.String()}
+}
+
+// PasswordResetMessage, in language lang, sends a user the link to choose
+// a new password.
+func PasswordResetMessage(lang, to, portalName, username, link string, valid time.Duration) Message {
+	body := i18n.Tf(lang, "Hello,\n\nSomeone asked to reset the password of your account %s at %s.\n\nOpen this link to choose a new password:\n\n  %s\n\nThe link works once and for %d minutes. Did you not ask for this? Then ignore this email: your password stays the same.\n",
+		username, portalName, link, int(valid.Minutes()))
+	return Message{To: to, Subject: i18n.Tf(lang, "Reset your password for %s", portalName), Body: body}
+}
+
+// PasswordChangedMessage, in language lang, tells a user their password
+// was changed, so they notice when it was not them.
+func PasswordChangedMessage(lang, to, portalName, username, accountURL string) Message {
+	body := i18n.Tf(lang, "Hello,\n\nThe password of your account %s at %s has just been changed. Enter the new password in your TV box or IPTV app as well.\n\nWas this not you? Reset your password right away at:\n\n  %s\n",
+		username, portalName, accountURL)
+	return Message{To: to, Subject: i18n.Tf(lang, "Your password for %s was changed", portalName), Body: body}
 }
 
 // InviteMessage is the email, in language lang, that sends someone an

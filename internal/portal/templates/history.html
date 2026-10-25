@@ -1,0 +1,56 @@
+{{define "content"}}
+{{$d := .Data}}{{$now := $d.Now}}
+<div class="titlebar">
+  <div>
+    <h1>{{t "Viewing history"}}</h1>
+    <p class="subtitle">{{t "What you watched, and for how long. Only you and the portal admin can see this."}}</p>
+  </div>
+</div>
+<form method="get" action="/account/history" class="filters">
+  <select name="days" onchange="this.form.submit()" aria-label="{{t "Period"}}">
+    {{range $d.Periods}}<option value="{{.}}"{{if eq . $d.Days}} selected{{end}}>{{if eq . 7}}{{t "Last 7 days"}}{{else if eq . 30}}{{t "Last 30 days"}}{{else}}{{t "Last 90 days"}}{{end}}</option>{{end}}
+  </select>
+  <noscript><button class="secondary">{{t "Show"}}</button></noscript>
+</form>
+<div class="stats">
+  <div class="card stat"><span class="stat-icon">{{icon "tv"}}</span><div><strong>{{$d.Summary.Views}}</strong><span>{{t "views"}}</span></div></div>
+  <div class="card stat"><span class="stat-icon">{{icon "radio"}}</span><div><strong>{{$d.Summary.Channels}}</strong><span>{{t "channels watched"}}</span></div></div>
+  <div class="card stat"><span class="stat-icon">{{icon "activity"}}</span><div><strong>{{duration $d.Summary.Time}}</strong><span>{{t "viewing time (estimated)"}}</span></div></div>
+</div>
+{{if $d.Summary.Views}}
+<section class="card">
+  <h2>{{t "Views per day"}}</h2>
+  <div class="chart" role="img" aria-label="{{t "Views per day"}}">
+    {{range $d.Chart}}<span class="bar" title="{{longdate .Day}}: {{if eq .Views 1}}{{t "1 view"}}{{else}}{{tf "%d views" .Views}}{{end}}, {{duration .Time}}"><span style="height: {{.Height}}%"></span></span>{{end}}
+  </div>
+  <div class="chart-axis">{{with index $d.Chart 0}}<span>{{longdate .Day}}</span>{{end}}<span>{{t "today"}}</span></div>
+</section>
+<h2 class="section-title">{{t "Channels watched"}}</h2>
+<section class="card flush">
+  <table>
+    <thead><tr><th>{{t "Channel"}}</th><th>{{t "Views"}}</th><th>{{t "Viewing time"}}</th><th>{{t "Last watched"}}</th></tr></thead>
+    <tbody>
+    {{range $d.Channels}}
+    <tr><td><span class="name">{{.Name}}</span> {{template "kind" .Kind}}</td><td>{{.Views}}</td><td class="nowrap">{{duration .Time}}</td><td class="nowrap">{{ago $now .Last}}</td></tr>
+    {{end}}
+    </tbody>
+  </table>
+</section>
+<h2 class="section-title">{{t "Latest views"}}</h2>
+<section class="card flush">
+  <table>
+    <thead><tr><th>{{t "Started"}}</th><th>{{t "Channel"}}</th><th>{{t "Viewing time"}}</th><th>{{t "Device"}}</th></tr></thead>
+    <tbody>
+    {{range $d.Recent}}
+    <tr><td class="nowrap">{{datetime .StartedAt}}</td><td>{{.Channel}} {{template "kind" .Kind}}</td><td class="nowrap">{{duration .Duration}}</td>
+      <td><span class="device" title="{{.UserAgent}}">{{.IP}}{{with .UserAgent}} · {{.}}{{end}}</span></td></tr>
+    {{end}}
+    </tbody>
+  </table>
+</section>
+{{else}}
+<section class="card empty">{{t "Nothing was watched in this period."}}</section>
+{{end}}
+<p class="muted"><small>{{tf "Streams go straight from the broadcaster to your TV box, so the portal knows when a channel is opened but not when it stops. Viewing time is estimated: until the next channel is opened, or %d minutes when nothing else is heard from your TV box." $d.Assume}}</small></p>
+{{end}}
+{{define "kind"}}<span class="chip">{{if eq . "radio"}}{{t "Radio"}}{{else if eq . "vod"}}{{t "On Demand"}}{{else}}{{t "TV"}}{{end}}</span>{{end}}

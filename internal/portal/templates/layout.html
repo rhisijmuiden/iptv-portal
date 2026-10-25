@@ -11,6 +11,7 @@
 <body>
 <header class="portal-head"><picture><source srcset="/static/brand/rhis-logo-wit.svg" media="(prefers-color-scheme: dark)"><img class="brand-logo" src="/static/brand/rhis-logo.svg" alt="RHIS"></picture></header>
 <main>
+  {{if .Flash}}<p class="flash ok">{{t .Flash}}</p>{{end}}
   {{if .Error}}<p class="flash err">{{t .Error}}</p>{{end}}
   {{template "content" .}}
 </main>

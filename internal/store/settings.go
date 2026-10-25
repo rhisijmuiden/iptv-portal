@@ -47,6 +47,10 @@ type Settings struct {
 	// RadioNowPlaying makes the portal read what radio stations play from
 	// their streams and show it in the guide of the players.
 	RadioNowPlaying bool
+	// AccountPortal lets users log in at <portal>/account to see their
+	// account, their player details and their viewing history, change
+	// their password and reset a forgotten one by email.
+	AccountPortal bool
 	// SSO lets admins sign in with Microsoft Entra ID next to the local
 	// accounts, which keep working as a fallback.
 	SSO entra.Config
@@ -84,6 +88,7 @@ var DefaultSettings = Settings{
 	UpdateChannel:   UpdateChannelStable,
 	Language:        i18n.Default,
 	RadioNowPlaying: true,
+	AccountPortal:   true,
 	Mail:            mail.Config{Port: 587, Security: mail.StartTLS},
 }
 
@@ -97,6 +102,7 @@ const (
 	keyChannel    = "update_channel"
 	keyLanguage   = "language"
 	keyNowPlaying = "radio_now_playing"
+	keyAccounts   = "account_portal"
 
 	keySMTPHost     = "smtp_host"
 	keySMTPPort     = "smtp_port"
@@ -155,6 +161,8 @@ func (s *Store) Settings(ctx context.Context) (Settings, error) {
 			out.Language = v
 		case keyNowPlaying:
 			out.RadioNowPlaying = v == "1"
+		case keyAccounts:
+			out.AccountPortal = v == "1"
 		case keySMTPHost:
 			out.Mail.Host = v
 		case keySMTPPort:
@@ -324,6 +332,7 @@ func (s *Store) SaveSettings(ctx context.Context, st Settings) error {
 		keyChannel:    st.UpdateChannel,
 		keyLanguage:   st.Language,
 		keyNowPlaying: boolString(st.RadioNowPlaying),
+		keyAccounts:   boolString(st.AccountPortal),
 
 		keySMTPHost:     st.Mail.Host,
 		keySMTPPort:     strconv.Itoa(st.Mail.Port),

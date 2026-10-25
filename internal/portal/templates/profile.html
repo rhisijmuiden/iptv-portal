@@ -1,0 +1,30 @@
+{{define "content"}}
+<div class="titlebar">
+  <div>
+    <h1>{{t "Account settings"}}</h1>
+    <p class="subtitle">{{t "Change your email address and your password."}}</p>
+  </div>
+</div>
+<form method="post" action="/account/email" class="stack">
+  <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+  <section class="card stack-card">
+    <h2>{{t "Email address"}}</h2>
+    <label>{{t "Email"}} <input type="email" name="email" value="{{.Data}}" autocomplete="email" placeholder="{{t "Optional"}}">
+      <small>{{if .MailOn}}{{t "Used to send you a link when you forget your password. Leave empty to remove it."}}{{else}}{{t "Leave empty to remove it."}}{{end}}</small></label>
+  </section>
+  <div class="form-actions"><button>{{t "Save email address"}}</button></div>
+</form>
+<form method="post" action="/account/password" class="stack spaced">
+  <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+  <section class="card stack-card">
+    <h2>{{t "Change password"}}</h2>
+    <p class="muted">{{t "This is also the password of your TV box or IPTV app. After changing it, enter the new password there as well, or it stops playing."}}</p>
+    <input type="text" name="username" value="{{.Session.User.Username}}" autocomplete="username" hidden>
+    <label>{{t "Current password"}} <input type="password" name="current" autocomplete="current-password" required></label>
+    <label>{{t "New password"}} <input type="password" name="new" autocomplete="new-password" minlength="6" maxlength="64" required>
+      <small>{{t `6-64 characters, no spaces or / ? # % & \ " '. You will type it on your TV, so keep it simple to enter.`}}</small></label>
+    <label>{{t "Repeat new password"}} <input type="password" name="confirm" autocomplete="new-password" minlength="6" maxlength="64" required></label>
+  </section>
+  <div class="form-actions"><button>{{t "Change password"}}</button></div>
+</form>
+{{end}}
