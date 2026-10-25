@@ -19,6 +19,7 @@
   <a class="brand" href="{{base}}/"><picture><source srcset="{{base}}/static/brand/rhis-logo-wit.svg" media="(prefers-color-scheme: dark)"><img class="brand-logo" src="{{base}}/static/brand/rhis-logo.svg" alt="RHIS"></picture><span>{{.PortalName}}<small>{{t "Admin panel"}}</small></span></a>
   <nav>
     <a href="{{base}}/" {{if eq .Nav "dashboard"}}class="active"{{end}}>{{icon "dashboard"}}{{t "Dashboard"}}</a>
+    <a href="{{base}}/stats" {{if eq .Nav "stats"}}class="active"{{end}}>{{icon "chart"}}{{t "Viewing statistics"}}</a>
     <p class="nav-group">{{t "Channels"}}</p>
     <a href="{{base}}/channels" {{if eq .Nav "channels"}}class="active"{{end}}>{{icon "tv"}}{{t "Channels"}}</a>
     <a href="{{base}}/categories" {{if eq .Nav "categories"}}class="active"{{end}}>{{icon "tag"}}{{t "Categories"}}</a>

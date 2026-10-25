@@ -1,0 +1,137 @@
+{{define "content"}}
+{{$d := .Data}}
+{{$now := $d.Now}}
+<div class="titlebar">
+  <div>
+    {{if $d.User}}<p class="crumb"><a href="{{base}}/stats?{{$d.Query}}">{{icon "chart"}}{{t "Viewing statistics"}}</a></p><h1>{{$d.User.Username}}</h1>
+    {{else if $d.Channel}}<p class="crumb"><a href="{{base}}/stats?{{$d.Query}}">{{icon "chart"}}{{t "Viewing statistics"}}</a></p><h1>{{$d.Channel.Name}}</h1>
+    {{else}}<h1>{{t "Viewing statistics"}}</h1>{{end}}
+    <p class="subtitle">{{if $d.User}}{{t "What this user watched, and for how long."}}{{else if $d.Channel}}{{t "Who watched this channel, and for how long."}}{{else}}{{t "See what is really watched per channel and per user, and find channels nobody watches."}}{{end}}</p>
+  </div>
+  <div class="buttons">
+    {{with $d.User}}<a class="button secondary" href="{{base}}/users/{{.ID}}">{{icon "user"}}{{t "Edit user"}}</a>{{end}}
+    {{with $d.Channel}}<a class="button secondary" href="{{base}}/{{if .IsRadio}}radio{{else}}channels{{end}}/{{.ID}}">{{icon "edit"}}{{if .IsRadio}}{{t "Edit station"}}{{else}}{{t "Edit channel"}}{{end}}</a>{{end}}
+  </div>
+</div>
+<form method="get" action="{{base}}/stats" class="filters">
+  {{with $d.User}}<input type="hidden" name="user" value="{{.ID}}">{{end}}
+  {{with $d.Channel}}<input type="hidden" name="channel" value="{{.ID}}">{{end}}
+  <select name="days" onchange="this.form.submit()" aria-label="{{t "Period"}}">
+    {{range $d.Periods}}<option value="{{.}}"{{if eq . $d.Days}} selected{{end}}>{{if eq . 7}}{{t "Last 7 days"}}{{else if eq . 30}}{{t "Last 30 days"}}{{else if eq . 90}}{{t "Last 90 days"}}{{else}}{{t "Last 12 months"}}{{end}}</option>{{end}}
+  </select>
+  {{if not $d.Channel}}
+  <select name="kind" onchange="this.form.submit()" aria-label="{{t "Type"}}">
+    <option value="">{{t "TV, radio and On Demand"}}</option>
+    <option value="tv"{{if eq $d.Kind "tv"}} selected{{end}}>{{t "TV channels"}}</option>
+    <option value="radio"{{if eq $d.Kind "radio"}} selected{{end}}>{{t "Radio stations"}}</option>
+    <option value="vod"{{if eq $d.Kind "vod"}} selected{{end}}>{{t "On Demand"}}</option>
+  </select>
+  {{end}}
+  <noscript><button class="secondary">{{t "Show"}}</button></noscript>
+</form>
+<div class="stats">
+  <div class="card stat"><span class="stat-icon">{{icon "tv"}}</span><div><strong>{{$d.Summary.Views}}</strong><span>{{t "views"}}</span></div></div>
+  {{if not $d.User}}<div class="card stat"><span class="stat-icon">{{icon "users"}}</span><div><strong>{{$d.Summary.Viewers}}</strong><span>{{t "viewers"}}</span></div></div>{{end}}
+  {{if not $d.Channel}}<div class="card stat"><span class="stat-icon">{{icon "radio"}}</span><div><strong>{{$d.Summary.Channels}}</strong><span>{{t "channels watched"}}</span></div></div>{{end}}
+  <div class="card stat"><span class="stat-icon">{{icon "activity"}}</span><div><strong>{{duration $d.Summary.Time}}</strong><span>{{t "viewing time (estimated)"}}</span></div></div>
+  {{if and (not $d.User) (not $d.Channel) (ne $d.Kind "vod")}}<a class="card stat" href="#unwatched"><span class="stat-icon">{{icon "ban"}}</span><div><strong>{{len $d.Unwatched}}</strong><span>{{t "channels nobody watched"}}</span></div></a>{{end}}
+</div>
+{{if $d.Summary.Views}}
+<section class="card">
+  <h2>{{t "Views per day"}}</h2>
+  <div class="chart" role="img" aria-label="{{t "Views per day"}}">
+    {{range $d.Chart}}<span class="bar" title="{{longdate .Day}}: {{if eq .Views 1}}{{t "1 view"}}{{else}}{{tf "%d views" .Views}}{{end}}, {{duration .Time}}"><span style="height: {{.Height}}%"></span></span>{{end}}
+  </div>
+  <div class="chart-axis">{{with index $d.Chart 0}}<span>{{longdate .Day}}</span>{{end}}<span>{{t "today"}}</span></div>
+</section>
+{{else}}
+<section class="card empty">{{if or $d.User $d.Channel}}{{t "Nothing was watched in this period."}}{{else}}{{t "No views recorded in this period yet. Views are recorded from the moment this version runs."}}{{end}}</section>
+{{end}}
+{{if $d.Channels}}
+<h2 class="section-title">{{if $d.User}}{{t "Channels watched"}}{{else}}{{t "Most watched"}}{{end}}</h2>
+<section class="card flush">
+  <table>
+    <thead><tr><th>{{t "Channel"}}</th><th>{{t "Views"}}</th>{{if not $d.User}}<th>{{t "Viewers"}}</th>{{end}}<th>{{t "Viewing time"}}</th><th>{{t "Last watched"}}</th></tr></thead>
+    <tbody>
+    {{range $d.Channels}}
+    <tr><td>{{if .ChannelID}}<a class="name" href="{{base}}/stats?{{$d.Query}}&amp;channel={{.ChannelID}}">{{.Name}}</a>{{else}}<span class="name">{{.Name}}</span>{{end}} {{template "kind" .Kind}}</td>
+      <td>{{.Views}}</td>{{if not $d.User}}<td>{{.Viewers}}</td>{{end}}<td class="nowrap">{{duration .Time}}</td><td class="nowrap">{{ago $now .Last}}</td></tr>
+    {{end}}
+    </tbody>
+  </table>
+</section>
+{{if $d.More}}<p><a href="{{base}}/stats?{{$d.Query}}{{with $d.User}}&amp;user={{.ID}}{{end}}&amp;all=1">{{tf "Show all, %d more" $d.More}}</a></p>{{end}}
+{{end}}
+{{if $d.Users}}
+<h2 class="section-title">{{if $d.Channel}}{{t "Viewers"}}{{else}}{{t "Per user"}}{{end}}</h2>
+<section class="card flush">
+  <table>
+    <thead><tr><th>{{t "User"}}</th><th>{{t "Views"}}</th>{{if not $d.Channel}}<th>{{t "Channels"}}</th>{{end}}<th>{{t "Viewing time"}}</th>{{if not $d.Channel}}<th>{{t "Watched most"}}</th>{{end}}<th>{{t "Last watched"}}</th></tr></thead>
+    <tbody>
+    {{range $d.Users}}
+    <tr><td><a class="name" href="{{base}}/stats?{{$d.Query}}&amp;user={{.UserID}}">{{.Username}}</a></td>
+      <td>{{.Views}}</td>{{if not $d.Channel}}<td>{{.Channels}}</td>{{end}}<td class="nowrap">{{duration .Time}}</td>{{if not $d.Channel}}<td>{{.Favourite}}</td>{{end}}<td class="nowrap">{{ago $now .Last}}</td></tr>
+    {{end}}
+    </tbody>
+  </table>
+</section>
+{{end}}
+{{if $d.Recent}}
+<h2 class="section-title">{{t "Latest views"}}</h2>
+<section class="card flush">
+  <table>
+    <thead><tr><th>{{t "Started"}}</th><th>{{if $d.Channel}}{{t "User"}}{{else}}{{t "Channel"}}{{end}}</th><th>{{t "Viewing time"}}</th><th>{{t "Device"}}</th></tr></thead>
+    <tbody>
+    {{range $d.Recent}}
+    <tr><td class="nowrap">{{datetime (ptr .StartedAt)}}</td>
+      <td>{{if $d.Channel}}<a class="name" href="{{base}}/stats?{{$d.Query}}&amp;user={{.UserID}}">{{.Username}}</a>{{else}}{{.Channel}} {{template "kind" .Kind}}{{end}}</td>
+      <td class="nowrap">{{duration .Duration}}</td>
+      <td><span class="device" title="{{.UserAgent}}">{{.IP}}{{with .UserAgent}} · {{.}}{{end}}</span></td></tr>
+    {{end}}
+    </tbody>
+  </table>
+</section>
+{{end}}
+{{if and (not $d.User) (not $d.Channel) (ne $d.Kind "vod")}}
+<h2 class="section-title" id="unwatched">{{t "Nobody watched"}}</h2>
+{{if $d.Unwatched}}
+<section class="card flush">
+  <table>
+    <thead><tr><th>{{t "Channel"}}</th><th>{{t "Category"}}</th><th>{{t "Last watched"}}</th><th>{{t "Added"}}</th><th></th></tr></thead>
+    <tbody>
+    {{range $d.Unwatched}}
+    <tr><td><a class="name" href="{{base}}/{{if eq .Kind "radio"}}radio{{else}}channels{{end}}/{{.ID}}">{{.Name}}</a> {{template "kind" .Kind}}</td>
+      <td>{{with .Category}}{{.}}{{else}}<span class="muted">{{t "none"}}</span>{{end}}</td>
+      <td>{{with .LastView}}{{ago $now .}}{{else}}<span class="muted">{{t "never"}}</span>{{end}}</td>
+      <td class="nowrap">{{date (ptr .Added)}}</td>
+      <td class="actions"><form method="post" action="{{base}}/channels/{{.ID}}/toggle"><input type="hidden" name="csrf" value="{{$.Session.CSRF}}"><input type="hidden" name="enabled" value="0"><input type="hidden" name="back" value="{{$d.Back}}"><button class="secondary sm">{{icon "ban"}}{{t "Disable"}}</button></form></td></tr>
+    {{end}}
+    </tbody>
+  </table>
+</section>
+<p class="muted"><small>{{t "Enabled channels nobody opened in this period. A disabled channel stays in the list of channels and can be enabled again at any time."}}</small></p>
+{{else}}
+<section class="card empty">{{t "Every enabled channel was watched in this period."}}</section>
+{{end}}
+{{end}}
+<p class="muted"><small>{{tf "Streams go straight from the broadcaster to the player, so the portal knows when a channel is opened but not when the player stops. Views are counted exactly. Viewing time is estimated: until the next channel is opened, or %d minutes when nothing else is heard from the player." $d.Assume}}</small></p>
+{{if and (not $d.User) (not $d.Channel)}}
+<section class="card spaced">
+  <h2>{{t "Keeping statistics"}}</h2>
+  <form method="post" action="{{base}}/stats/settings" class="inline retention">
+    <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+    <input type="hidden" name="back" value="{{$d.Back}}">
+    <label>{{t "Days to keep views"}}
+      <input type="number" name="days" min="0" max="3650" value="{{$d.Retention}}" class="small">
+    </label>
+    <button>{{t "Save"}}</button>
+  </form>
+  <p class="muted"><small>{{t "Older views are removed once a day; 0 keeps them forever. Removing a user also removes their views."}}</small></p>
+  <form method="post" action="{{base}}/stats/clear" onsubmit="return confirm('{{t "Remove all viewing statistics? This cannot be undone."}}')">
+    <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+    <button class="danger">{{icon "trash"}}{{t "Remove all statistics"}}</button>
+  </form>
+</section>
+{{end}}
+{{end}}
+{{define "kind"}}<span class="chip">{{if eq . "radio"}}{{t "Radio"}}{{else if eq . "vod"}}{{t "On Demand"}}{{else}}{{t "TV"}}{{end}}</span>{{end}}

@@ -19,6 +19,7 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/mail"
 	"github.com/rhisijmuiden/iptv-portal/internal/media"
 	"github.com/rhisijmuiden/iptv-portal/internal/nowplaying"
+	"github.com/rhisijmuiden/iptv-portal/internal/stats"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 	"github.com/rhisijmuiden/iptv-portal/internal/web"
 )
@@ -42,7 +43,12 @@ type Handler struct {
 	// nowPlaying reads what radio stations play; logos serves their logos.
 	nowPlaying *nowplaying.Service
 	logos      *logos.Cache
+	// stats records views for the viewing statistics; nil records none.
+	stats *stats.Recorder
 }
+
+// SetStats makes the portal record views in rec.
+func (h *Handler) SetStats(rec *stats.Recorder) { h.stats = rec }
 
 // New builds the client portal. Player requests are recorded in tracker.
 func New(st *store.Store, guide *epg.Guide, tracker *activity.Tracker, vod *media.Catalog, log *slog.Logger) (*Handler, error) {

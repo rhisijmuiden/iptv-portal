@@ -18,6 +18,7 @@ It can also offer the movies and series of your own **Jellyfin** or **Plex** ser
 - **Users, packages and invitations.** Decide per user which channels they see, set expiry dates and connection limits, switch accounts off, and send invitation links so people create their own login.
 - **Xtream Codes API, M3U and XMLTV.** Works with MyTVOnline (Formuler), TiviMate, IPTV Smarters and most other players.
 - **Program guide** merged from your own XMLTV sources and filtered per user.
+- **Viewing statistics** per channel and per user, for TV, radio and On Demand, with a list of channels nobody watches so you can clean them up.
 - **Stream health checks** that test every channel like a player would, show which streams are down and can switch dead channels off until they work again.
 - **Settings in the browser**: portal name, public URL and both ports, ready for a reverse proxy.
 - **Microsoft Entra sign-in** for the admin panel (optional), limited to the groups or app roles you choose, with local accounts as a fallback.
@@ -107,6 +108,19 @@ Add XMLTV sources and see, per channel, whether the guide has data for it. The g
 The portal tests every channel's stream on a schedule (every hour by default): it loads the playlist, follows a master playlist to its first variant and fetches the newest video segment. The channel list shows **working**, **failing** (with the reason) or **unchecked** for each channel and can be filtered on it; **Check streams** tests them all now and **Check** tests one.
 
 Under **Stream health** you set the interval (5 minutes to a week, or off) and can let the portal switch a channel off after a number of failed checks in a row. Such a channel is switched on again as soon as its stream works; switching a channel on or off by hand stops that. Off by default.
+
+### Viewing statistics
+
+**Viewing statistics** (right under the dashboard) shows what is really watched over the last 7 days, 30 days, 90 days or 12 months, for TV, radio, On Demand or all of them: views and estimated viewing time per day, the most watched channels, and per user how much they watched and what they watch most. Click a channel or a user for their own page with the latest views and the device used.
+
+**Nobody watched** lists the enabled channels nobody opened in the period, with when they were last watched, and switches one off with a click. See [Viewing statistics](#viewing-statistics-1) for how the numbers are made.
+
+<details>
+<summary>Screenshot</summary>
+
+![Viewing statistics](docs/screenshots/stats.png)
+
+</details>
 
 ### Users
 
@@ -264,6 +278,12 @@ The SMTP password is stored in the portal database. Many providers (Gmail, Outlo
 ### Who is online
 
 The dashboard shows how many users are online and which channel each player opened last, with its IP address and player name. Streams go straight from the broadcaster to the player, so the portal only sees the player's own requests: a user counts as *online* after a request in the last 15 minutes, and as *watching* when they opened a channel in that time. The portal cannot tell when someone stops watching, and the list starts empty after a restart.
+
+### Viewing statistics
+
+Every time a player opens a channel, radio station or On Demand title, the portal stores a view with the user, the channel, the IP address and the player name. The number of views is exact. The viewing time is an estimate, because streams go straight from the broadcaster to the player: a view lasts until the same player opens another channel (within 4 hours), or 15 minutes when nothing else is heard from it; requests the player keeps making while it plays (such as the guide) extend it.
+
+Views are kept for 365 days by default; change it, or keep them forever with 0, at the bottom of the statistics page, where you can also remove all statistics. Removing a user removes their views; a removed channel stays in the statistics under its old name. Statistics start from the moment this version runs.
 
 ## Signing in with Microsoft Entra
 
