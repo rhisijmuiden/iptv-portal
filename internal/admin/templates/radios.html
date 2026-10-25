@@ -45,7 +45,8 @@
       {{if $hl.CheckedAt.IsZero}}<span class="badge idle" title="{{t "This stream has not been checked yet"}}">{{t "unchecked"}}</span>
       {{else if $hl.OK}}<span class="badge on" title="{{t $hl.Message}} · {{tf "checked %s" (ago $.Data.Now $hl.CheckedAt)}}">{{t "working"}}</span>
       {{else}}<span class="badge off" title="{{t $hl.Message}} · {{tf "checked %s" (ago $.Data.Now $hl.CheckedAt)}}">{{t "failing"}}</span>
-        <div class="muted health-msg">{{t $hl.Message}}{{if gt $hl.Failures 1}} · {{tf "%d checks in a row" $hl.Failures}}{{end}}{{if $hl.AutoDisabled}} · {{t "switched off automatically"}}{{end}}</div>{{end}}
+        <div class="muted health-msg">{{t $hl.Message}}{{if gt $hl.Failures 1}} · {{tf "%d checks in a row" $hl.Failures}}{{end}}{{if $hl.AutoDisabled}} · {{t "switched off automatically"}}{{end}}</div>
+        {{if index $.Data.Suggested .ID}}<a class="suggested" href="{{base}}/health#ch-{{.ID}}">{{icon "swap"}}{{t "replacement suggested"}}</a>{{end}}{{end}}
     </td>
     <td>
       <form method="post" action="{{base}}/channels/{{.ID}}/toggle">

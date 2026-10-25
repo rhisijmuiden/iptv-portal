@@ -313,3 +313,14 @@ td.nowrap { white-space: nowrap; }
 /* Pages for subscribers (invite, welcome): the logo sits above the card */
 .portal-head { display: flex; justify-content: center; padding: 3rem 16px 0; }
 body .portal-head + main { padding-top: 1.5rem; }
+
+/* Suggested replacements for failing streams */
+.nav-count { margin-left: auto; min-width: 1.35rem; padding: .05rem .4rem; border-radius: 999px; background: var(--koraal); color: #fff; font-size: .72rem; font-weight: 700; text-align: center; line-height: 1.3; }
+.suggestion h2 { margin: 0 0 .2rem; font-size: 1.05rem; }
+.suggestion h2 a { color: inherit; }
+.suggestion table { margin: 0; }
+.suggestion td { vertical-align: middle; }
+.suggestion td > div + div { margin-top: .2rem; }
+.suggestion s { text-decoration-color: var(--err); }
+a.suggested { display: inline-flex; align-items: center; gap: .3rem; margin-top: .2rem; font-size: .78rem; font-weight: 600; color: var(--warn); }
+a.suggested .icon { width: 14px; height: 14px; }

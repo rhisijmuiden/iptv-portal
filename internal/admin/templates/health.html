@@ -5,16 +5,53 @@
     <h1>{{t "Stream health"}}</h1>
     <p class="subtitle">{{t "The portal tests every channel's stream like a player would: it loads the playlist, follows it to a variant and fetches a video segment."}}</p>
   </div>
-  <form method="post" action="{{base}}/health/run">
-    <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
-    <button class="secondary" {{if $d.Status.Running}}disabled{{end}}>{{icon "refresh"}}{{if $d.Status.Running}}{{tf "Checking %d of %d…" $d.Status.Done $d.Status.Total}}{{else}}{{t "Check all now"}}{{end}}</button>
-  </form>
+  <div class="buttons">
+    {{if $d.Failing}}<form method="post" action="{{base}}/health/suggest">
+      <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+      <button class="secondary" {{if $d.Search.Running}}disabled{{end}}>{{icon "swap"}}{{if $d.Search.Running}}{{tf "Searching %d of %d…" $d.Search.Done $d.Search.Total}}{{else}}{{t "Find replacements"}}{{end}}</button>
+    </form>{{end}}
+    <form method="post" action="{{base}}/health/run">
+      <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+      <button class="secondary" {{if $d.Status.Running}}disabled{{end}}>{{icon "refresh"}}{{if $d.Status.Running}}{{tf "Checking %d of %d…" $d.Status.Done $d.Status.Total}}{{else}}{{t "Check all now"}}{{end}}</button>
+    </form>
+  </div>
 </div>
 <div class="stats">
   <a class="card stat" href="{{base}}/channels?health=ok"><span class="stat-icon">{{icon "check"}}</span><div><strong>{{$d.OK}}</strong><span>{{t "working"}}</span></div></a>
   <a class="card stat" href="{{base}}/channels?health=failing"><span class="stat-icon">{{icon "ban"}}</span><div><strong>{{len $d.Failing}}</strong><span>{{if $d.Disabled}}{{tf "failing, %d switched off" $d.Disabled}}{{else}}{{t "failing"}}{{end}}</span></div></a>
   <a class="card stat" href="{{base}}/channels?health=unchecked"><span class="stat-icon">{{icon "activity"}}</span><div><strong>{{$d.Unknown}}</strong><span>{{t "not checked yet"}}</span></div></a>
+  <a class="card stat" href="#suggestions"><span class="stat-icon">{{icon "swap"}}</span><div><strong>{{len $d.Suggested}}</strong><span>{{t "replacements suggested"}}</span></div></a>
 </div>
+{{if $d.Suggested}}
+<h2 class="section-title" id="suggestions">{{t "Suggested replacements"}}</h2>
+<p class="muted">{{t "These streams were found for failing channels in iptv-org or Radio Browser and played when the portal tested them. Accepting one switches the channel to it and checks it right away; nothing changes until you do."}}</p>
+{{range $d.Suggested}}{{$row := .}}
+<section class="card suggestion" id="ch-{{.Channel.ID}}">
+  <div class="card-head">
+    <div>
+      <h2><a href="{{base}}/{{if .Channel.IsRadio}}radio{{else}}channels{{end}}/{{.Channel.ID}}">{{.Channel.Name}}</a> {{if .Channel.IsRadio}}<span class="chip">{{t "Radio"}}</span>{{end}}</h2>
+      <div class="muted url"><s>{{.Channel.StreamURL}}</s></div>
+      <div class="muted">{{t .Health.Message}}</div>
+    </div>
+    {{if .Channel.Enabled}}<span class="badge on">{{t "enabled"}}</span>{{else if .Health.AutoDisabled}}<span class="badge warn">{{t "switched off"}}</span>{{else}}<span class="badge off">{{t "disabled"}}</span>{{end}}
+  </div>
+  <table>
+    <tbody>
+    {{range .Suggestions}}
+    <tr><td><strong>{{.Name}}</strong>
+        <div><span class="chip">{{if eq .Source "radio-browser"}}Radio Browser{{else}}iptv-org{{end}}</span>
+          <span class="muted">{{if eq .Match "source"}}{{t "new address of the station it was imported from"}}{{else if eq .Match "epg"}}{{t "same EPG ID"}}{{else if eq .Match "url"}}{{t "same channel as the failing stream"}}{{else}}{{t "same name"}}{{end}} · {{t .Detail}}</span></div>
+        <div class="muted url">{{.StreamURL}}</div></td>
+      <td class="actions">
+        <form method="post" action="{{base}}/suggestions/{{.ID}}/accept"><input type="hidden" name="csrf" value="{{$.Session.CSRF}}"><button class="sm" title="{{t "Use this stream"}}">{{icon "check"}}<span class="label">{{t "Use this stream"}}</span></button></form>
+        <form method="post" action="{{base}}/suggestions/{{.ID}}/dismiss"><input type="hidden" name="csrf" value="{{$.Session.CSRF}}"><button class="secondary sm" title="{{t "Do not suggest this stream again"}}">{{icon "ban"}}<span class="label">{{t "Dismiss"}}</span></button></form>
+      </td></tr>
+    {{end}}
+    </tbody>
+  </table>
+</section>
+{{end}}
+{{end}}
 <form method="post" action="{{base}}/health" class="stack">
   <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
   <section class="card stack-card">
@@ -30,6 +67,8 @@
       <input type="number" name="disable_after" min="1" max="{{$d.MaxAfter}}" value="{{if gt $d.Settings.DisableAfter 0}}{{$d.Settings.DisableAfter}}{{else}}3{{end}}">
       <small>{{t "A channel switched off this way is switched on again as soon as its stream works. Switching a channel on or off by hand stops that."}}</small>
     </label>
+    <label class="check"><input type="checkbox" name="suggest" {{if $d.Settings.Suggest}}checked{{end}}> {{t "Suggest replacements for failing streams"}}</label>
+    <p class="muted"><small>{{tf "After a check, channels that failed %d checks in a row are looked up in iptv-org (TV) and Radio Browser (radio), at most once a day. Streams found there are tested, and the ones that play are listed here as suggestions. A channel only changes when you accept one." $d.AutoAfter}}</small></p>
   </section>
   <div class="form-actions"><button>{{t "Save settings"}}</button></div>
 </form>
@@ -37,13 +76,16 @@
 <section class="card spaced">
   <h2>{{t "Failing streams"}}</h2>
   <table>
-    <thead><tr><th>{{t "Channel"}}</th><th>{{t "Problem"}}</th><th>{{t "Last worked"}}</th><th>{{t "Status"}}</th></tr></thead>
+    <thead><tr><th>{{t "Channel"}}</th><th>{{t "Problem"}}</th><th>{{t "Last worked"}}</th><th>{{t "Status"}}</th><th>{{t "Replacement"}}</th></tr></thead>
     <tbody>
     {{range $d.Failing}}
     <tr><td><a class="name" href="{{base}}/channels/{{.Channel.ID}}">{{.Channel.Name}}</a><div class="muted url">{{.Channel.StreamURL}}</div></td>
       <td>{{t .Health.Message}}<div class="muted">{{if eq .Health.Failures 1}}{{tf "1 failed check, last %s" (ago $d.Now .Health.CheckedAt)}}{{else}}{{tf "%d failed checks in a row, last %s" .Health.Failures (ago $d.Now .Health.CheckedAt)}}{{end}}</div></td>
       <td>{{with .Health.LastOKAt}}{{ago $d.Now .}}{{else}}<span class="muted">{{t "never"}}</span>{{end}}</td>
-      <td>{{if .Channel.Enabled}}<span class="badge on">{{t "enabled"}}</span>{{else if .Health.AutoDisabled}}<span class="badge warn">{{t "switched off"}}</span>{{else}}<span class="badge off">{{t "disabled"}}</span>{{end}}</td></tr>
+      <td>{{if .Channel.Enabled}}<span class="badge on">{{t "enabled"}}</span>{{else if .Health.AutoDisabled}}<span class="badge warn">{{t "switched off"}}</span>{{else}}<span class="badge off">{{t "disabled"}}</span>{{end}}</td>
+      <td class="actions">{{if .Suggestions}}<a class="button secondary sm" href="#ch-{{.Channel.ID}}">{{icon "swap"}}{{if eq (len .Suggestions) 1}}{{t "1 suggestion"}}{{else}}{{tf "%d suggestions" (len .Suggestions)}}{{end}}</a>
+        {{else}}<form method="post" action="{{base}}/channels/{{.Channel.ID}}/suggest"><input type="hidden" name="csrf" value="{{$.Session.CSRF}}"><button class="secondary sm" title="{{with .SearchedAt}}{{tf "Last searched %s, nothing found" (ago $d.Now .)}}{{else}}{{t "Look for this channel in iptv-org or Radio Browser"}}{{end}}">{{icon "search"}}{{t "Find replacement"}}</button></form>
+        {{with .SearchedAt}}<div class="muted"><small>{{tf "searched %s" (ago $d.Now .)}}</small></div>{{end}}{{end}}</td></tr>
     {{end}}
     </tbody>
   </table>

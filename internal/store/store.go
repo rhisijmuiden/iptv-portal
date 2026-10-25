@@ -188,6 +188,25 @@ var migrations = []string{
 	CREATE INDEX views_started ON views(started_at);
 	CREATE INDEX views_channel ON views(channel_id, started_at);
 	CREATE INDEX views_user ON views(user_id, started_at);`,
+
+	// Replacement streams found for failing channels. Dismissed ones are
+	// kept so they are not suggested again.
+	`CREATE TABLE stream_suggestions (
+		id         INTEGER PRIMARY KEY,
+		channel_id INTEGER NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+		stream_url TEXT NOT NULL,
+		name       TEXT NOT NULL DEFAULT '',
+		source     TEXT NOT NULL,
+		source_id  TEXT NOT NULL DEFAULT '',
+		logo_url   TEXT NOT NULL DEFAULT '',
+		epg_id     TEXT NOT NULL DEFAULT '',
+		match      TEXT NOT NULL DEFAULT '',
+		detail     TEXT NOT NULL DEFAULT '',
+		found_at   DATETIME NOT NULL,
+		dismissed  INTEGER NOT NULL DEFAULT 0,
+		UNIQUE(channel_id, stream_url)
+	);
+	ALTER TABLE channel_health ADD COLUMN searched_at DATETIME;`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

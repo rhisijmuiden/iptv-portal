@@ -78,11 +78,12 @@ func TestStreamHealthPages(t *testing.T) {
 		t.Error("failing filter shows the wrong channels")
 	}
 
-	w = req("POST", "/health", url.Values{"enabled": {"on"}, "interval": {"30"}, "auto_disable": {"on"}, "disable_after": {"4"}})
+	w = req("POST", "/health", url.Values{"enabled": {"on"}, "interval": {"30"}, "auto_disable": {"on"}, "disable_after": {"4"},
+		"suggest": {"on"}})
 	if w.Code != http.StatusSeeOther {
 		t.Fatalf("save settings: %d %s", w.Code, w.Body)
 	}
-	if hs, _ := st.HealthSettings(ctx); hs != (store.HealthSettings{IntervalMinutes: 30, DisableAfter: 4}) {
+	if hs, _ := st.HealthSettings(ctx); hs != (store.HealthSettings{IntervalMinutes: 30, DisableAfter: 4, Suggest: true}) {
 		t.Errorf("saved %+v", hs)
 	}
 	w = req("POST", "/health", url.Values{"enabled": {"on"}, "interval": {"1"}})
@@ -94,6 +95,59 @@ func TestStreamHealthPages(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("health page is missing %q", want)
 		}
+	}
+}
+
+func TestSuggestionPages(t *testing.T) {
+	streams := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/new.ts" {
+			w.Write([]byte("data"))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer streams.Close()
+	h, st := newTestHandler(t, "")
+	req := loggedIn(t, h, st)
+	ctx := context.Background()
+	id, _ := st.SaveChannel(ctx, store.Channel{Name: "Noord", StreamURL: streams.URL + "/gone.m3u8", Enabled: true})
+	st.RecordHealth(ctx, id, false, "HTTP 404 Not Found", 1) // switched off
+	st.SaveSuggestions(ctx, id, []store.Suggestion{
+		{StreamURL: streams.URL + "/new.ts", Name: "RTV Noord (576p)", Source: store.SourceIPTVOrg, Match: store.MatchEPG,
+			Detail: "stream responds"},
+		{StreamURL: streams.URL + "/other.m3u8", Name: "RTV Noord (1080p)", Source: store.SourceIPTVOrg, Match: store.MatchName},
+	})
+	sugs, _ := st.Suggestions(ctx)
+
+	body := req("GET", "/health", nil).Body.String()
+	for _, want := range []string{"Suggested replacements", "RTV Noord (576p)", "same EPG ID", `href="#ch-` + itoa(id) + `"`,
+		"2 suggestions", `<span class="nav-count"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("health page is missing %q", want)
+		}
+	}
+	if body := req("GET", "/channels", nil).Body.String(); !strings.Contains(body, "replacement suggested") {
+		t.Error("channels page does not link to the suggestion")
+	}
+
+	w := req("POST", "/suggestions/"+itoa(sugs[id][1].ID)+"/dismiss", url.Values{})
+	if loc := w.Header().Get("Location"); !strings.Contains(loc, "ok=Suggestion+dismissed") || !strings.HasSuffix(loc, "#ch-"+itoa(id)) {
+		t.Errorf("dismiss: %q", loc)
+	}
+	w = req("POST", "/suggestions/"+itoa(sugs[id][0].ID)+"/accept", url.Values{})
+	if loc := w.Header().Get("Location"); !strings.Contains(loc, "ok=Noord+now+uses+the+new+stream+and+works") {
+		t.Fatalf("accept: %q", loc)
+	}
+	c, _ := st.Channel(ctx, id)
+	if c.StreamURL != streams.URL+"/new.ts" || !c.Enabled {
+		t.Errorf("channel after accepting: %+v", c)
+	}
+	if body := req("GET", "/health", nil).Body.String(); strings.Contains(body, "Suggested replacements") {
+		t.Error("suggestions still shown for a working channel")
+	}
+	w = req("POST", "/suggestions/"+itoa(sugs[id][0].ID)+"/accept", url.Values{})
+	if loc := w.Header().Get("Location"); !strings.Contains(loc, "err=This+suggestion+no+longer+exists") {
+		t.Errorf("accept twice: %q", loc)
 	}
 }
 

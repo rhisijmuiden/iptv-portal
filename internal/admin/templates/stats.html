@@ -100,7 +100,8 @@
     <thead><tr><th>{{t "Channel"}}</th><th>{{t "Category"}}</th><th>{{t "Last watched"}}</th><th>{{t "Added"}}</th><th></th></tr></thead>
     <tbody>
     {{range $d.Unwatched}}
-    <tr><td><a class="name" href="{{base}}/{{if eq .Kind "radio"}}radio{{else}}channels{{end}}/{{.ID}}">{{.Name}}</a> {{template "kind" .Kind}}</td>
+    <tr><td><a class="name" href="{{base}}/{{if eq .Kind "radio"}}radio{{else}}channels{{end}}/{{.ID}}">{{.Name}}</a> {{template "kind" .Kind}}
+        {{if index $d.Suggested .ID}}<a class="suggested" href="{{base}}/health#ch-{{.ID}}">{{icon "swap"}}{{t "stream fails, replacement suggested"}}</a>{{else if index $d.Failing .ID}}<a class="suggested" href="{{base}}/health">{{icon "ban"}}{{t "stream fails"}}</a>{{end}}</td>
       <td>{{with .Category}}{{.}}{{else}}<span class="muted">{{t "none"}}</span>{{end}}</td>
       <td>{{with .LastView}}{{ago $now .}}{{else}}<span class="muted">{{t "never"}}</span>{{end}}</td>
       <td class="nowrap">{{date (ptr .Added)}}</td>

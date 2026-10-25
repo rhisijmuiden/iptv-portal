@@ -55,7 +55,8 @@ type channelListData struct {
 	Categories []store.Category
 	Filter     store.ChannelFilter
 	Health     map[int64]store.ChannelHealth
-	HealthOnly string // "ok", "failing" or "unchecked"; "" shows all
+	Suggested  map[int64][]store.Suggestion // open replacement suggestions
+	HealthOnly string                       // "ok", "failing" or "unchecked"; "" shows all
 	Now        time.Time
 	Back       string // current list URL, to return to after a toggle
 	NowPlaying bool   // radio only: players are shown what stations play
@@ -87,6 +88,11 @@ func (h *Handler) listChannels(w http.ResponseWriter, r *http.Request, sess stor
 		h.serverError(w, err)
 		return
 	}
+	sugs, err := h.store.Suggestions(r.Context())
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
 	only := r.URL.Query().Get("health")
 	if only != "" {
 		var keep []store.Channel
@@ -111,7 +117,7 @@ func (h *Handler) listChannels(w http.ResponseWriter, r *http.Request, sess stor
 		return
 	}
 	h.render(w, r, sec.List, page{Title: sec.Name, Nav: sec.Nav, Session: &sess,
-		Data: channelListData{Channels: chs, Categories: cats, Filter: f, Health: hl, HealthOnly: only,
+		Data: channelListData{Channels: chs, Categories: cats, Filter: f, Health: hl, Suggested: sugs, HealthOnly: only,
 			Now: time.Now(), Back: r.URL.RequestURI(), NowPlaying: st.RadioNowPlaying}})
 }
 
