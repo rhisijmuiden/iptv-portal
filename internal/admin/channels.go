@@ -58,6 +58,7 @@ type channelListData struct {
 	HealthOnly string // "ok", "failing" or "unchecked"; "" shows all
 	Now        time.Time
 	Back       string // current list URL, to return to after a toggle
+	NowPlaying bool   // radio only: players are shown what stations play
 }
 
 func (h *Handler) channelList(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -104,9 +105,14 @@ func (h *Handler) listChannels(w http.ResponseWriter, r *http.Request, sess stor
 		}
 		chs = keep
 	}
+	st, err := h.store.Settings(r.Context())
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
 	h.render(w, r, sec.List, page{Title: sec.Name, Nav: sec.Nav, Session: &sess,
 		Data: channelListData{Channels: chs, Categories: cats, Filter: f, Health: hl, HealthOnly: only,
-			Now: time.Now(), Back: r.URL.RequestURI()}})
+			Now: time.Now(), Back: r.URL.RequestURI(), NowPlaying: st.RadioNowPlaying}})
 }
 
 type channelFormData struct {

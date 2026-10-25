@@ -22,7 +22,9 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
 	"github.com/rhisijmuiden/iptv-portal/internal/health"
 	"github.com/rhisijmuiden/iptv-portal/internal/iptvorg"
+	"github.com/rhisijmuiden/iptv-portal/internal/logos"
 	"github.com/rhisijmuiden/iptv-portal/internal/media"
+	"github.com/rhisijmuiden/iptv-portal/internal/nowplaying"
 	"github.com/rhisijmuiden/iptv-portal/internal/portal"
 	"github.com/rhisijmuiden/iptv-portal/internal/radiobrowser"
 	"github.com/rhisijmuiden/iptv-portal/internal/server"
@@ -164,12 +166,13 @@ func serve(args []string) error {
 	go backups.Loop(ctx)
 	checker := health.New(st, log)
 	go checker.Loop(ctx)
+	nowPlaying, stationLogos := nowplaying.New(), logos.New()
 	restart := false
 	var mgr *server.Manager
 	adminHandler, err := admin.New(admin.Config{
 		Store: st, Listeners: managerRef{&mgr}, Guide: guide, RefreshGuide: refresh,
 		Updater: updater, IPTVOrg: iptvOrg, Radio: radio, Media: vod, RefreshMedia: refreshVOD,
-		Activity: tracker, Backups: backups, Health: checker, BasePath: settings.BasePath, Log: log,
+		Activity: tracker, Backups: backups, Health: checker, NowPlaying: nowPlaying, Logos: stationLogos, BasePath: settings.BasePath, Log: log,
 		Restart: func() {
 			restart = true
 			stop()
@@ -182,6 +185,7 @@ func serve(args []string) error {
 	if err != nil {
 		return err
 	}
+	portalHandler.SetRadio(nowPlaying, stationLogos)
 	mgr = server.NewManager(log, adminHandler, portalHandler)
 	log.Info("IPTV Portal starting", "version", version.Version, "data", *data)
 	if settings.BasePath != "" {

@@ -225,6 +225,12 @@ func (h *Handler) liveStreams(w http.ResponseWriter, r *http.Request, u store.Us
 		h.serverError(w, err)
 		return
 	}
+	st, err := h.store.Settings(r.Context())
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	base := web.BaseURL(st.PublicURL, r)
 	want := r.FormValue("category_id")
 	out := []map[string]any{}
 	for i, c := range chs {
@@ -236,8 +242,8 @@ func (h *Handler) liveStreams(w http.ResponseWriter, r *http.Request, u store.Us
 			"name":                c.Name,
 			"stream_type":         "live",
 			"stream_id":           c.ID,
-			"stream_icon":         c.LogoURL,
-			"epg_channel_id":      nullable(c.EPGID),
+			"stream_icon":         logoURL(base, c),
+			"epg_channel_id":      nullable(epgID(c)),
 			"added":               "0",
 			"category_id":         categoryID(c),
 			"category_ids":        []int64{c.CategoryID},
@@ -278,7 +284,7 @@ func (h *Handler) shortEPG(w http.ResponseWriter, r *http.Request, u store.User,
 		return
 	}
 	listings := []map[string]any{}
-	if ok && c.EPGID != "" {
+	if ok && epgID(c) != "" {
 		now := time.Now()
 		from, until := now, now.Add(7*24*time.Hour)
 		if all {
@@ -288,19 +294,34 @@ func (h *Handler) shortEPG(w http.ResponseWriter, r *http.Request, u store.User,
 		if limit <= 0 && !all {
 			limit = 4
 		}
-		for _, p := range h.guide.Programmes(c.EPGID, from, until) {
+		var progs []epg.Programme
+		if h.radioGuide(c) {
+			st, err := h.store.Settings(r.Context())
+			if err != nil {
+				h.serverError(w, err)
+				return
+			}
+			for _, p := range radioProgrammes(st.Language, c, h.currentSong(r.Context(), st, c, true), now) {
+				if p.Stop.After(from) && p.Start.Before(until) {
+					progs = append(progs, p)
+				}
+			}
+		} else {
+			progs = h.guide.Programmes(c.EPGID, from, until)
+		}
+		for _, p := range progs {
 			if limit > 0 && len(listings) >= limit {
 				break
 			}
 			l := map[string]any{
 				"id":              strconv.FormatInt(p.Start.Unix(), 10),
-				"epg_id":          c.EPGID,
+				"epg_id":          p.Channel,
 				"title":           base64.StdEncoding.EncodeToString([]byte(p.Title)),
 				"lang":            "",
 				"start":           p.Start.Local().Format("2006-01-02 15:04:05"),
 				"end":             p.Stop.Local().Format("2006-01-02 15:04:05"),
 				"description":     base64.StdEncoding.EncodeToString([]byte(p.Desc)),
-				"channel_id":      c.EPGID,
+				"channel_id":      p.Channel,
 				"start_timestamp": unix(p.Start),
 				"stop_timestamp":  unix(p.Stop),
 				"has_archive":     0,
@@ -405,8 +426,8 @@ func (h *Handler) getPlaylist(w http.ResponseWriter, r *http.Request) {
 			if c.IsRadio() {
 				radio = ` radio="true"`
 			}
-			bw.WriteString(`#EXTINF:-1 tvg-id="` + m3uAttr(c.EPGID) + `" tvg-name="` + m3uAttr(c.Name) +
-				`" tvg-logo="` + m3uAttr(c.LogoURL) + `" group-title="` + m3uAttr(c.Category) + `"` + radio + `,` + m3uAttr(c.Name) + "\n")
+			bw.WriteString(`#EXTINF:-1 tvg-id="` + m3uAttr(epgID(c)) + `" tvg-name="` + m3uAttr(c.Name) +
+				`" tvg-logo="` + m3uAttr(logoURL(base, c)) + `" group-title="` + m3uAttr(c.Category) + `"` + radio + `,` + m3uAttr(c.Name) + "\n")
 		} else {
 			bw.WriteString("#EXTINF:-1," + m3uAttr(c.Name) + "\n")
 		}
@@ -426,11 +447,25 @@ func (h *Handler) xmltv(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, err)
 		return
 	}
+	st, err := h.store.Settings(r.Context())
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	base, now := web.BaseURL(st.PublicURL, r), time.Now()
 	var out []epg.Channel
 	for _, c := range chs {
-		if c.EPGID != "" {
-			out = append(out, epg.Channel{ID: c.EPGID, Name: c.Name, Logo: c.LogoURL})
+		id := epgID(c)
+		if id == "" {
+			continue
 		}
+		ch := epg.Channel{ID: id, Name: c.Name, Logo: logoURL(base, c)}
+		if h.radioGuide(c) {
+			// Only what is cached: reading every stream would make the
+			// guide download slow.
+			ch.Programmes = radioProgrammes(st.Language, c, h.currentSong(r.Context(), st, c, false), now)
+		}
+		out = append(out, ch)
 	}
 	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")

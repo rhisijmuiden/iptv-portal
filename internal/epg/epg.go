@@ -359,6 +359,9 @@ type Channel struct {
 	ID   string // XMLTV channel id (the channel's EPG ID)
 	Name string
 	Logo string
+	// Programmes are written when the guide has nothing for ID, e.g. the
+	// generated schedule of a radio station.
+	Programmes []Programme
 }
 
 // WriteXMLTV writes a guide containing only the given channels.
@@ -368,12 +371,14 @@ func (g *Guide) WriteXMLTV(w io.Writer, channels []Channel) error {
 	bw.WriteString(`<tv generator-info-name="IPTV Portal">` + "\n")
 	seen := map[string]bool{}
 	var ids []string
+	fallback := map[string][]Programme{}
 	for _, c := range channels {
 		if c.ID == "" || seen[c.ID] {
 			continue
 		}
 		seen[c.ID] = true
 		ids = append(ids, c.ID)
+		fallback[c.ID] = c.Programmes
 		bw.WriteString(`<channel id="` + esc(c.ID) + `"><display-name>` + esc(c.Name) + `</display-name>`)
 		if c.Logo != "" {
 			bw.WriteString(`<icon src="` + esc(c.Logo) + `"/>`)
@@ -382,7 +387,11 @@ func (g *Guide) WriteXMLTV(w io.Writer, channels []Channel) error {
 	}
 	g.mu.RLock()
 	for _, id := range ids {
-		for _, p := range g.progs[id] {
+		ps := g.progs[id]
+		if len(ps) == 0 {
+			ps = fallback[id]
+		}
+		for _, p := range ps {
 			writeProgramme(bw, p)
 		}
 	}

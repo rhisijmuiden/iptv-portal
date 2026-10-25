@@ -24,6 +24,11 @@
   </select>
   <button class="secondary">{{icon "search"}}{{t "Filter"}}</button>
 </form>
+<form method="post" action="{{base}}/radio/now-playing" class="inline now-playing-toggle">
+  <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+  <label class="check"><input type="checkbox" name="on" {{if .Data.NowPlaying}}checked{{end}} onchange="this.form.submit()"> {{t "Show what is playing in the guide of the players (read from the stream)"}}</label>
+  <noscript><button class="secondary sm">{{t "Save"}}</button></noscript>
+</form>
 {{if .Data.Channels}}
 <div class="card flush">
 <table class="radios">
@@ -31,8 +36,10 @@
   <tbody>
   {{range .Data.Channels}}
   <tr>
-    <td class="logo">{{if .LogoURL}}<img src="{{.LogoURL}}" alt="" loading="lazy" referrerpolicy="no-referrer">{{else}}<span class="logo-placeholder">{{icon "radio"}}</span>{{end}}</td>
-    <td><a class="name" href="{{base}}/radio/{{.ID}}">{{.Name}}</a>{{if .SourceID}} <span class="chip" title="{{t "Imported from Radio Browser"}}">Radio Browser</span>{{end}}<div class="muted url">{{.StreamURL}}</div></td>
+    <td class="logo"><img src="{{base}}/radio/{{.ID}}/logo.png" alt="" loading="lazy" title="{{t "The logo players show"}}"></td>
+    <td><a class="name" href="{{base}}/radio/{{.ID}}">{{.Name}}</a>{{if .SourceID}} <span class="chip" title="{{t "Imported from Radio Browser"}}">Radio Browser</span>{{end}}
+      {{if and $.Data.NowPlaying .Enabled}}<div class="now-playing" data-id="{{.ID}}" hidden>{{icon "radio"}}<span></span></div>{{end}}
+      <div class="muted url">{{.StreamURL}}</div></td>
     <td>{{if .Category}}{{.Category}}{{else}}<span class="muted">{{t "none"}}</span>{{end}}</td>
     <td>{{$hl := index $.Data.Health .ID}}
       {{if $hl.CheckedAt.IsZero}}<span class="badge idle" title="{{t "This stream has not been checked yet"}}">{{t "unchecked"}}</span>
@@ -65,6 +72,33 @@
   </tbody>
 </table>
 </div>
+{{if .Data.NowPlaying}}
+<script>
+(function () {
+  var rows = document.querySelectorAll('.now-playing[data-id]');
+  if (!rows.length) return;
+  var q = Array.prototype.map.call(rows, function (el) { return 'id=' + el.dataset.id; }).join('&');
+  fetch({{base}} + '/radio/now-playing?' + q, {credentials: 'same-origin'})
+    .then(function (r) { return r.ok ? r.json() : {}; })
+    .then(function (data) {
+      rows.forEach(function (el) {
+        var d = data[el.dataset.id];
+        if (!d) return;
+        var text = el.querySelector('span');
+        if (d.title) {
+          text.textContent = d.title;
+          el.title = {{t "Now playing"}};
+        } else {
+          text.textContent = d.note;
+          el.classList.add('muted');
+        }
+        el.hidden = false;
+      });
+    })
+    .catch(function () {});
+})();
+</script>
+{{end}}
 {{else}}
 <section class="card empty">
   <p>{{if or .Data.Filter.Search .Data.Filter.CategoryID .Data.HealthOnly}}{{t "No radio stations match this filter."}}{{else}}{{t "No radio stations yet."}}{{end}}</p>

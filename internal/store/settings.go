@@ -44,6 +44,9 @@ type Settings struct {
 	// Mail is the SMTP server used to email users their login details and
 	// invitations. An empty host means mail is off.
 	Mail mail.Config
+	// RadioNowPlaying makes the portal read what radio stations play from
+	// their streams and show it in the guide of the players.
+	RadioNowPlaying bool
 	// SSO lets admins sign in with Microsoft Entra ID next to the local
 	// accounts, which keep working as a fallback.
 	SSO entra.Config
@@ -80,6 +83,7 @@ var DefaultSettings = Settings{
 	AutoUpdateCheck: true,
 	UpdateChannel:   UpdateChannelStable,
 	Language:        i18n.Default,
+	RadioNowPlaying: true,
 	Mail:            mail.Config{Port: 587, Security: mail.StartTLS},
 }
 
@@ -92,6 +96,7 @@ const (
 	keyAutoUpdate = "auto_update_check"
 	keyChannel    = "update_channel"
 	keyLanguage   = "language"
+	keyNowPlaying = "radio_now_playing"
 
 	keySMTPHost     = "smtp_host"
 	keySMTPPort     = "smtp_port"
@@ -148,6 +153,8 @@ func (s *Store) Settings(ctx context.Context) (Settings, error) {
 			out.UpdateChannel = v
 		case keyLanguage:
 			out.Language = v
+		case keyNowPlaying:
+			out.RadioNowPlaying = v == "1"
 		case keySMTPHost:
 			out.Mail.Host = v
 		case keySMTPPort:
@@ -316,6 +323,7 @@ func (s *Store) SaveSettings(ctx context.Context, st Settings) error {
 		keyAutoUpdate: boolString(st.AutoUpdateCheck),
 		keyChannel:    st.UpdateChannel,
 		keyLanguage:   st.Language,
+		keyNowPlaying: boolString(st.RadioNowPlaying),
 
 		keySMTPHost:     st.Mail.Host,
 		keySMTPPort:     strconv.Itoa(st.Mail.Port),
@@ -431,5 +439,16 @@ func (s *Store) SetSSO(ctx context.Context, c entra.Config) error {
 		return err
 	}
 	st.SSO = c
+	return s.SaveSettings(ctx, st)
+}
+
+// SetRadioNowPlaying switches reading now playing information from radio
+// streams on or off.
+func (s *Store) SetRadioNowPlaying(ctx context.Context, on bool) error {
+	st, err := s.Settings(ctx)
+	if err != nil {
+		return err
+	}
+	st.RadioNowPlaying = on
 	return s.SaveSettings(ctx, st)
 }
