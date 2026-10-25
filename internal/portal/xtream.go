@@ -46,7 +46,7 @@ func (h *Handler) auth(w http.ResponseWriter, r *http.Request, username, passwor
 		return u, false
 	}
 	h.authLimiter.Reset(ip)
-	h.activity.Seen(u.ID, u.Username, ip, r.UserAgent())
+	h.seen(r, u, ip)
 	return u, true
 }
 
@@ -79,7 +79,7 @@ func (h *Handler) playerAPI(w http.ResponseWriter, r *http.Request) {
 	h.authLimiter.Reset(ip)
 	active := err == nil
 	if active {
-		h.activity.Seen(u.ID, u.Username, ip, r.UserAgent())
+		h.seen(r, u, ip)
 	}
 
 	action := r.FormValue("action")
@@ -363,18 +363,26 @@ func (h *Handler) liveRedirect(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	if !h.open(w, r, u, c.ID, c.Name) {
+	if !h.open(w, r, u, c.ID, c.Name, c.Kind) {
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	http.Redirect(w, r, c.StreamURL, http.StatusFound)
 }
 
+// seen records an authenticated request from a player.
+func (h *Handler) seen(r *http.Request, u store.User, ip string) {
+	h.activity.Seen(u.ID, u.Username, ip, r.UserAgent())
+	h.stats.Seen(r.Context(), u.ID, ip)
+}
+
 // open records that the player starts watching, or refuses it with 403
 // when the user already watches from as many places as allowed.
-func (h *Handler) open(w http.ResponseWriter, r *http.Request, u store.User, channelID int64, title string) bool {
+func (h *Handler) open(w http.ResponseWriter, r *http.Request, u store.User, channelID int64, title, kind string) bool {
 	limit := u.ConnectionLimit()
-	if h.activity.Open(u.ID, u.Username, web.ClientIP(r), r.UserAgent(), channelID, title, limit) {
+	ip := web.ClientIP(r)
+	if h.activity.Open(u.ID, u.Username, ip, r.UserAgent(), channelID, title, limit) {
+		h.stats.Open(r.Context(), u.ID, u.Username, ip, r.UserAgent(), channelID, title, kind)
 		return true
 	}
 	h.log.Info("connection limit reached", "username", u.Username, "ip", web.ClientIP(r), "limit", limit)

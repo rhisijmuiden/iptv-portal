@@ -29,6 +29,7 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/nowplaying"
 	"github.com/rhisijmuiden/iptv-portal/internal/radiobrowser"
 	"github.com/rhisijmuiden/iptv-portal/internal/server"
+	"github.com/rhisijmuiden/iptv-portal/internal/stats"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 	"github.com/rhisijmuiden/iptv-portal/internal/update"
 	"github.com/rhisijmuiden/iptv-portal/internal/version"
@@ -65,6 +66,7 @@ type Handler struct {
 	media        *media.Catalog
 	refreshMedia chan<- struct{}
 	activity     *activity.Tracker
+	stats        *stats.Recorder
 	entra        *entra.Client
 	backups      *backup.Service
 	health       *health.Checker
@@ -94,6 +96,9 @@ type Config struct {
 	RefreshMedia chan<- struct{}
 	// Activity is where the portal records player requests; nil shows none.
 	Activity *activity.Tracker
+	// Stats records views for the viewing statistics; share it with the
+	// portal. nil creates one for Store.
+	Stats *stats.Recorder
 	// Entra runs Microsoft sign-ins; nil uses the public Entra cloud.
 	Entra *entra.Client
 	// Backups makes and restores backups; nil builds one for Store.
@@ -116,7 +121,7 @@ func New(c Config) (*Handler, error) {
 	h := &Handler{store: c.Store, listeners: c.Listeners, log: c.Log, limiter: web.NewLimiter(10, 15*time.Minute),
 		guide: c.Guide, refresh: c.RefreshGuide, updater: c.Updater, restart: c.Restart, iptvorg: c.IPTVOrg,
 		radio: c.Radio,
-		media: c.Media, refreshMedia: c.RefreshMedia, activity: c.Activity, entra: c.Entra, backups: c.Backups,
+		media: c.Media, refreshMedia: c.RefreshMedia, activity: c.Activity, stats: c.Stats, entra: c.Entra, backups: c.Backups,
 		health: c.Health, nowPlaying: c.NowPlaying, logos: c.Logos, base: c.BasePath}
 	if h.nowPlaying == nil {
 		h.nowPlaying = nowplaying.New()
@@ -126,6 +131,9 @@ func New(c Config) (*Handler, error) {
 	}
 	if h.activity == nil {
 		h.activity = activity.New()
+	}
+	if h.stats == nil && c.Store != nil {
+		h.stats = stats.New(c.Store, c.Log)
 	}
 	if h.entra == nil {
 		h.entra = entra.NewClient()
@@ -200,6 +208,19 @@ func (h *Handler) parseLanguage(lang string) (map[string]*template.Template, err
 			return t.Local().Format("2006-01-02 15:04")
 		},
 		"size": formatSize,
+		// duration shows a viewing time, e.g. "3 h 20 min".
+		"duration": func(d time.Duration) string {
+			m := int(d / time.Minute)
+			switch {
+			case m < 1:
+				return i18n.T(lang, "under a minute")
+			case m < 60:
+				return i18n.Tf(lang, "%d min", m)
+			case m < 100*60:
+				return i18n.Tf(lang, "%d h %d min", m/60, m%60)
+			}
+			return i18n.Tf(lang, "%d h", m/60)
+		},
 	}
 	for k, v := range i18n.Funcs(lang) {
 		funcs[k] = v
@@ -244,6 +265,9 @@ func (h *Handler) routes() {
 	auth("GET /password", h.passwordForm)
 	auth("POST /password", h.changePassword)
 	auth("GET /{$}", h.dashboard)
+	auth("GET /stats", h.statsPage)
+	auth("POST /stats/settings", h.statsSettings)
+	auth("POST /stats/clear", h.statsClear)
 	auth("GET /channels", h.channelList)
 	auth("GET /channels/new", h.channelForm)
 	auth("POST /channels/new", h.channelSave)

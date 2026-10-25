@@ -15,6 +15,7 @@ import (
 
 	"github.com/rhisijmuiden/iptv-portal/internal/activity"
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
+	"github.com/rhisijmuiden/iptv-portal/internal/stats"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 )
 
@@ -83,6 +84,7 @@ func setup(t *testing.T) fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
+	h.SetStats(stats.New(st, slog.New(slog.DiscardHandler)))
 	f.srv = httptest.NewServer(h)
 	t.Cleanup(f.srv.Close)
 	f.store = st
@@ -191,6 +193,10 @@ func TestLiveRedirect(t *testing.T) {
 	if snap.OnlineUsers != 1 || snap.Watching != 1 || len(snap.Connections) != 1 ||
 		snap.Connections[0].Username != "jan" || snap.Connections[0].Channel != "NH" {
 		t.Fatalf("activity = %+v", snap)
+	}
+	views, err := f.store.RecentViews(context.Background(), store.ViewFilter{}, 10)
+	if err != nil || len(views) != 1 || views[0].Channel != "NH" || views[0].Kind != store.KindTV || views[0].Username != "jan" {
+		t.Fatalf("views = %+v, %v", views, err)
 	}
 
 	// Disabling the user stops playback right away.
