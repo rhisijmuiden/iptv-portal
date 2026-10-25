@@ -24,7 +24,9 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/health"
 	"github.com/rhisijmuiden/iptv-portal/internal/i18n"
 	"github.com/rhisijmuiden/iptv-portal/internal/iptvorg"
+	"github.com/rhisijmuiden/iptv-portal/internal/logos"
 	"github.com/rhisijmuiden/iptv-portal/internal/media"
+	"github.com/rhisijmuiden/iptv-portal/internal/nowplaying"
 	"github.com/rhisijmuiden/iptv-portal/internal/radiobrowser"
 	"github.com/rhisijmuiden/iptv-portal/internal/server"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
@@ -66,6 +68,8 @@ type Handler struct {
 	entra        *entra.Client
 	backups      *backup.Service
 	health       *health.Checker
+	nowPlaying   *nowplaying.Service
+	logos        *logos.Cache
 	// base is the path the admin panel is served under ("" for the root).
 	base string
 }
@@ -97,6 +101,10 @@ type Config struct {
 	// Health checks channel streams; nil creates a checker that only runs
 	// when asked.
 	Health *health.Checker
+	// NowPlaying reads what radio stations play and Logos converts their
+	// logos; share them with the portal. nil creates new ones.
+	NowPlaying *nowplaying.Service
+	Logos      *logos.Cache
 	// BasePath serves the panel under this path, e.g. "/portal-admin"; it
 	// must be clean (see store.CleanBasePath). Empty means the root.
 	BasePath string
@@ -109,7 +117,13 @@ func New(c Config) (*Handler, error) {
 		guide: c.Guide, refresh: c.RefreshGuide, updater: c.Updater, restart: c.Restart, iptvorg: c.IPTVOrg,
 		radio: c.Radio,
 		media: c.Media, refreshMedia: c.RefreshMedia, activity: c.Activity, entra: c.Entra, backups: c.Backups,
-		health: c.Health, base: c.BasePath}
+		health: c.Health, nowPlaying: c.NowPlaying, logos: c.Logos, base: c.BasePath}
+	if h.nowPlaying == nil {
+		h.nowPlaying = nowplaying.New()
+	}
+	if h.logos == nil {
+		h.logos = logos.New()
+	}
 	if h.activity == nil {
 		h.activity = activity.New()
 	}
@@ -254,6 +268,9 @@ func (h *Handler) routes() {
 	auth("POST /radio/new", h.radioSave)
 	auth("GET /radio/browse", h.radioBrowse)
 	auth("POST /radio/browse/add", h.radioBrowseAdd)
+	auth("GET /radio/now-playing", h.radioNowPlaying)
+	auth("POST /radio/now-playing", h.radioNowPlayingSave)
+	auth("GET /radio/{id}/logo.png", h.radioLogo)
 	auth("GET /radio/{id}", h.radioForm)
 	auth("POST /radio/{id}", h.radioSave)
 	auth("POST /radio/{id}/delete", h.radioDelete)

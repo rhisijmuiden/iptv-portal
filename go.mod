@@ -10,6 +10,7 @@ require (
 	github.com/jlaffaye/ftp v0.2.4
 	github.com/spf13/afero v1.15.0
 	golang.org/x/crypto v0.58.0
+	golang.org/x/image v0.47.0
 	golang.org/x/oauth2 v0.37.0
 	modernc.org/sqlite v1.60.1
 )

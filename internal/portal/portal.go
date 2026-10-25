@@ -15,8 +15,10 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/activity"
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
 	"github.com/rhisijmuiden/iptv-portal/internal/i18n"
+	"github.com/rhisijmuiden/iptv-portal/internal/logos"
 	"github.com/rhisijmuiden/iptv-portal/internal/mail"
 	"github.com/rhisijmuiden/iptv-portal/internal/media"
+	"github.com/rhisijmuiden/iptv-portal/internal/nowplaying"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 	"github.com/rhisijmuiden/iptv-portal/internal/web"
 )
@@ -37,11 +39,15 @@ type Handler struct {
 	activity    *activity.Tracker
 	// vod serves On Demand; nil turns it off.
 	vod *media.Catalog
+	// nowPlaying reads what radio stations play; logos serves their logos.
+	nowPlaying *nowplaying.Service
+	logos      *logos.Cache
 }
 
 // New builds the client portal. Player requests are recorded in tracker.
 func New(st *store.Store, guide *epg.Guide, tracker *activity.Tracker, vod *media.Catalog, log *slog.Logger) (*Handler, error) {
 	h := &Handler{store: st, log: log, mux: http.NewServeMux(), guide: guide, activity: tracker, vod: vod,
+		nowPlaying: nowplaying.New(), logos: logos.New(),
 		limiter: web.NewLimiter(20, 15*time.Minute), authLimiter: web.NewLimiter(30, 15*time.Minute)}
 	h.pages = map[string]map[string]*template.Template{}
 	for _, l := range i18n.Languages {
@@ -68,6 +74,7 @@ func New(st *store.Store, guide *epg.Guide, tracker *activity.Tracker, vod *medi
 	h.mux.HandleFunc("GET /movie/{user}/{pass}/{file}", h.vodPlay(media.Movie))
 	h.mux.HandleFunc("GET /series/{user}/{pass}/{file}", h.vodPlay(media.Episode))
 	h.mux.HandleFunc("GET /vod-image/{id}/{kind}", h.vodImage)
+	h.mux.HandleFunc("GET /logo/{file}", h.logo)
 	return h, nil
 }
 

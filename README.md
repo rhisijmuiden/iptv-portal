@@ -372,4 +372,10 @@ When you create a category under **Categories**, choose whether it holds TV chan
 
 Players see radio stations as live channels in their radio categories, so they work on every Xtream Codes player (MyTVOnline, TiviMate, IPTV Smarters). In the M3U playlist they carry `radio="true"`, which Kodi and TiviMate use to show them as radio. Like TV channels, players connect to the station's stream directly, and the stream health check tests them too.
 
+### Logos and now playing
+
+Every radio station has a logo on the box. The portal downloads the station's logo once a day, scales it to at most 256×256 pixels and hands players a PNG at `/logo/<id>.png` on the portal address, because many players cannot show WebP, SVG or very large favicons. A station without a logo, or with one that cannot be read, gets a generated logo with its initials in the house style. **Radio stations** shows the logo players get.
+
+Radio stations also get a guide. A station that has no programmes in your guide sources gets an EPG id of its own (`radio<id>.iptv-portal`) and an hourly schedule with its name and genre. The hour that is on now shows the song the station is playing: the portal reads the ICY metadata (`StreamTitle`) that Icecast and Shoutcast streams send, or the segment title of an HLS stream. MyTVOnline and other Xtream players show it in the info bar when you open the station (the short EPG reads the stream, at most every 30 seconds per station); the XMLTV guide includes the last song read. Streams that do not send metadata just show the station's name. The admin panel shows what each station is playing under its name. Untick **Show what is playing in the guide of the players** on the **Radio stations** page to stop reading the streams.
+
 The portal picks a Radio Browser server from the list Radio Browser publishes in DNS. Set `IPTV_PORTAL_RADIOBROWSER_API` (for example `https://de1.api.radio-browser.info`) to always use one server.
