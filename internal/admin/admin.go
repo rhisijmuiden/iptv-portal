@@ -31,6 +31,7 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/server"
 	"github.com/rhisijmuiden/iptv-portal/internal/stats"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
+	"github.com/rhisijmuiden/iptv-portal/internal/suggest"
 	"github.com/rhisijmuiden/iptv-portal/internal/update"
 	"github.com/rhisijmuiden/iptv-portal/internal/version"
 	"github.com/rhisijmuiden/iptv-portal/internal/web"
@@ -70,6 +71,7 @@ type Handler struct {
 	entra        *entra.Client
 	backups      *backup.Service
 	health       *health.Checker
+	suggest      *suggest.Finder
 	nowPlaying   *nowplaying.Service
 	logos        *logos.Cache
 	// base is the path the admin panel is served under ("" for the root).
@@ -106,6 +108,9 @@ type Config struct {
 	// Health checks channel streams; nil creates a checker that only runs
 	// when asked.
 	Health *health.Checker
+	// Suggest finds replacements for failing streams; nil creates one
+	// that only runs when asked.
+	Suggest *suggest.Finder
 	// NowPlaying reads what radio stations play and Logos converts their
 	// logos; share them with the portal. nil creates new ones.
 	NowPlaying *nowplaying.Service
@@ -122,7 +127,7 @@ func New(c Config) (*Handler, error) {
 		guide: c.Guide, refresh: c.RefreshGuide, updater: c.Updater, restart: c.Restart, iptvorg: c.IPTVOrg,
 		radio: c.Radio,
 		media: c.Media, refreshMedia: c.RefreshMedia, activity: c.Activity, stats: c.Stats, entra: c.Entra, backups: c.Backups,
-		health: c.Health, nowPlaying: c.NowPlaying, logos: c.Logos, base: c.BasePath}
+		health: c.Health, suggest: c.Suggest, nowPlaying: c.NowPlaying, logos: c.Logos, base: c.BasePath}
 	if h.nowPlaying == nil {
 		h.nowPlaying = nowplaying.New()
 	}
@@ -146,6 +151,9 @@ func New(c Config) (*Handler, error) {
 	}
 	if h.radio == nil {
 		h.radio = radiobrowser.NewClient()
+	}
+	if h.suggest == nil {
+		h.suggest = suggest.New(c.Store, h.iptvorg, h.radio, h.health.Probe, c.Log)
 	}
 	if h.backups == nil && c.Store != nil {
 		h.backups = backup.New(c.Store, c.Log)
@@ -279,6 +287,10 @@ func (h *Handler) routes() {
 	auth("GET /health", h.healthPage)
 	auth("POST /health", h.healthSave)
 	auth("POST /health/run", h.healthRun)
+	auth("POST /health/suggest", h.suggestRun)
+	auth("POST /channels/{id}/suggest", h.channelSuggest)
+	auth("POST /suggestions/{id}/accept", h.suggestionAccept)
+	auth("POST /suggestions/{id}/dismiss", h.suggestionDismiss)
 	auth("GET /categories", h.categoryList)
 	auth("POST /categories", h.categorySave)
 	auth("POST /categories/{id}/delete", h.categoryDelete)
@@ -485,7 +497,10 @@ type page struct {
 	// Path is the address of the page, used to come back after switching
 	// language.
 	Path string
-	Data any
+	// Suggestions is the number of failing channels with a suggested
+	// replacement, shown in the menu.
+	Suggestions int
+	Data        any
 }
 
 func (h *Handler) render(w http.ResponseWriter, r *http.Request, name string, p page) {
@@ -511,6 +526,9 @@ func (h *Handler) render(w http.ResponseWriter, r *http.Request, name string, p 
 	p.Flash = i18n.T(lang, p.Flash)
 	p.Error = i18n.T(lang, web.Sentence(p.Error))
 	p.Path = pagePath(r)
+	if p.Session != nil {
+		p.Suggestions, _ = h.store.CountSuggestions(r.Context())
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	if err := t.ExecuteTemplate(w, "layout.html", p); err != nil {

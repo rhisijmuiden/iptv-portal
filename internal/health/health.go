@@ -50,8 +50,9 @@ type Checker struct {
 	client  *http.Client
 	trigger chan struct{}
 
-	mu     sync.Mutex
-	status Status
+	mu       sync.Mutex
+	status   Status
+	afterRun func(context.Context)
 }
 
 // New creates a checker. Call Loop to run it periodically.
@@ -65,6 +66,14 @@ func (c *Checker) Status() Status {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.status
+}
+
+// AfterRun sets a function called after every run of CheckAll, e.g. to
+// look for replacements of the streams that failed.
+func (c *Checker) AfterRun(fn func(context.Context)) {
+	c.mu.Lock()
+	c.afterRun = fn
+	c.mu.Unlock()
 }
 
 // Start asks the loop to check all channels now. It returns false when a
@@ -175,9 +184,13 @@ func (c *Checker) CheckAll(ctx context.Context) {
 	c.status.Running = false
 	c.status.LastRun = start
 	c.status.Duration = time.Since(start)
+	after := c.afterRun
 	c.mu.Unlock()
 	c.log.Info("stream check finished", "channels", len(chs), "failing", failed,
 		"took", time.Since(start).Round(time.Second))
+	if after != nil && ctx.Err() == nil {
+		after(ctx)
+	}
 }
 
 // CheckChannel checks a single channel now.

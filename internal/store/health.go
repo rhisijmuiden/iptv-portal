@@ -19,10 +19,14 @@ type HealthSettings struct {
 	// DisableAfter switches a channel off after this many failed checks in
 	// a row, and back on once it works again; 0 never switches channels.
 	DisableAfter int
+	// Suggest looks for a working replacement in iptv-org or Radio
+	// Browser when a channel keeps failing.
+	Suggest bool
 }
 
-// DefaultHealthSettings check every hour and never switch channels off.
-var DefaultHealthSettings = HealthSettings{IntervalMinutes: 60}
+// DefaultHealthSettings check every hour, never switch channels off and
+// suggest replacements.
+var DefaultHealthSettings = HealthSettings{IntervalMinutes: 60, Suggest: true}
 
 // Limits for HealthSettings.
 const (
@@ -34,6 +38,7 @@ const (
 const (
 	keyHealthInterval     = "health_interval_minutes"
 	keyHealthDisableAfter = "health_disable_after"
+	keyHealthSuggest      = "health_suggest"
 )
 
 // Interval is the check interval; 0 when the periodic check is off.
@@ -57,8 +62,8 @@ func (hs HealthSettings) Validate() error {
 // defaults.
 func (s *Store) HealthSettings(ctx context.Context) (HealthSettings, error) {
 	out := DefaultHealthSettings
-	rows, err := s.db.QueryContext(ctx, `SELECT key, value FROM settings WHERE key IN (?, ?)`,
-		keyHealthInterval, keyHealthDisableAfter)
+	rows, err := s.db.QueryContext(ctx, `SELECT key, value FROM settings WHERE key IN (?, ?, ?)`,
+		keyHealthInterval, keyHealthDisableAfter, keyHealthSuggest)
 	if err != nil {
 		return out, err
 	}
@@ -77,6 +82,8 @@ func (s *Store) HealthSettings(ctx context.Context) (HealthSettings, error) {
 			out.IntervalMinutes = n
 		case keyHealthDisableAfter:
 			out.DisableAfter = n
+		case keyHealthSuggest:
+			out.Suggest = n != 0
 		}
 	}
 	return out, rows.Err()
@@ -88,7 +95,12 @@ func (s *Store) SaveHealthSettings(ctx context.Context, hs HealthSettings) error
 		return err
 	}
 	return s.withTx(ctx, func(tx *sql.Tx) error {
-		for k, v := range map[string]int{keyHealthInterval: hs.IntervalMinutes, keyHealthDisableAfter: hs.DisableAfter} {
+		suggest := 0
+		if hs.Suggest {
+			suggest = 1
+		}
+		for k, v := range map[string]int{keyHealthInterval: hs.IntervalMinutes, keyHealthDisableAfter: hs.DisableAfter,
+			keyHealthSuggest: suggest} {
 			if _, err := tx.ExecContext(ctx,
 				`INSERT INTO settings(key, value) VALUES(?, ?)
 				 ON CONFLICT(key) DO UPDATE SET value = excluded.value`, k, strconv.Itoa(v)); err != nil {
@@ -200,12 +212,20 @@ func (s *Store) RecordHealth(ctx context.Context, channelID int64, ok bool, msg 
 				return err
 			}
 		}
+		if ok {
+			// Working again: replacements are no longer needed.
+			if _, err := tx.ExecContext(ctx,
+				`DELETE FROM stream_suggestions WHERE channel_id = ? AND dismissed = 0`, channelID); err != nil {
+				return err
+			}
+		}
 		_, err = tx.ExecContext(ctx,
 			`INSERT INTO channel_health(channel_id, ok, message, failures, checked_at, last_ok_at, auto_disabled)
 			 VALUES(?, ?, ?, ?, ?, ?, ?)
 			 ON CONFLICT(channel_id) DO UPDATE SET ok = excluded.ok, message = excluded.message,
 			 failures = excluded.failures, checked_at = excluded.checked_at,
-			 last_ok_at = excluded.last_ok_at, auto_disabled = excluded.auto_disabled`,
+			 last_ok_at = excluded.last_ok_at, auto_disabled = excluded.auto_disabled,
+			 searched_at = CASE WHEN excluded.ok THEN NULL ELSE channel_health.searched_at END`,
 			channelID, h.OK, h.Message, h.Failures, h.CheckedAt, h.LastOKAt, h.AutoDisabled)
 		return err
 	})

@@ -34,6 +34,10 @@ type statsData struct {
 	More      int // channels left out of Channels
 	Users     []store.UserViews
 	Unwatched []store.UnwatchedChannel
+	// Failing and Suggested tell which unwatched channels have a stream
+	// that fails, and which of those have a suggested replacement.
+	Failing   map[int64]bool
+	Suggested map[int64]bool
 	Recent    []store.View
 
 	Retention int
@@ -148,6 +152,23 @@ func (h *Handler) statsPage(w http.ResponseWriter, r *http.Request, sess store.S
 		if d.Unwatched, err = h.store.UnwatchedChannels(ctx, d.Kind, f.Since); err != nil {
 			h.serverError(w, err)
 			return
+		}
+		hl, err := h.store.ChannelHealth(ctx)
+		if err != nil {
+			h.serverError(w, err)
+			return
+		}
+		sugs, err := h.store.Suggestions(ctx)
+		if err != nil {
+			h.serverError(w, err)
+			return
+		}
+		d.Failing, d.Suggested = map[int64]bool{}, map[int64]bool{}
+		for _, c := range d.Unwatched {
+			if res, ok := hl[c.ID]; ok && !res.OK {
+				d.Failing[c.ID] = true
+				d.Suggested[c.ID] = len(sugs[c.ID]) > 0
+			}
 		}
 	}
 	if d.Retention, err = h.store.ViewRetention(ctx); err != nil {

@@ -24,7 +24,7 @@
     <a href="{{base}}/channels" {{if eq .Nav "channels"}}class="active"{{end}}>{{icon "tv"}}{{t "Channels"}}</a>
     <a href="{{base}}/categories" {{if eq .Nav "categories"}}class="active"{{end}}>{{icon "tag"}}{{t "Categories"}}</a>
     <a href="{{base}}/epg" {{if eq .Nav "epg"}}class="active"{{end}}>{{icon "guide"}}{{t "TV guide"}}</a>
-    <a href="{{base}}/health" {{if eq .Nav "health"}}class="active"{{end}}>{{icon "activity"}}{{t "Stream health"}}</a>
+    <a href="{{base}}/health" {{if eq .Nav "health"}}class="active"{{end}}>{{icon "activity"}}{{t "Stream health"}}{{if .Suggestions}}<span class="nav-count" title="{{t "Failing channels with a suggested replacement"}}">{{.Suggestions}}</span>{{end}}</a>
     <a href="{{base}}/media" {{if eq .Nav "media"}}class="active"{{end}}>{{icon "film"}}{{t "On Demand"}}</a>
     <p class="nav-group">{{t "Add channels"}}</p>
     <a href="{{base}}/import" {{if eq .Nav "import"}}class="active"{{end}}>{{icon "upload"}}{{t "Import playlist"}}</a>

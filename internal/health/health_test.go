@@ -83,6 +83,8 @@ func TestCheckAllAutoDisable(t *testing.T) {
 	good, _ := st.SaveChannel(ctx, store.Channel{Name: "Good", StreamURL: srv.URL + "/live/master.m3u8", Enabled: true})
 	bad, _ := st.SaveChannel(ctx, store.Channel{Name: "Bad", StreamURL: srv.URL + "/missing.m3u8", Enabled: true})
 	c := New(st, slog.New(slog.DiscardHandler))
+	runs := 0
+	c.AfterRun(func(context.Context) { runs++ })
 
 	enabled := func(id int64) bool {
 		ch, err := st.Channel(ctx, id)
@@ -111,6 +113,9 @@ func TestCheckAllAutoDisable(t *testing.T) {
 	}
 	if s := c.Status(); s.Running || s.Total != 2 || s.Done != 2 || s.LastRun.IsZero() {
 		t.Errorf("status %+v", s)
+	}
+	if runs != 2 {
+		t.Errorf("after-run function called %d times, want 2", runs)
 	}
 
 	// Once the stream works again the channel comes back.
