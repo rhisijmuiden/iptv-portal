@@ -47,6 +47,10 @@ type Settings struct {
 	// RadioNowPlaying makes the portal read what radio stations play from
 	// their streams and show it in the guide of the players.
 	RadioNowPlaying bool
+	// RadioLabel puts "Radio | " in front of the names of radio
+	// categories in the players, for players that list radio stations
+	// between the TV channels.
+	RadioLabel bool
 	// AccountPortal lets users log in at <portal>/account to see their
 	// account, their player details and their viewing history, change
 	// their password and reset a forgotten one by email.
@@ -88,6 +92,7 @@ var DefaultSettings = Settings{
 	UpdateChannel:   UpdateChannelStable,
 	Language:        i18n.Default,
 	RadioNowPlaying: true,
+	RadioLabel:      true,
 	AccountPortal:   true,
 	Mail:            mail.Config{Port: 587, Security: mail.StartTLS},
 }
@@ -103,6 +108,7 @@ const (
 	keyLanguage   = "language"
 	keyNowPlaying = "radio_now_playing"
 	keyAccounts   = "account_portal"
+	keyRadioLabel = "radio_category_label"
 
 	keySMTPHost     = "smtp_host"
 	keySMTPPort     = "smtp_port"
@@ -163,6 +169,8 @@ func (s *Store) Settings(ctx context.Context) (Settings, error) {
 			out.RadioNowPlaying = v == "1"
 		case keyAccounts:
 			out.AccountPortal = v == "1"
+		case keyRadioLabel:
+			out.RadioLabel = v == "1"
 		case keySMTPHost:
 			out.Mail.Host = v
 		case keySMTPPort:
@@ -333,6 +341,7 @@ func (s *Store) SaveSettings(ctx context.Context, st Settings) error {
 		keyLanguage:   st.Language,
 		keyNowPlaying: boolString(st.RadioNowPlaying),
 		keyAccounts:   boolString(st.AccountPortal),
+		keyRadioLabel: boolString(st.RadioLabel),
 
 		keySMTPHost:     st.Mail.Host,
 		keySMTPPort:     strconv.Itoa(st.Mail.Port),
@@ -459,5 +468,16 @@ func (s *Store) SetRadioNowPlaying(ctx context.Context, on bool) error {
 		return err
 	}
 	st.RadioNowPlaying = on
+	return s.SaveSettings(ctx, st)
+}
+
+// SetRadioLabel switches the "Radio | " label in front of radio
+// categories in the players on or off.
+func (s *Store) SetRadioLabel(ctx context.Context, on bool) error {
+	st, err := s.Settings(ctx)
+	if err != nil {
+		return err
+	}
+	st.RadioLabel = on
 	return s.SaveSettings(ctx, st)
 }

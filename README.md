@@ -390,7 +390,7 @@ You can also add a single station by hand under **Radio stations → Add radio s
 
 When you create a category under **Categories**, choose whether it holds TV channels or radio stations. A package that has *all channels* includes the radio stations too; otherwise add the radio categories you want to it.
 
-Players see radio stations as live channels in their radio categories, so they work on every Xtream Codes player (MyTVOnline, TiviMate, IPTV Smarters). In the M3U playlist they carry `radio="true"`, which Kodi and TiviMate use to show them as radio. Like TV channels, players connect to the station's stream directly, and the stream health check tests them too.
+Players get radio stations in their radio categories, always after all TV channels. Over the Xtream Codes API they have the stream type `radio_streams`, which players with a radio section use to put them there; in the M3U playlist they carry `radio="true"`, which Kodi and TiviMate use to show them as radio. Players without a radio section, such as MyTVOnline with an Xtream Codes login, list them as live channels: there the radio categories start with *Radio |* (unless their name already contains "radio") so they stay apart from TV. Stations without a category are grouped under *Radio*. Untick **Start radio categories with "Radio |"** on the **Radio stations** page to keep the plain category names. Like TV channels, players connect to the station's stream directly, and the stream health check tests them too.
 
 ### Logos and now playing
 

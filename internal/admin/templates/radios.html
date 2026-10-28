@@ -29,6 +29,11 @@
   <label class="check"><input type="checkbox" name="on" {{if .Data.NowPlaying}}checked{{end}} onchange="this.form.submit()"> {{t "Show what is playing in the guide of the players (read from the stream)"}}</label>
   <noscript><button class="secondary sm">{{t "Save"}}</button></noscript>
 </form>
+<form method="post" action="{{base}}/radio/label" class="inline now-playing-toggle">
+  <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+  <label class="check"><input type="checkbox" name="on" {{if .Data.RadioLabel}}checked{{end}} onchange="this.form.submit()"> {{t `Start radio categories with "Radio |" in the players, for players without a radio section`}}</label>
+  <noscript><button class="secondary sm">{{t "Save"}}</button></noscript>
+</form>
 {{if .Data.Channels}}
 <div class="card flush">
 <table class="radios">

@@ -87,6 +87,21 @@ func (h *Handler) radioNowPlayingSave(w http.ResponseWriter, r *http.Request, se
 	redirectFlash(w, r, "/radio", msg)
 }
 
+// radioLabelSave switches the "Radio | " label in front of radio
+// categories in the players on or off.
+func (h *Handler) radioLabelSave(w http.ResponseWriter, r *http.Request, sess store.Session) {
+	on := r.FormValue("on") == "on"
+	if err := h.store.SetRadioLabel(r.Context(), on); err != nil {
+		h.serverError(w, err)
+		return
+	}
+	msg := "Radio categories no longer get a label in the players."
+	if on {
+		msg = `Radio categories now start with "Radio |" in the players.`
+	}
+	redirectFlash(w, r, "/radio", msg)
+}
+
 // radioLogo shows the logo players get for a station.
 func (h *Handler) radioLogo(w http.ResponseWriter, r *http.Request, sess store.Session) {
 	id, _ := pathID(r)
