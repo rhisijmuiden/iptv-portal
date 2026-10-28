@@ -306,6 +306,7 @@ func (h *Handler) routes() {
 	auth("POST /radio/browse/add", h.radioBrowseAdd)
 	auth("GET /radio/now-playing", h.radioNowPlaying)
 	auth("POST /radio/now-playing", h.radioNowPlayingSave)
+	auth("POST /radio/label", h.radioLabelSave)
 	auth("GET /radio/{id}/logo.png", h.radioLogo)
 	auth("GET /radio/{id}", h.radioForm)
 	auth("POST /radio/{id}", h.radioSave)

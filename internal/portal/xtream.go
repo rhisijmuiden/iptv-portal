@@ -2,6 +2,7 @@ package portal
 
 import (
 	"bufio"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -9,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -192,12 +194,62 @@ func timezoneName() string {
 	return "UTC"
 }
 
-// categoryID is the Xtream category id of a channel; uncategorised
+// uncategorisedRadio is the Xtream category id of radio stations without
+// a category, so they do not end up in "Other" between the TV channels.
+const uncategorisedRadio = 999999999
+
+// categoryID is the Xtream category id of a channel; uncategorised TV
 // channels are grouped under "0".
-func categoryID(c store.Channel) string { return strconv.FormatInt(c.CategoryID, 10) }
+func categoryID(c store.Channel) string {
+	if c.IsRadio() && c.CategoryID == 0 {
+		return strconv.Itoa(uncategorisedRadio)
+	}
+	return strconv.FormatInt(c.CategoryID, 10)
+}
+
+// categoryName is the group name players show for a channel. With
+// label on, radio groups start with "Radio | " unless their name already
+// says radio, so players without a radio section still keep them apart
+// from TV.
+func categoryName(c store.Channel, label bool) string {
+	switch {
+	case c.CategoryID == 0 && c.IsRadio():
+		return "Radio"
+	case c.CategoryID == 0:
+		return "Other"
+	case c.IsRadio() && label && !strings.Contains(strings.ToLower(c.Category), "radio"):
+		return "Radio | " + c.Category
+	}
+	return c.Category
+}
+
+// streamType is the Xtream stream type: "radio_streams" lets players with
+// a radio section put the station there.
+func streamType(c store.Channel) string {
+	if c.IsRadio() {
+		return "radio_streams"
+	}
+	return "live"
+}
+
+// playerChannels returns the channels of a user in the order players get
+// them: all TV channels first, then the radio stations.
+func (h *Handler) playerChannels(ctx context.Context, u store.User) ([]store.Channel, error) {
+	chs, err := h.store.UserChannels(ctx, u.ID)
+	if err != nil {
+		return nil, err
+	}
+	sort.SliceStable(chs, func(i, j int) bool { return !chs[i].IsRadio() && chs[j].IsRadio() })
+	return chs, nil
+}
 
 func (h *Handler) liveCategories(w http.ResponseWriter, r *http.Request, u store.User) {
-	chs, err := h.store.UserChannels(r.Context(), u.ID)
+	chs, err := h.playerChannels(r.Context(), u)
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	st, err := h.store.Settings(r.Context())
 	if err != nil {
 		h.serverError(w, err)
 		return
@@ -210,17 +262,13 @@ func (h *Handler) liveCategories(w http.ResponseWriter, r *http.Request, u store
 			continue
 		}
 		seen[id] = true
-		name := c.Category
-		if name == "" {
-			name = "Other"
-		}
-		out = append(out, map[string]any{"category_id": id, "category_name": name, "parent_id": 0})
+		out = append(out, map[string]any{"category_id": id, "category_name": categoryName(c, st.RadioLabel), "parent_id": 0})
 	}
 	writeJSON(w, out)
 }
 
 func (h *Handler) liveStreams(w http.ResponseWriter, r *http.Request, u store.User) {
-	chs, err := h.store.UserChannels(r.Context(), u.ID)
+	chs, err := h.playerChannels(r.Context(), u)
 	if err != nil {
 		h.serverError(w, err)
 		return
@@ -237,16 +285,17 @@ func (h *Handler) liveStreams(w http.ResponseWriter, r *http.Request, u store.Us
 		if want != "" && want != categoryID(c) {
 			continue
 		}
+		cat, _ := strconv.ParseInt(categoryID(c), 10, 64)
 		out = append(out, map[string]any{
 			"num":                 i + 1,
 			"name":                c.Name,
-			"stream_type":         "live",
+			"stream_type":         streamType(c),
 			"stream_id":           c.ID,
 			"stream_icon":         logoURL(base, c),
 			"epg_channel_id":      nullable(epgID(c)),
 			"added":               "0",
 			"category_id":         categoryID(c),
-			"category_ids":        []int64{c.CategoryID},
+			"category_ids":        []int64{cat},
 			"custom_sid":          "",
 			"tv_archive":          0,
 			"direct_source":       "",
@@ -396,6 +445,15 @@ func m3uAttr(s string) string {
 	return strings.NewReplacer(`"`, `'`, "\n", " ", "\r", " ").Replace(s)
 }
 
+// m3uGroup is the group-title of a channel; uncategorised TV channels keep
+// an empty group as before.
+func m3uGroup(c store.Channel, label bool) string {
+	if c.CategoryID == 0 && !c.IsRadio() {
+		return ""
+	}
+	return categoryName(c, label)
+}
+
 func (h *Handler) getPlaylist(w http.ResponseWriter, r *http.Request) {
 	username, password := r.FormValue("username"), r.FormValue("password")
 	u, ok := h.auth(w, r, username, password)
@@ -407,7 +465,7 @@ func (h *Handler) getPlaylist(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, err)
 		return
 	}
-	chs, err := h.store.UserChannels(r.Context(), u.ID)
+	chs, err := h.playerChannels(r.Context(), u)
 	if err != nil {
 		h.serverError(w, err)
 		return
@@ -435,7 +493,7 @@ func (h *Handler) getPlaylist(w http.ResponseWriter, r *http.Request) {
 				radio = ` radio="true"`
 			}
 			bw.WriteString(`#EXTINF:-1 tvg-id="` + m3uAttr(epgID(c)) + `" tvg-name="` + m3uAttr(c.Name) +
-				`" tvg-logo="` + m3uAttr(logoURL(base, c)) + `" group-title="` + m3uAttr(c.Category) + `"` + radio + `,` + m3uAttr(c.Name) + "\n")
+				`" tvg-logo="` + m3uAttr(logoURL(base, c)) + `" group-title="` + m3uAttr(m3uGroup(c, st.RadioLabel)) + `"` + radio + `,` + m3uAttr(c.Name) + "\n")
 		} else {
 			bw.WriteString("#EXTINF:-1," + m3uAttr(c.Name) + "\n")
 		}
