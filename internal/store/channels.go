@@ -313,6 +313,84 @@ func (s *Store) DeleteChannel(ctx context.Context, id int64) error {
 	return mustAffect(res)
 }
 
+// inIDs returns " IN (?, ?, …)" for ids and the ids as query arguments.
+func inIDs(ids []int64) (string, []any) {
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
+	return " IN (" + strings.TrimSuffix(strings.Repeat("?, ", len(ids)), ", ") + ")", args
+}
+
+// DeleteChannels removes the channels of kind with the given ids and
+// returns how many were removed. Ids of the other kind are left alone.
+func (s *Store) DeleteChannels(ctx context.Context, kind string, ids []int64) (int, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	in, args := inIDs(ids)
+	res, err := s.db.ExecContext(ctx, `DELETE FROM channels WHERE kind = ? AND id`+in,
+		append([]any{CleanKind(kind)}, args...)...)
+	if err != nil {
+		return 0, err
+	}
+	n, err := res.RowsAffected()
+	return int(n), err
+}
+
+// SetChannelsCategory moves the channels of kind with the given ids to a
+// category of the same kind; 0 leaves them without a category.
+func (s *Store) SetChannelsCategory(ctx context.Context, kind string, ids []int64, categoryID int64) (int, error) {
+	kind = CleanKind(kind)
+	if categoryID != 0 {
+		var catKind string
+		err := s.db.QueryRowContext(ctx, `SELECT kind FROM categories WHERE id = ?`, categoryID).Scan(&catKind)
+		if errors.Is(err, sql.ErrNoRows) || (err == nil && catKind != kind) {
+			return 0, errors.New("choose an existing category")
+		}
+		if err != nil {
+			return 0, err
+		}
+	}
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	in, args := inIDs(ids)
+	res, err := s.db.ExecContext(ctx, `UPDATE channels SET category_id = ? WHERE kind = ? AND id`+in,
+		append([]any{nullID(categoryID), kind}, args...)...)
+	if err != nil {
+		return 0, err
+	}
+	n, err := res.RowsAffected()
+	return int(n), err
+}
+
+// SetChannelsEnabled switches the channels of kind with the given ids on
+// or off. They were switched by hand, so the stream check no longer
+// switches them back.
+func (s *Store) SetChannelsEnabled(ctx context.Context, kind string, ids []int64, enabled bool) (int, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	in, args := inIDs(ids)
+	var n int64
+	err := s.withTx(ctx, func(tx *sql.Tx) error {
+		res, err := tx.ExecContext(ctx, `UPDATE channels SET enabled = ? WHERE kind = ? AND id`+in,
+			append([]any{enabled, CleanKind(kind)}, args...)...)
+		if err != nil {
+			return err
+		}
+		if n, err = res.RowsAffected(); err != nil {
+			return err
+		}
+		_, err = tx.ExecContext(ctx, `UPDATE channel_health SET auto_disabled = 0
+			WHERE channel_id IN (SELECT id FROM channels WHERE kind = ? AND id`+in+`)`,
+			append([]any{CleanKind(kind)}, args...)...)
+		return err
+	})
+	return int(n), err
+}
+
 // ImportEntry is one channel read from an M3U playlist or picked from a
 // public database.
 type ImportEntry struct {

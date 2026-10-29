@@ -72,3 +72,51 @@
   </label>
   <noscript><button class="secondary sm">{{t "Change"}}</button></noscript>
 </form>{{end}}
+
+{{/* bulk-script drives the form#bulk bar of a list: ticking rows shows
+the bar, the header box ticks every row and shift-click ticks a range. */}}
+{{define "bulk-script"}}
+<script>
+(function () {
+  var form = document.getElementById('bulk');
+  if (!form) return;
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('input[name=id][form=bulk]'));
+  var all = document.querySelector('.select-all');
+  var count = form.querySelector('[data-count]');
+  var category = form.querySelector('select[name=category_id]');
+  var move = form.querySelector('button[value=category]');
+  var last = -1;
+  function selected() { return boxes.filter(function (b) { return b.checked; }).length; }
+  function update() {
+    var n = selected();
+    count.textContent = n;
+    form.classList.toggle('active', n > 0);
+    if (all) {
+      all.checked = n > 0 && n === boxes.length;
+      all.indeterminate = n > 0 && n < boxes.length;
+    }
+    if (move && category) move.disabled = !category.value;
+  }
+  boxes.forEach(function (b, i) {
+    b.addEventListener('click', function (e) {
+      if (e.shiftKey && last >= 0) {
+        for (var j = Math.min(last, i); j <= Math.max(last, i); j++) boxes[j].checked = b.checked;
+      }
+      last = i;
+      update();
+    });
+  });
+  if (all) all.addEventListener('change', function () {
+    boxes.forEach(function (b) { b.checked = all.checked; });
+    update();
+  });
+  if (category) category.addEventListener('change', update);
+  form.addEventListener('submit', function (e) {
+    var btn = e.submitter;
+    if (btn && btn.dataset.confirm && !confirm(btn.dataset.confirm.replace('%d', selected()))) e.preventDefault();
+  });
+  form.classList.add('js');
+  update();
+})();
+</script>
+{{end}}

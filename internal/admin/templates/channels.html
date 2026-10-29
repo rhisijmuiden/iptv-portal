@@ -11,7 +11,7 @@
       <button class="secondary" title="{{t "Test every stream now"}}">{{icon "activity"}}{{t "Check streams"}}</button>
     </form>
     <a class="button secondary" href="{{base}}/import">{{icon "upload"}}{{t "Import"}}</a>
-    <a class="button" href="{{base}}/channels/new">{{icon "plus"}}{{t "Add channel"}}</a>
+    <a class="button" href="{{base}}/channels/new?back={{.Data.Back}}">{{icon "plus"}}{{t "Add channel"}}</a>
   </div>
 </div>
 <form method="get" action="{{base}}/channels" class="filters">
@@ -32,12 +32,13 @@
 {{if .Data.Channels}}
 <div class="card flush">
 <table class="channels">
-  <thead><tr><th></th><th>{{t "Name"}}</th><th>{{t "Category"}}</th><th>{{t "EPG ID"}}</th><th>{{t "Stream"}}</th><th>{{t "Status"}}</th><th></th></tr></thead>
+  <thead><tr><th class="select"><input type="checkbox" class="select-all" form="bulk" title="{{t "Select all"}}" aria-label="{{t "Select all"}}"></th><th></th><th>{{t "Name"}}</th><th>{{t "Category"}}</th><th>{{t "EPG ID"}}</th><th>{{t "Stream"}}</th><th>{{t "Status"}}</th><th></th></tr></thead>
   <tbody>
   {{range .Data.Channels}}
   <tr>
+    <td class="select"><input type="checkbox" name="id" value="{{.ID}}" form="bulk" aria-label="{{tf "Select %s" .Name}}"></td>
     <td class="logo">{{if .LogoURL}}<img src="{{.LogoURL}}" alt="" loading="lazy" referrerpolicy="no-referrer">{{end}}</td>
-    <td><a class="name" href="{{base}}/channels/{{.ID}}">{{.Name}}</a><div class="muted url">{{.StreamURL}}</div></td>
+    <td><a class="name" href="{{base}}/channels/{{.ID}}?back={{$.Data.Back}}">{{.Name}}</a><div class="muted url">{{.StreamURL}}</div></td>
     <td>{{if .Category}}{{.Category}}{{else}}<span class="muted">{{t "none"}}</span>{{end}}</td>
     <td>{{if .EPGID}}<code>{{.EPGID}}</code>{{else}}<span class="muted">{{t "none"}}</span>{{end}}</td>
     <td>{{$hl := index $.Data.Health .ID}}
@@ -61,9 +62,10 @@
         <input type="hidden" name="back" value="{{$.Data.Back}}">
         <button class="secondary sm" title="{{t "Check this stream now"}}">{{icon "activity"}}<span class="label">{{t "Check"}}</span></button>
       </form>
-      <a class="button secondary sm" href="{{base}}/channels/{{.ID}}" title="{{t "Edit"}}">{{icon "edit"}}<span class="label">{{t "Edit"}}</span></a>
+      <a class="button secondary sm" href="{{base}}/channels/{{.ID}}?back={{$.Data.Back}}" title="{{t "Edit"}}">{{icon "edit"}}<span class="label">{{t "Edit"}}</span></a>
       <form method="post" action="{{base}}/channels/{{.ID}}/delete" onsubmit="return confirm('{{t "Delete this channel?"}}')">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+        <input type="hidden" name="back" value="{{$.Data.Back}}">
         <button class="danger sm" title="{{t "Delete"}}">{{icon "trash"}}<span class="label">{{t "Delete"}}</span></button>
       </form>
     </td>
@@ -72,6 +74,23 @@
   </tbody>
 </table>
 </div>
+<form method="post" action="{{base}}/channels/bulk" id="bulk" class="card bulk-bar">
+  <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+  <input type="hidden" name="back" value="{{.Data.Back}}">
+  <span class="bulk-count">{{icon "check"}}<span>{{th "<strong data-count>0</strong> selected"}}</span></span>
+  <div class="bulk-actions">
+    <select name="category_id" aria-label="{{t "Move to category"}}">
+      <option value="" selected disabled>{{t "Move to category…"}}</option>
+      <option value="0">{{t "No category"}}</option>
+      {{range .Data.Categories}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+    </select>
+    <button class="secondary sm" name="action" value="category">{{icon "tag"}}{{t "Move"}}</button>
+    <button class="secondary sm" name="action" value="enable">{{icon "check"}}{{t "Enable"}}</button>
+    <button class="secondary sm" name="action" value="disable">{{icon "ban"}}{{t "Disable"}}</button>
+    <button class="danger sm" name="action" value="delete" data-confirm="{{t "Delete the %d selected channels?"}}">{{icon "trash"}}{{t "Delete"}}</button>
+  </div>
+</form>
+{{template "bulk-script"}}
 {{else}}
 <section class="card empty">
   <p>{{if or .Data.Filter.Search .Data.Filter.CategoryID .Data.HealthOnly}}{{t "No channels match this filter."}}{{else}}{{t "No channels yet."}}{{end}}</p>

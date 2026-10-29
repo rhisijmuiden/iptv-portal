@@ -1,10 +1,11 @@
 {{define "content"}}
 {{$c := .Data.Channel}}
-<a class="back" href="{{base}}/radio">&larr; {{t "Radio stations"}}</a>
+<a class="back" href="{{base}}{{.Data.Back}}">&larr; {{t "Radio stations"}}</a>
 <h1>{{t .Title}}</h1>
 <section class="card">
 <form method="post" action="{{base}}{{if $c.ID}}/radio/{{$c.ID}}{{else}}/radio/new{{end}}" class="stack">
   <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+  <input type="hidden" name="back" value="{{.Data.Back}}">
   <label>{{t "Name"}} <input name="name" value="{{$c.Name}}" placeholder="{{t "For example NPO Radio 1"}}" required></label>
   <label>{{t "Stream URL"}}
     <input type="url" name="stream_url" value="{{$c.StreamURL}}" placeholder="https://…/stream.mp3" required>
@@ -25,7 +26,7 @@
   {{if $c.SourceID}}<p class="muted">{{t "Imported from Radio Browser. Adding the station again from Radio Browser updates its name, stream and logo."}}</p>{{end}}
   <div class="form-actions">
     <button>{{t "Save"}}</button>
-    <a class="button secondary" href="{{base}}/radio">{{t "Cancel"}}</a>
+    <a class="button secondary" href="{{base}}{{.Data.Back}}">{{t "Cancel"}}</a>
   </div>
 </form>
 </section>

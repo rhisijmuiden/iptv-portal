@@ -1,10 +1,11 @@
 {{define "content"}}
 {{$c := .Data.Channel}}
-<a class="back" href="{{base}}/channels">&larr; {{t "Channels"}}</a>
+<a class="back" href="{{base}}{{.Data.Back}}">&larr; {{t "Channels"}}</a>
 <h1>{{t .Title}}</h1>
 <section class="card">
 <form method="post" action="{{base}}{{if $c.ID}}/channels/{{$c.ID}}{{else}}/channels/new{{end}}" class="stack">
   <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+  <input type="hidden" name="back" value="{{.Data.Back}}">
   <label>{{t "Name"}} <input name="name" value="{{$c.Name}}" required></label>
   <label>{{t "Stream URL (m3u8)"}}
     <input type="url" name="stream_url" value="{{$c.StreamURL}}" placeholder="https://…/index.m3u8" required>
@@ -28,7 +29,7 @@
   <label class="check"><input type="checkbox" name="enabled" {{if $c.Enabled}}checked{{end}}> {{t "Enabled"}}</label>
   <div class="form-actions">
     <button>{{t "Save"}}</button>
-    <a class="button secondary" href="{{base}}/channels">{{t "Cancel"}}</a>
+    <a class="button secondary" href="{{base}}{{.Data.Back}}">{{t "Cancel"}}</a>
   </div>
 </form>
 </section>

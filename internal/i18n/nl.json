@@ -935,5 +935,21 @@
  "watched in the last 30 days": "gekeken in de laatste 30 dagen",
  "Enter your username or email address.": "Vul je gebruikersnaam of e-mailadres in.",
  "If an account with this username or email address exists and has an email address, we have sent it a link to choose a new password. Check your inbox and spam folder.": "Als er een account met deze gebruikersnaam of dit e-mailadres bestaat en het een e-mailadres heeft, hebben we er een link naartoe gestuurd om een nieuw wachtwoord te kiezen. Kijk in je inbox en je spammap.",
- "This password reset link is no longer valid.": "Deze herstellink is niet meer geldig."
+ "This password reset link is no longer valid.": "Deze herstellink is niet meer geldig.",
+ "%s deleted: %d.": "%s verwijderd: %d.",
+ "%s disabled: %d.": "%s uitgeschakeld: %d.",
+ "%s enabled: %d.": "%s ingeschakeld: %d.",
+ "%s moved out of their category: %d.": "%s uit hun categorie gehaald: %d.",
+ "%s moved to %s: %d.": "%s verplaatst naar %s: %d.",
+ "<strong data-count>0</strong> selected": "<strong data-count>0</strong> geselecteerd",
+ "Choose a category to move the selection to.": "Kies een categorie om de selectie naar te verplaatsen.",
+ "Choose what to do with the selection.": "Kies wat je met de selectie wilt doen.",
+ "Choose an existing category.": "Kies een bestaande categorie.",
+ "Delete the %d selected channels?": "De %d geselecteerde zenders verwijderen?",
+ "Delete the %d selected radio stations?": "De %d geselecteerde radiozenders verwijderen?",
+ "Move to category": "Verplaatsen naar categorie",
+ "Move to category…": "Verplaatsen naar categorie…",
+ "Move": "Verplaatsen",
+ "Select %s": "%s selecteren",
+ "Select at least one item first.": "Selecteer eerst minstens één item."
 }

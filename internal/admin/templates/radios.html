@@ -6,7 +6,7 @@
   </div>
   <div class="buttons">
     <a class="button secondary" href="{{base}}/radio/browse">{{icon "search"}}{{t "Browse Radio Browser"}}</a>
-    <a class="button" href="{{base}}/radio/new">{{icon "plus"}}{{t "Add radio station"}}</a>
+    <a class="button" href="{{base}}/radio/new?back={{.Data.Back}}">{{icon "plus"}}{{t "Add radio station"}}</a>
   </div>
 </div>
 <form method="get" action="{{base}}/radio" class="filters">
@@ -37,12 +37,13 @@
 {{if .Data.Channels}}
 <div class="card flush">
 <table class="radios">
-  <thead><tr><th></th><th>{{t "Name"}}</th><th>{{t "Category"}}</th><th>{{t "Stream"}}</th><th>{{t "Status"}}</th><th></th></tr></thead>
+  <thead><tr><th class="select"><input type="checkbox" class="select-all" form="bulk" title="{{t "Select all"}}" aria-label="{{t "Select all"}}"></th><th></th><th>{{t "Name"}}</th><th>{{t "Category"}}</th><th>{{t "Stream"}}</th><th>{{t "Status"}}</th><th></th></tr></thead>
   <tbody>
   {{range .Data.Channels}}
   <tr>
+    <td class="select"><input type="checkbox" name="id" value="{{.ID}}" form="bulk" aria-label="{{tf "Select %s" .Name}}"></td>
     <td class="logo"><img src="{{base}}/radio/{{.ID}}/logo.png" alt="" loading="lazy" title="{{t "The logo players show"}}"></td>
-    <td><a class="name" href="{{base}}/radio/{{.ID}}">{{.Name}}</a>{{if .SourceID}} <span class="chip" title="{{t "Imported from Radio Browser"}}">Radio Browser</span>{{end}}
+    <td><a class="name" href="{{base}}/radio/{{.ID}}?back={{$.Data.Back}}">{{.Name}}</a>{{if .SourceID}} <span class="chip" title="{{t "Imported from Radio Browser"}}">Radio Browser</span>{{end}}
       {{if and $.Data.NowPlaying .Enabled}}<div class="now-playing" data-id="{{.ID}}" hidden>{{icon "radio"}}<span></span></div>{{end}}
       <div class="muted url">{{.StreamURL}}</div></td>
     <td>{{if .Category}}{{.Category}}{{else}}<span class="muted">{{t "none"}}</span>{{end}}</td>
@@ -67,9 +68,10 @@
         <input type="hidden" name="back" value="{{$.Data.Back}}">
         <button class="secondary sm" title="{{t "Check this stream now"}}">{{icon "activity"}}<span class="label">{{t "Check"}}</span></button>
       </form>
-      <a class="button secondary sm" href="{{base}}/radio/{{.ID}}" title="{{t "Edit"}}">{{icon "edit"}}<span class="label">{{t "Edit"}}</span></a>
+      <a class="button secondary sm" href="{{base}}/radio/{{.ID}}?back={{$.Data.Back}}" title="{{t "Edit"}}">{{icon "edit"}}<span class="label">{{t "Edit"}}</span></a>
       <form method="post" action="{{base}}/radio/{{.ID}}/delete" onsubmit="return confirm('{{t "Delete this radio station?"}}')">
         <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+        <input type="hidden" name="back" value="{{$.Data.Back}}">
         <button class="danger sm" title="{{t "Delete"}}">{{icon "trash"}}<span class="label">{{t "Delete"}}</span></button>
       </form>
     </td>
@@ -78,6 +80,23 @@
   </tbody>
 </table>
 </div>
+<form method="post" action="{{base}}/radio/bulk" id="bulk" class="card bulk-bar">
+  <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+  <input type="hidden" name="back" value="{{.Data.Back}}">
+  <span class="bulk-count">{{icon "check"}}<span>{{th "<strong data-count>0</strong> selected"}}</span></span>
+  <div class="bulk-actions">
+    <select name="category_id" aria-label="{{t "Move to category"}}">
+      <option value="" selected disabled>{{t "Move to category…"}}</option>
+      <option value="0">{{t "No category"}}</option>
+      {{range .Data.Categories}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+    </select>
+    <button class="secondary sm" name="action" value="category">{{icon "tag"}}{{t "Move"}}</button>
+    <button class="secondary sm" name="action" value="enable">{{icon "check"}}{{t "Enable"}}</button>
+    <button class="secondary sm" name="action" value="disable">{{icon "ban"}}{{t "Disable"}}</button>
+    <button class="danger sm" name="action" value="delete" data-confirm="{{t "Delete the %d selected radio stations?"}}">{{icon "trash"}}{{t "Delete"}}</button>
+  </div>
+</form>
+{{template "bulk-script"}}
 {{if .Data.NowPlaying}}
 <script>
 (function () {
