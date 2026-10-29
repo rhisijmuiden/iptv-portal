@@ -241,7 +241,7 @@ func (h *Handler) userDelete(w http.ResponseWriter, r *http.Request, sess store.
 		h.serverError(w, err)
 		return
 	}
-	redirectFlash(w, r, "/users", "User deleted.")
+	redirectFlash(w, r, backTo(r, "/users"), "User deleted.")
 }
 
 // ---- packages ----

@@ -125,6 +125,7 @@ func (h *Handler) listChannels(w http.ResponseWriter, r *http.Request, sess stor
 type channelFormData struct {
 	Channel    store.Channel
 	Categories []store.Category
+	Back       string // the list to return to, with its filter
 }
 
 func (h *Handler) channelForm(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -172,7 +173,7 @@ func (h *Handler) renderChannelForm(w http.ResponseWriter, r *http.Request, sess
 		title = sec.Edit
 	}
 	h.render(w, r, sec.Form, page{Title: title, Nav: sec.Nav, Session: &sess, Error: errMsg,
-		Data: channelFormData{Channel: c, Categories: cats}})
+		Data: channelFormData{Channel: c, Categories: cats, Back: backTo(r, sec.Path)}})
 }
 
 func (h *Handler) channelSave(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -241,7 +242,7 @@ func (h *Handler) saveChannel(w http.ResponseWriter, r *http.Request, sess store
 	if c.IsRadio() {
 		msg = "Radio station %q saved."
 	}
-	redirectFlash(w, r, sec.Path, tr(r, msg, strings.TrimSpace(c.Name)))
+	redirectFlash(w, r, backTo(r, sec.Path), tr(r, msg, strings.TrimSpace(c.Name)))
 }
 
 func (h *Handler) channelToggle(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -276,7 +277,7 @@ func (h *Handler) radioDelete(w http.ResponseWriter, r *http.Request, sess store
 		h.serverError(w, err)
 		return
 	}
-	redirectFlash(w, r, "/radio", "Radio station deleted.")
+	redirectFlash(w, r, backTo(r, "/radio"), "Radio station deleted.")
 }
 
 func (h *Handler) channelDelete(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -289,7 +290,81 @@ func (h *Handler) channelDelete(w http.ResponseWriter, r *http.Request, sess sto
 		h.serverError(w, err)
 		return
 	}
-	redirectFlash(w, r, "/channels", "Channel deleted.")
+	redirectFlash(w, r, backTo(r, "/channels"), "Channel deleted.")
+}
+
+func (h *Handler) channelBulk(w http.ResponseWriter, r *http.Request, sess store.Session) {
+	h.bulkChannels(w, r, tvSection)
+}
+
+func (h *Handler) radioBulk(w http.ResponseWriter, r *http.Request, sess store.Session) {
+	h.bulkChannels(w, r, radioSection)
+}
+
+// bulkChannels applies one action to the channels ticked in the list and
+// returns to the list with its filter.
+func (h *Handler) bulkChannels(w http.ResponseWriter, r *http.Request, sec section) {
+	back := backTo(r, sec.Path)
+	if err := r.ParseForm(); err != nil {
+		redirectError(w, r, back, err.Error())
+		return
+	}
+	var ids []int64
+	for _, v := range r.Form["id"] {
+		if id, err := strconv.ParseInt(v, 10, 64); err == nil && id > 0 {
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) == 0 {
+		redirectError(w, r, back, "Select at least one item first.")
+		return
+	}
+	name := tr(r, sec.Name)
+	var (
+		n   int
+		err error
+		msg string
+	)
+	switch r.FormValue("action") {
+	case "delete":
+		n, err = h.store.DeleteChannels(r.Context(), sec.Kind, ids)
+		msg = tr(r, "%s deleted: %d.", name, n)
+	case "enable", "disable":
+		on := r.FormValue("action") == "enable"
+		n, err = h.store.SetChannelsEnabled(r.Context(), sec.Kind, ids, on)
+		msg = tr(r, "%s disabled: %d.", name, n)
+		if on {
+			msg = tr(r, "%s enabled: %d.", name, n)
+		}
+	case "category":
+		var cat int64
+		cat, err = strconv.ParseInt(r.FormValue("category_id"), 10, 64)
+		if err != nil {
+			redirectError(w, r, back, "Choose a category to move the selection to.")
+			return
+		}
+		if n, err = h.store.SetChannelsCategory(r.Context(), sec.Kind, ids, cat); err != nil {
+			redirectError(w, r, back, err.Error())
+			return
+		}
+		msg = tr(r, "%s moved out of their category: %d.", name, n)
+		if cat != 0 {
+			cats, _ := h.store.CategoriesOf(r.Context(), sec.Kind)
+			for _, c := range cats {
+				if c.ID == cat {
+					msg = tr(r, "%s moved to %s: %d.", name, c.Name, n)
+				}
+			}
+		}
+	default:
+		redirectError(w, r, back, "Choose what to do with the selection.")
+		return
+	}
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	redirectFlash(w, r, back, msg)
 }
 
 // backTo returns the "back" form value when it is a local path.

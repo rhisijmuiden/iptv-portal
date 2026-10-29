@@ -199,6 +199,14 @@ td.actions { text-align: right; white-space: nowrap; }
 td.actions > * { display: inline-flex; vertical-align: middle; margin-left: .3rem; }
 td a.name { font-weight: 600; color: var(--text); }
 td a.name:hover { color: var(--link); }
+th.select, td.select { width: 1%; padding-right: 0; }
+.card.flush tbody tr:has(td.select input:checked) td { background: var(--accent-soft); }
+.bulk-bar { position: sticky; bottom: .75rem; z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: .6rem 1rem; padding: .7rem 1rem; border-color: var(--hover-border); box-shadow: 0 8px 24px rgba(20, 33, 61, .18); }
+.bulk-bar.js:not(.active) { display: none; }
+.bulk-count { display: inline-flex; align-items: center; gap: .45rem; font-weight: 600; }
+.bulk-count .icon { color: var(--koraal); }
+.bulk-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem; margin-left: auto; }
+.bulk-actions select { width: auto; padding: .3rem .6rem; font-size: .83rem; }
 td.logo { width: 64px; }
 td.logo img { max-width: 48px; max-height: 32px; display: block; }
 table.radios td.logo img { width: 40px; height: 40px; max-height: none; object-fit: contain; border-radius: var(--radius-sm); }
@@ -260,12 +268,12 @@ label.check.stream input { margin-top: .25rem; }
   .app main { margin-left: 0; padding: 1.25rem 16px 2.5rem; }
   h1 { font-size: 1.35rem; }
   .card { padding: 1.1rem 1rem; }
-  .channels th:nth-child(4), .channels td:nth-child(4) { display: none; }
+  .channels th:nth-child(5), .channels td:nth-child(5) { display: none; }
   td.actions .label { display: none; }
 }
 @media (max-width: 640px) {
-  .channels th:nth-child(1), .channels td:nth-child(1), .channels th:nth-child(3), .channels td:nth-child(3) { display: none; }
-  .radios th:nth-child(1), .radios td:nth-child(1), .radios th:nth-child(3), .radios td:nth-child(3), .radios .chip { display: none; }
+  .channels th:nth-child(2), .channels td:nth-child(2), .channels th:nth-child(4), .channels td:nth-child(4) { display: none; }
+  .radios th:nth-child(2), .radios td:nth-child(2), .radios th:nth-child(4), .radios td:nth-child(4), .radios .chip { display: none; }
   th, td { padding: .6rem .7rem; }
 }
 
