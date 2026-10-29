@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/rhisijmuiden/iptv-portal/internal/activity"
 	"github.com/rhisijmuiden/iptv-portal/internal/media"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 	"github.com/rhisijmuiden/iptv-portal/internal/web"
@@ -332,9 +333,26 @@ func (h *Handler) vodPlay(t media.ItemType) http.HandlerFunc {
 			http.Redirect(w, r, target, http.StatusFound)
 			return
 		}
-		h.proxy(w, r, target)
+		done := h.activity.Proxy.Start()
+		defer done()
+		h.proxy(&countingWriter{ResponseWriter: w, proxy: &h.activity.Proxy}, r, target)
 	}
 }
+
+// countingWriter counts the bytes of a proxied stream for the system
+// resources page.
+type countingWriter struct {
+	http.ResponseWriter
+	proxy *activity.Proxy
+}
+
+func (w *countingWriter) Write(b []byte) (int, error) {
+	n, err := w.ResponseWriter.Write(b)
+	w.proxy.Add(n)
+	return n, err
+}
+
+func (w *countingWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
 // vodTitle names a movie or episode for the dashboard.
 func (h *Handler) vodTitle(it *media.Item) string {

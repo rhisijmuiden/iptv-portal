@@ -206,6 +206,13 @@ func TestVODProxy(t *testing.T) {
 	if b, _ := io.ReadAll(resp2.Body); !bytes.Equal(b, movieData) {
 		t.Errorf("full movie: got %d bytes", len(b))
 	}
+	// The system resources page counts the proxied streams and their bytes.
+	if got, want := f.act.Proxy.Bytes(), uint64(10+len(movieData)); got != want {
+		t.Errorf("proxied bytes = %d, want %d", got, want)
+	}
+	if n := f.act.Proxy.Streams(); n != 0 {
+		t.Errorf("%d proxied streams after playback ended", n)
+	}
 }
 
 func TestVODDirect(t *testing.T) {

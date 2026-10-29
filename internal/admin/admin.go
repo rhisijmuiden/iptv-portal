@@ -32,6 +32,7 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/stats"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 	"github.com/rhisijmuiden/iptv-portal/internal/suggest"
+	"github.com/rhisijmuiden/iptv-portal/internal/sysinfo"
 	"github.com/rhisijmuiden/iptv-portal/internal/update"
 	"github.com/rhisijmuiden/iptv-portal/internal/version"
 	"github.com/rhisijmuiden/iptv-portal/internal/web"
@@ -74,6 +75,7 @@ type Handler struct {
 	suggest      *suggest.Finder
 	nowPlaying   *nowplaying.Service
 	logos        *logos.Cache
+	system       *sysinfo.Collector
 	// base is the path the admin panel is served under ("" for the root).
 	base string
 }
@@ -115,6 +117,9 @@ type Config struct {
 	// logos; share them with the portal. nil creates new ones.
 	NowPlaying *nowplaying.Service
 	Logos      *logos.Cache
+	// System measures the server's load; run its Loop. nil creates one
+	// that only samples when the page is opened.
+	System *sysinfo.Collector
 	// BasePath serves the panel under this path, e.g. "/portal-admin"; it
 	// must be clean (see store.CleanBasePath). Empty means the root.
 	BasePath string
@@ -127,7 +132,7 @@ func New(c Config) (*Handler, error) {
 		guide: c.Guide, refresh: c.RefreshGuide, updater: c.Updater, restart: c.Restart, iptvorg: c.IPTVOrg,
 		radio: c.Radio,
 		media: c.Media, refreshMedia: c.RefreshMedia, activity: c.Activity, stats: c.Stats, entra: c.Entra, backups: c.Backups,
-		health: c.Health, suggest: c.Suggest, nowPlaying: c.NowPlaying, logos: c.Logos, base: c.BasePath}
+		health: c.Health, suggest: c.Suggest, nowPlaying: c.NowPlaying, logos: c.Logos, system: c.System, base: c.BasePath}
 	if h.nowPlaying == nil {
 		h.nowPlaying = nowplaying.New()
 	}
@@ -154,6 +159,13 @@ func New(c Config) (*Handler, error) {
 	}
 	if h.suggest == nil {
 		h.suggest = suggest.New(c.Store, h.iptvorg, h.radio, h.health.Probe, c.Log)
+	}
+	if h.system == nil {
+		dir := ""
+		if c.Store != nil {
+			dir = c.Store.Dir()
+		}
+		h.system = sysinfo.New(dir, h.activity)
 	}
 	if h.backups == nil && c.Store != nil {
 		h.backups = backup.New(c.Store, c.Log)
@@ -341,6 +353,8 @@ func (h *Handler) routes() {
 	auth("GET /epg", h.epgPage)
 	auth("POST /epg", h.epgSave)
 	auth("POST /epg/refresh", h.epgRefresh)
+	auth("GET /system", h.systemPage)
+	auth("GET /system/data", h.systemJSON)
 	auth("GET /info", h.infoPage)
 	auth("POST /info/check", h.infoCheck)
 	auth("POST /info/auto", h.infoAuto)

@@ -17,6 +17,7 @@ package activity
 import (
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -60,6 +61,8 @@ type Tracker struct {
 	mu    sync.Mutex
 	conns map[key]*Connection
 	now   func() time.Time
+	// Proxy counts the On Demand streams the portal passes through.
+	Proxy Proxy
 }
 
 // New returns an empty tracker.
@@ -186,3 +189,32 @@ func (t *Tracker) Snapshot() Snapshot {
 	s.OnlineUsers, s.Watching = len(online), len(watching)
 	return s
 }
+
+// Proxy counts On Demand playback that the portal streams itself (media
+// servers with "proxy playback" on): those streams do pass through the
+// server, unlike live channels. The zero value is ready to use.
+type Proxy struct {
+	streams atomic.Int64
+	bytes   atomic.Uint64
+}
+
+// Start records that a proxied stream starts; call the returned function
+// when it ends.
+func (p *Proxy) Start() (done func()) {
+	p.streams.Add(1)
+	var once sync.Once
+	return func() { once.Do(func() { p.streams.Add(-1) }) }
+}
+
+// Add counts n bytes sent to a player.
+func (p *Proxy) Add(n int) {
+	if n > 0 {
+		p.bytes.Add(uint64(n))
+	}
+}
+
+// Streams returns how many proxied streams are playing now.
+func (p *Proxy) Streams() int { return int(p.streams.Load()) }
+
+// Bytes returns how many bytes were proxied since the start.
+func (p *Proxy) Bytes() uint64 { return p.bytes.Load() }

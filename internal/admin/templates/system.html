@@ -1,0 +1,133 @@
+{{define "content"}}
+{{$d := .Data}}
+<div class="titlebar">
+  <div>
+    <h1>{{t "System resources"}}</h1>
+    <p class="subtitle">{{t "How heavily the server is loaded. The page refreshes every 5 seconds."}}</p>
+  </div>
+  <div class="buttons"><span class="live" data-live>{{t "Live"}}</span></div>
+</div>
+<form method="get" action="{{base}}/system" class="filters">
+  <select name="range" onchange="this.form.submit()" aria-label="{{t "Period"}}">
+    <option value="15m"{{if eq $d.Range "15m"}} selected{{end}}>{{t "Last 15 minutes"}}</option>
+    <option value="hour"{{if eq $d.Range "hour"}} selected{{end}}>{{t "Last hour"}}</option>
+    <option value="day"{{if eq $d.Range "day"}} selected{{end}}>{{t "Last 24 hours"}}</option>
+  </select>
+  <noscript><button class="secondary">{{t "Show"}}</button></noscript>
+</form>
+<noscript><p class="flash err">{{t "This page needs JavaScript to show the measurements."}}</p></noscript>
+
+<div class="stats system-tiles">
+  <div class="card stat"><span class="stat-icon">{{icon "activity"}}</span><div><strong data-k="cpu">–</strong><span data-k="cpuSub">{{t "CPU"}}</span><i class="meter"><b data-meter="cpu"></b></i></div></div>
+  <div class="card stat"><span class="stat-icon">{{icon "server"}}</span><div><strong data-k="mem">–</strong><span data-k="memSub">{{t "Memory"}}</span><i class="meter"><b data-meter="mem"></b></i></div></div>
+  <div class="card stat"><span class="stat-icon">{{icon "archive"}}</span><div><strong data-k="disk">–</strong><span data-k="diskSub">{{t "Disk"}}</span><i class="meter"><b data-meter="disk"></b></i></div></div>
+  <div class="card stat"><span class="stat-icon">{{icon "chart"}}</span><div><strong data-k="load">–</strong><span data-k="loadSub">{{t "Load average"}}</span></div></div>
+  <div class="card stat"><span class="stat-icon">{{icon "globe"}}</span><div><strong data-k="net">–</strong><span data-k="netSub">{{t "Network"}}</span></div></div>
+  <a class="card stat" href="{{base}}/#viewers"><span class="stat-icon">{{icon "users"}}</span><div><strong data-k="online">–</strong><span data-k="onlineSub">{{t "online now"}}</span></div></a>
+</div>
+
+<div class="grid-2 wide">
+  <section class="card">
+    <h2>{{t "CPU"}}</h2>
+    <div class="linechart" data-chart="cpu" role="img" aria-label="{{t "CPU use over time"}}"></div>
+  </section>
+  <section class="card">
+    <h2>{{t "Memory"}}</h2>
+    <div class="linechart" data-chart="mem" role="img" aria-label="{{t "Memory use over time"}}"></div>
+  </section>
+  <section class="card">
+    <h2>{{t "Network"}}</h2>
+    <div class="linechart" data-chart="net" role="img" aria-label="{{t "Network traffic over time"}}"></div>
+  </section>
+  <section class="card">
+    <h2>{{t "Viewers"}}</h2>
+    <div class="linechart" data-chart="viewers" role="img" aria-label="{{t "Viewers over time"}}"></div>
+  </section>
+</div>
+
+<div class="grid-2 wide">
+  <section class="card">
+    <h2>{{t "Server"}}</h2>
+    <dl class="facts">
+      <dt>{{t "Host name"}}</dt><dd data-k="hostname"></dd>
+      <dt>{{t "Operating system"}}</dt><dd data-k="os"></dd>
+      <dt>{{t "Kernel"}}</dt><dd data-k="kernel"></dd>
+      <dt>{{t "Runs in"}}</dt><dd data-k="container"></dd>
+      <dt>{{t "CPU cores"}}</dt><dd data-k="cpus"></dd>
+      <dt>{{t "Memory"}}</dt><dd data-k="memFull"></dd>
+      <dt>{{t "Swap"}}</dt><dd data-k="swap"></dd>
+      <dt>{{t "Load average"}}</dt><dd data-k="loads"></dd>
+      <dt>{{t "Up for"}}</dt><dd data-k="uptime"></dd>
+    </dl>
+  </section>
+  <section class="card">
+    <h2>{{t "Portal process"}}</h2>
+    <dl class="facts">
+      <dt>{{t "Version"}}</dt><dd data-k="version"></dd>
+      <dt>{{t "Process ID"}}</dt><dd data-k="pid"></dd>
+      <dt>{{t "Running for"}}</dt><dd data-k="procUptime"></dd>
+      <dt>{{t "CPU"}}</dt><dd data-k="procCPU"></dd>
+      <dt>{{t "Memory (resident)"}}</dt><dd data-k="rss"></dd>
+      <dt>{{t "Go heap"}}</dt><dd data-k="heap"></dd>
+      <dt>{{t "Goroutines"}}</dt><dd data-k="goroutines"></dd>
+      <dt>{{t "Threads"}}</dt><dd data-k="threads"></dd>
+      <dt>{{t "Open files and connections"}}</dt><dd data-k="openFiles"></dd>
+      <dt>{{t "Garbage collections"}}</dt><dd data-k="gc"></dd>
+    </dl>
+  </section>
+  <section class="card">
+    <h2>{{t "Storage"}}</h2>
+    <dl class="facts">
+      <dt>{{t "Data directory"}}</dt><dd><code data-k="path"></code></dd>
+      <dt>{{t "Disk size"}}</dt><dd data-k="diskTotal"></dd>
+      <dt>{{t "In use"}}</dt><dd data-k="diskUsed"></dd>
+      <dt>{{t "Free"}}</dt><dd data-k="diskFree"></dd>
+      <dt>{{t "Data directory size"}}</dt><dd data-k="dataDir"></dd>
+      <dt>{{t "Database"}}</dt><dd data-k="db"></dd>
+    </dl>
+  </section>
+  <section class="card">
+    <h2>{{t "Streams and network"}}</h2>
+    <dl class="facts">
+      <dt>{{t "Online now"}}</dt><dd data-k="onlineNow"></dd>
+      <dt>{{t "Watching"}}</dt><dd data-k="watching"></dd>
+      <dt>{{t "On Demand streams through the portal"}}</dt><dd data-k="proxied"></dd>
+      <dt>{{t "On Demand traffic"}}</dt><dd data-k="proxyRate"></dd>
+      <dt>{{t "On Demand sent since start"}}</dt><dd data-k="proxyTotal"></dd>
+    </dl>
+    <table class="compact">
+      <thead><tr><th>{{t "Interface"}}</th><th>{{t "Received"}}</th><th>{{t "Sent"}}</th></tr></thead>
+      <tbody data-k="ifaces"></tbody>
+    </table>
+    <p class="muted"><small>{{t "Received and sent since the server started."}}</small></p>
+  </section>
+</div>
+<p class="muted"><small>{{t "Live TV and radio go straight from the broadcaster to the player, so they barely load the server. Only On Demand with proxied playback passes through the portal. In a container, CPU and memory are measured against the container's limits; the load average may be that of the host. History is kept in memory and starts empty after a restart."}}</small></p>
+
+<script type="application/json" id="system-report">{{$d.Report}}</script>
+<script type="application/json" id="system-text">{
+  "url": "{{base}}/system/data?range={{$d.Range}}",
+  "of": {{t "of %s"}},
+  "coresPortal": {{t "of %s cores · portal %s"}},
+  "free": {{t "%s free"}},
+  "perCore": {{t "%s per core"}},
+  "netSub": {{t "↑ %s upload"}},
+  "watching": {{t "online now, %d watching"}},
+  "onlineNow": {{t "online now"}},
+  "vod": {{t "%d On Demand"}},
+  "days": {{t "%d d %d h"}}, "hours": {{t "%d h %d min"}}, "mins": {{t "%d min"}},
+  "host": {{t "Host or virtual machine"}},
+  "container": {{t "Container (%s)"}},
+  "limit": {{t "container limit"}},
+  "none": {{t "none"}},
+  "waiting": {{t "Collecting measurements…"}},
+  "offline": {{t "Paused: the server did not answer"}},
+  "live": {{t "Live"}},
+  "series": {
+    "system": {{t "Server"}}, "portal": {{t "Portal"}}, "used": {{t "Used"}},
+    "down": {{t "Download"}}, "up": {{t "Upload"}},
+    "online": {{t "Online"}}, "watching": {{t "Watching"}}, "proxied": {{t "On Demand streams"}}
+  }
+}</script>
+<script src="{{base}}/static/system.js" defer></script>
+{{end}}
