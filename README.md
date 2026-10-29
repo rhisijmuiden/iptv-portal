@@ -22,6 +22,7 @@ It can also offer the movies and series of your own **Jellyfin** or **Plex** ser
 - **Stream health checks** that test every channel like a player would, show which streams are down and can switch dead channels off until they work again.
 - **Settings in the browser**: portal name, public URL and both ports, ready for a reverse proxy.
 - **Microsoft Entra sign-in** for the admin panel (optional), limited to the groups or app roles you choose, with local accounts as a fallback.
+- **System resources**: CPU, memory, disk, load, network and the portal process itself, live with a chart of the last hour or day.
 - **Backups** to FTP, FTPS or SCP: full and incremental, scheduled or by hand, optionally encrypted, and restored from the admin panel.
 - **Updates from the admin panel** with release notes, stable and test release channels, an optional daily check and automatic rollback.
 - **English and Dutch.** English is the default; every admin picks a language at the bottom of the menu, and subscribers can switch on the invitation pages. See [Languages](#languages).
@@ -172,6 +173,12 @@ Portal name, public URL (for a reverse proxy or your own domain), the default [l
 ### Backups
 
 Where backups go (FTP, FTPS or SCP), when they run, how many are kept and the encryption passphrase. Make a backup by hand, or pick one on the server and restore it. See [Backup and restore](#backup-and-restore).
+
+### System resources
+
+How heavily the server is loaded: CPU (of the server and of the portal itself), memory, disk space, load average, network traffic and who is online, with charts of the last hour or the last 24 hours that refresh every 5 seconds. Below them are details of the server (OS, kernel, cores, uptime), the portal process (memory, goroutines, open files), the data directory and database size, and the traffic per network interface.
+
+In a Proxmox LXC container the CPU and memory are measured against the container's own limits (cores, memory) rather than the host's. Live TV and radio go straight from the broadcaster to the player and barely load the server; On Demand with proxied playback does pass through the portal and is shown separately. The history is kept in memory and starts empty after a restart.
 
 ### Info
 
