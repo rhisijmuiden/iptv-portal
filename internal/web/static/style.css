@@ -104,6 +104,8 @@ small { color: var(--muted); font-weight: 400; }
 body:not(.app) > footer .language { display: block; margin-bottom: .5rem; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .sidebar footer { font-size: .72rem; color: var(--side-muted); padding: .6rem .65rem 0; }
+.sidebar footer a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.sidebar footer a:hover { color: var(--side-text); }
 .icon-button { display: inline-grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: var(--radius-md); background: transparent; color: inherit; cursor: pointer; }
 .icon-button:hover { background: var(--side-hover); color: inherit; filter: none; }
 .nav-toggle, .mobilebar, .scrim { display: none; }

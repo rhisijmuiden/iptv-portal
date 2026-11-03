@@ -48,7 +48,7 @@
   </div>
   <a class="powered" href="https://www.rhis.nl" target="_blank" rel="noopener"><img src="{{base}}/static/brand/rhis-icon.svg" alt=""><span>{{t "Powered by"}} <strong>RHIS</strong></span></a>
   {{template "language" .}}
-  <footer>IPTV Portal {{version}}</footer>
+  <footer>IPTV Portal {{version}} · <a href="{{licenseURL}}" target="_blank" rel="noopener license">{{license}}</a></footer>
 </aside>
 <main>
   {{if .Flash}}<p class="flash ok">{{.Flash}}</p>{{end}}
@@ -62,7 +62,7 @@
   {{if .Error}}<p class="flash err">{{.Error}}</p>{{end}}
   {{template "content" .}}
 </main>
-<footer>{{template "language" .}}IPTV Portal {{version}}</footer>
+<footer>{{template "language" .}}IPTV Portal {{version}} · <a href="{{source}}" target="_blank" rel="noopener">{{t "Source code"}}</a> ({{license}})</footer>
 {{end}}
 </body>
 </html>

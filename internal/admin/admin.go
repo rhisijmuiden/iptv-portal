@@ -195,7 +195,10 @@ func (h *Handler) parseTemplates() error {
 // parseLanguage parses the templates with the text functions of lang.
 func (h *Handler) parseLanguage(lang string) (map[string]*template.Template, error) {
 	funcs := template.FuncMap{
-		"version": func() string { return version.Version },
+		"version":    func() string { return version.Version },
+		"source":     func() string { return version.Source },
+		"license":    func() string { return version.License },
+		"licenseURL": func() string { return version.LicenseURL },
 		// base is the path the panel is served under; every link starts
 		// with it.
 		"base": func() string { return h.base },
