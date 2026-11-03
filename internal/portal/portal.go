@@ -24,6 +24,7 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/nowplaying"
 	"github.com/rhisijmuiden/iptv-portal/internal/stats"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
+	"github.com/rhisijmuiden/iptv-portal/internal/version"
 	"github.com/rhisijmuiden/iptv-portal/internal/web"
 )
 
@@ -114,7 +115,10 @@ func templateFuncs(lang string) template.FuncMap {
 			return template.HTML(`<svg class="icon" aria-hidden="true"><use href="/static/icons.svg#` +
 				template.HTMLEscapeString(name) + `"/></svg>`)
 		},
-		"datetime": func(t time.Time) string { return t.Local().Format("2006-01-02 15:04") },
+		"source":     func() string { return version.Source },
+		"license":    func() string { return version.License },
+		"licenseURL": func() string { return version.LicenseURL },
+		"datetime":   func(t time.Time) string { return t.Local().Format("2006-01-02 15:04") },
 		// duration shows a viewing time, e.g. "3 h 20 min".
 		"duration": func(d time.Duration) string {
 			m := int(d / time.Minute)

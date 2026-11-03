@@ -16,6 +16,8 @@
     <tr><th>{{t "Installed"}}</th><td><code>{{$d.Version}}</code>{{if $d.DevBuild}} <span class="muted">({{t "development build, updates are not installed automatically"}})</span>{{end}}</td></tr>
     <tr><th>{{t "Release channel"}}</th><td>{{if eq (print $d.Status.Channel) "test"}}<span class="badge warn">{{t "test"}}</span> <span class="muted">{{t "stable releases and pre-releases"}}</span>{{else}}<span class="badge on">{{t "stable"}}</span> <span class="muted">{{t "stable releases only"}}</span>{{end}}</td></tr>
     <tr><th>{{t "Latest release"}}</th><td>{{with $d.Status.Latest}}<code>{{.Tag}}</code>{{if .Prerelease}} <span class="badge warn">{{t "pre-release"}}</span>{{end}} <span class="muted">{{tf "published %s" (date (ptr .PublishedAt))}}</span>{{else}}<span class="muted">{{t "unknown, check for updates"}}</span>{{end}}</td></tr>
+    <tr><th>{{t "License"}}</th><td><a href="{{licenseURL}}" target="_blank" rel="noopener license">{{t "GNU Affero General Public License v3.0"}}</a> <span class="muted">(<code>{{license}}</code>)</span></td></tr>
+    <tr><th>{{t "Source code"}}</th><td><a href="{{source}}" target="_blank" rel="noopener">{{source}}</a></td></tr>
     <tr><th>{{t "Last checked"}}</th><td>{{if $d.Status.CheckedAt.IsZero}}<span class="muted">{{t "never"}}</span>{{else}}{{datetime (ptr $d.Status.CheckedAt)}}{{end}}</td></tr>
   </table>
   {{if and $d.Prerelease (ne (print $d.Status.Channel) "test")}}

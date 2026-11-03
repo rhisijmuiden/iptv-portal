@@ -182,7 +182,7 @@ In a Proxmox LXC container the CPU and memory are measured against the container
 
 ### Info
 
-The installed version, the latest release and the release notes of every version. Choose the stable or test release channel, check for updates by hand or every 24 hours, and update with one click. See [Updates](#updates).
+The installed version, the latest release and the release notes of every version. Choose the stable or test release channel, check for updates by hand or every 24 hours, and update with one click. See [Updates](#updates). The page also shows the license and links to the source code (see [License](#license)).
 
 ![Info](docs/screenshots/info.png)
 
@@ -406,3 +406,11 @@ Every radio station has a logo on the box. The portal downloads the station's lo
 Radio stations also get a guide. A station that has no programmes in your guide sources gets an EPG id of its own (`radio<id>.iptv-portal`) and an hourly schedule with its name and genre. The hour that is on now shows the song the station is playing: the portal reads the ICY metadata (`StreamTitle`) that Icecast and Shoutcast streams send, or the segment title of an HLS stream. MyTVOnline and other Xtream players show it in the info bar when you open the station (the short EPG reads the stream, at most every 30 seconds per station); the XMLTV guide includes the last song read. Streams that do not send metadata just show the station's name. The admin panel shows what each station is playing under its name. Untick **Show what is playing in the guide of the players** on the **Radio stations** page to stop reading the streams.
 
 The portal picks a Radio Browser server from the list Radio Browser publishes in DNS. Set `IPTV_PORTAL_RADIOBROWSER_API` (for example `https://de1.api.radio-browser.info`) to always use one server.
+
+## License
+
+IPTV Portal is free software, released under the [GNU Affero General Public License v3.0](LICENSE) (`AGPL-3.0-only`). You may use, study, change and share it, also commercially, as long as you keep the same license and make the source code available.
+
+The AGPL also covers use over a network: if you run a changed version of the portal for other people, you must offer them the source code of that version. The admin panel (under **Info**, and in the menu) and the account portal link to the source code for this reason; if you change the code, point them at your own copy by changing `Source` in `internal/version/version.go`.
+
+See [LICENSE](LICENSE) for the full text.
