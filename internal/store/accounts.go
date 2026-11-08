@@ -17,7 +17,13 @@ type UserSession struct {
 	Token string
 	CSRF  string
 	User  User
+	// PINUntil is until when the parental control settings are open in
+	// this session after entering the PIN.
+	PINUntil *time.Time
 }
+
+// PINOpen reports whether the PIN was entered in this session recently.
+func (s UserSession) PINOpen(now time.Time) bool { return s.PINUntil != nil && s.PINUntil.After(now) }
 
 // UserSessionTTL is how long a user stays logged in to their account page
 // without activity.
@@ -65,8 +71,13 @@ func (s *Store) CreateUserSession(ctx context.Context, u User) (UserSession, err
 func (s *Store) UserSession(ctx context.Context, token string) (UserSession, error) {
 	sess := UserSession{Token: token}
 	var id int64
-	err := s.db.QueryRowContext(ctx, `SELECT csrf, user_id FROM user_sessions WHERE token = ? AND expires_at > ?`,
-		token, time.Now().UTC()).Scan(&sess.CSRF, &id)
+	var pin sql.NullTime
+	err := s.db.QueryRowContext(ctx, `SELECT csrf, user_id, pin_until FROM user_sessions WHERE token = ? AND expires_at > ?`,
+		token, time.Now().UTC()).Scan(&sess.CSRF, &id, &pin)
+	if pin.Valid {
+		t := pin.Time
+		sess.PINUntil = &t
+	}
 	if errors.Is(err, sql.ErrNoRows) {
 		return UserSession{}, ErrNotFound
 	}

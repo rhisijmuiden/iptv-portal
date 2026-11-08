@@ -278,6 +278,38 @@ var migrations = []string{
 		error    TEXT NOT NULL DEFAULT ''
 	);
 	CREATE INDEX alert_log_at ON alert_log(at);`,
+
+	// What users set for their own player on the account pages:
+	// favourites, their own order of the channel groups, hidden groups and
+	// parental controls.
+	`CREATE TABLE user_preferences (
+		user_id          INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+		favourites_group INTEGER NOT NULL DEFAULT 1,
+		pin_hash         TEXT NOT NULL DEFAULT '',
+		max_age          INTEGER NOT NULL DEFAULT 0,
+		unlocked_until   DATETIME
+	);
+	CREATE TABLE user_favourites (
+		user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		channel_id INTEGER NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+		position   INTEGER NOT NULL DEFAULT 0,
+		PRIMARY KEY (user_id, channel_id)
+	);
+	CREATE TABLE user_categories (
+		user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+		position    INTEGER NOT NULL DEFAULT 0,
+		hidden      INTEGER NOT NULL DEFAULT 0,
+		locked      INTEGER NOT NULL DEFAULT 0,
+		PRIMARY KEY (user_id, category_id)
+	);
+	CREATE TABLE user_locked_media (
+		user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		kind    TEXT NOT NULL,
+		name    TEXT NOT NULL COLLATE NOCASE,
+		PRIMARY KEY (user_id, kind, name)
+	);
+	ALTER TABLE user_sessions ADD COLUMN pin_until DATETIME;`,
 }
 
 // afterMigration runs Go code in the transaction of a migration, keyed by
