@@ -21,7 +21,7 @@
 {{if $d.Servers}}
 <div class="card flush">
 <table>
-  <thead><tr><th>{{t "Name"}}</th><th>{{t "Server"}}</th><th>{{t "Playback"}}</th><th>{{t "Movies"}}</th><th>{{t "Series"}}</th><th>{{t "Episodes"}}</th><th>{{t "Status"}}</th><th></th></tr></thead>
+  <thead><tr><th>{{t "Name"}}</th><th>{{t "Server"}}</th><th>{{t "Playback"}}</th><th>{{t "Movies"}}</th><th>{{t "Series"}}</th><th>{{t "Episodes"}}</th><th>{{t "Categories"}}</th><th>{{t "Status"}}</th><th></th></tr></thead>
   <tbody>
   {{range $d.Servers}}
   <tr>
@@ -31,6 +31,7 @@
     <td>{{.Status.Movies}}</td>
     <td>{{.Status.Shows}}</td>
     <td>{{.Status.Episodes}}</td>
+    <td>{{.Status.Categories}} <span class="muted">{{if eq .Server.Categories "libraries"}}{{t "by library"}}{{else if eq .Server.Categories "library_genres"}}{{t "by library and genre"}}{{else}}{{t "by genre"}}{{end}}</span></td>
     <td>
       {{if not .Server.Enabled}}<span class="badge off">{{t "disabled"}}</span>
       {{else if .Status.Error}}<span class="badge off">{{t "failed"}}</span> <span class="muted">{{.Status.Error}}</span>

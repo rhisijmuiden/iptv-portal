@@ -54,8 +54,9 @@ type Item struct {
 	// Key is the item's id on the media server.
 	Key  string
 	Type ItemType
-	// CategoryID is the portal id of the item's library.
-	CategoryID int64
+	// CategoryIDs are the portal ids of the item's categories (its
+	// genres or its library), main category first. Episodes have none.
+	CategoryIDs []int64
 
 	Title         string
 	Plot          string

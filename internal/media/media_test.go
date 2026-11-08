@@ -3,9 +3,11 @@ package media
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -260,10 +262,28 @@ func TestCatalog(t *testing.T) {
 	if len(movies) != 2 || movies[0].Title != "Amelie" {
 		t.Fatalf("movies not sorted: %v", movies)
 	}
+	// Grouped by genre by default; movies without a genre under Other.
 	cats := c.Categories(Movies)
-	if len(cats) != 1 || cats[0].Name != "Films" || movies[0].CategoryID != cats[0].ID {
+	if len(cats) != 2 || cats[0].Name != "Action" || cats[1].Name != OtherName || !cats[1].Other ||
+		!slices.Equal(movies[0].CategoryIDs, []int64{cats[1].ID}) || !slices.Equal(movies[1].CategoryIDs, []int64{cats[0].ID}) {
 		t.Fatalf("categories = %+v", cats)
 	}
+	if s := c.Status(id); s.Categories != 3 { // Action, Other, and Other for the series
+		t.Fatalf("status categories = %d", s.Categories)
+	}
+
+	// By library: one category per library, as before.
+	s, _ := st.MediaServer(ctx, id)
+	s.Categories = store.CategoriesLibraries
+	st.SaveMediaServer(ctx, s)
+	c.Refresh(ctx)
+	cats = c.Categories(Movies)
+	if len(cats) != 1 || cats[0].Name != "Films" || !slices.Equal(c.Movies()[0].CategoryIDs, []int64{cats[0].ID}) {
+		t.Fatalf("library categories = %+v", cats)
+	}
+	s.Categories = store.CategoriesGenres
+	st.SaveMediaServer(ctx, s)
+	c.Refresh(ctx)
 	show := c.Shows()[0]
 	eps := c.Episodes(show.ID)
 	if len(eps) != 2 || eps[0].Title != "One" {
@@ -281,7 +301,7 @@ func TestCatalog(t *testing.T) {
 	}
 
 	// A server that stops answering keeps its items.
-	s, _ := st.MediaServer(ctx, id)
+	s, _ = st.MediaServer(ctx, id)
 	s.Token = "wrong"
 	st.SaveMediaServer(ctx, s)
 	c.Refresh(ctx)
@@ -300,5 +320,91 @@ func TestCatalog(t *testing.T) {
 	c.Refresh(ctx)
 	if len(c.Shows()) != 0 || len(c.Categories(Shows)) != 0 {
 		t.Fatal("deleted server still offered")
+	}
+}
+
+// fakeClient serves fixed libraries and items.
+type fakeClient struct {
+	libs  []Library
+	items map[string][]Item
+}
+
+func (f fakeClient) Libraries(context.Context) ([]Library, error) { return f.libs, nil }
+func (f fakeClient) Items(_ context.Context, l Library) ([]Item, error) {
+	return f.items[l.ID], nil
+}
+func (f fakeClient) URL(p string) string { return p }
+
+func TestCatalogGenres(t *testing.T) {
+	ctx := context.Background()
+	st, err := store.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	clients := map[string]fakeClient{
+		"jf": {libs: []Library{{ID: "a", Name: "Films", Type: Movies}, {ID: "k", Name: "Kids", Type: Movies},
+			{ID: "s", Name: "TV", Type: Shows}},
+			items: map[string][]Item{
+				"a": {{Key: "1", Type: Movie, Title: "Heat", Genres: []string{"Crime", " Action", "action"}, Stream: "/1"}},
+				"k": {{Key: "2", Type: Movie, Title: "Cars", Genres: []string{"Animation", "Action"}, Stream: "/2"}},
+				"s": {{Key: "3", Type: Show, Title: "Dark", Genres: []string{"Drama"}},
+					{Key: "4", Type: Episode, Title: "Secrets", ShowKey: "3", Stream: "/4"}},
+			}},
+		"px": {libs: []Library{{ID: "1", Name: "Movies", Type: Movies}},
+			items: map[string][]Item{
+				"1": {{Key: "9", Type: Movie, Title: "Alien", Genres: []string{"ACTION", "Horror"}, Stream: "/9"}},
+			}},
+	}
+	for _, name := range []string{"jf", "px"} {
+		if _, err := st.SaveMediaServer(ctx, store.MediaServer{Name: name, Kind: store.MediaJellyfin, URL: "http://x",
+			Token: "t", Libraries: []string{"a", "k", "s", "1"}, Enabled: true}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	c := NewCatalog(st, slog.New(slog.DiscardHandler))
+	c.newClient = func(s store.MediaServer, _ *http.Client) (Client, error) { return clients[s.Name], nil }
+	c.Refresh(ctx)
+
+	names := func(cats []Category) (out []string) {
+		for _, c := range cats {
+			out = append(out, fmt.Sprintf("%s:%d", c.Name, c.Items))
+		}
+		return out
+	}
+	// Genres are trimmed, de-duplicated and combined across servers.
+	cats := c.Categories(Movies)
+	if got := names(cats); !slices.Equal(got, []string{"Action:3", "Animation:1", "Crime:1", "Horror:1"}) {
+		t.Fatalf("movie categories = %v", got)
+	}
+	action := cats[0].ID
+	for _, m := range c.Movies() {
+		if !slices.Contains(m.CategoryIDs, action) {
+			t.Errorf("%s is not in Action: %v", m.Title, m.CategoryIDs)
+		}
+	}
+	if heat := c.Movies()[2]; heat.Title != "Heat" || len(heat.CategoryIDs) != 2 {
+		t.Fatalf("Heat = %+v", heat)
+	}
+	if got := names(c.Categories(Shows)); !slices.Equal(got, []string{"Drama:1"}) {
+		t.Fatalf("series categories = %v", got)
+	}
+	if eps := c.Episodes(c.Shows()[0].ID); len(eps) != 1 || eps[0].CategoryIDs != nil {
+		t.Fatalf("episodes = %+v", eps)
+	}
+
+	// Per library and genre.
+	servers, _ := st.MediaServers(ctx)
+	jf := servers[0]
+	jf.Categories = store.CategoriesLibraryGenres
+	st.SaveMediaServer(ctx, jf)
+	c.Refresh(ctx)
+	if got := names(c.Categories(Movies)); !slices.Equal(got,
+		[]string{"ACTION:1", "Films | Action:1", "Films | Crime:1", "Horror:1", "Kids | Action:1", "Kids | Animation:1"}) {
+		t.Fatalf("library genre categories = %v", got)
+	}
+	if got := names(c.ServerCategories(jf.ID)); !slices.Equal(got,
+		[]string{"Films | Action:1", "Films | Crime:1", "Kids | Action:1", "Kids | Animation:1", "TV | Drama:1"}) {
+		t.Fatalf("server categories = %v", got)
 	}
 }
