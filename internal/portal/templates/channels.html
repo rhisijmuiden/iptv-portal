@@ -1,0 +1,129 @@
+{{define "content"}}
+{{$d := .Data}}{{$csrf := .Session.CSRF}}
+<div class="titlebar">
+  <div>
+    <h1>{{t "My channels"}}</h1>
+    <p class="subtitle">{{t "Pick your favourite channels and put the channel groups in your own order. Your player shows the changes after you refresh its channel list."}}</p>
+  </div>
+</div>
+
+<section class="card" id="favourites">
+  <div class="card-head"><h2>{{icon "star"}} {{t "Favourites"}}</h2><span class="muted">{{len $d.Favourites}}</span></div>
+  {{if $d.Favourites}}
+  <ol class="fav-list">
+  {{range $i, $c := $d.Favourites}}
+    <li>
+      <span class="num">{{inc $i}}</span>
+      <span class="ch-logo">{{if $c.Logo}}<img src="{{$c.Logo}}" alt="" loading="lazy">{{else}}{{icon (kindIcon $c.Kind)}}{{end}}</span>
+      <span class="ch-name"><strong>{{$c.Name}}</strong>{{with $c.Category}} <span class="chip">{{.}}</span>{{end}}</span>
+      <span class="row-actions">
+        <form method="post" action="/account/channels/favourites/move"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="channel" value="{{$c.ID}}"><input type="hidden" name="dir" value="up">
+          <button class="secondary sm icon-only" title="{{t "Move up"}}"{{if eq $i 0}} disabled{{end}}>{{icon "arrow-up"}}<span class="sr-only">{{t "Move up"}}</span></button></form>
+        <form method="post" action="/account/channels/favourites/move"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="channel" value="{{$c.ID}}"><input type="hidden" name="dir" value="down">
+          <button class="secondary sm icon-only" title="{{t "Move down"}}"{{if eq (inc $i) (len $d.Favourites)}} disabled{{end}}>{{icon "arrow-down"}}<span class="sr-only">{{t "Move down"}}</span></button></form>
+        <form method="post" action="/account/channels/favourite"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="channel" value="{{$c.ID}}"><input type="hidden" name="on" value="0"><input type="hidden" name="from" value="favourites">
+          <button class="danger sm icon-only" title="{{t "Remove from favourites"}}">{{icon "trash"}}<span class="sr-only">{{t "Remove from favourites"}}</span></button></form>
+      </span>
+    </li>
+  {{end}}
+  </ol>
+  {{else}}
+  <p class="muted">{{t "You have no favourites yet. Tap the star next to a channel below to add it."}}</p>
+  {{end}}
+  <form method="post" action="/account/channels/favourites/group" class="inline fav-toggle">
+    <input type="hidden" name="csrf" value="{{$csrf}}">
+    <label class="check"><input type="checkbox" name="on" {{if $d.FavouritesGroup}}checked{{end}}> {{t "Show my favourites as a group at the top of the channel list in my player"}}</label>
+    <button class="secondary sm">{{t "Save"}}</button>
+  </form>
+</section>
+
+<div class="titlebar group-bar" id="groups">
+  <h2 class="section-title">{{t "Channel groups"}}</h2>
+  <div class="buttons">
+    <label class="search"><span class="sr-only">{{t "Search channels"}}</span>{{icon "search"}}<input type="search" id="channel-filter" placeholder="{{t "Search channels"}}" autocomplete="off"></label>
+    {{if $d.Ordered}}
+    <form method="post" action="/account/channels/groups/reset" onsubmit="return confirm('{{t "Put the groups back in the standard order?"}}')">
+      <input type="hidden" name="csrf" value="{{$csrf}}"><button class="secondary sm">{{icon "refresh"}}{{t "Standard order"}}</button></form>
+    {{end}}
+  </div>
+</div>
+{{if or $d.TV $d.Radio $d.Other}}
+{{template "groups" (groupList $d.TV $d.Open $csrf "TV")}}
+{{if $d.Other}}
+<section class="card group" id="group-0" data-group>
+  <div class="group-head">
+    <div class="group-title"><strong>{{t "Other"}}</strong> <span class="muted">{{tf "%d channels" (len $d.Other)}}</span></div>
+  </div>
+  <details><summary>{{t "Show channels"}}</summary>
+    {{template "channel-list" (channelList $d.Other $csrf)}}
+  </details>
+</section>
+{{end}}
+{{template "groups" (groupList $d.Radio $d.Open $csrf "Radio")}}
+<p class="muted"><small>{{t "Hidden groups are left out of your player; their channels stay available from your favourites. Groups locked with parental controls are changed on the Parental controls page."}}</small></p>
+{{else}}
+<section class="card empty">{{t "Your packages do not include any channels yet."}}</section>
+{{end}}
+<script>
+(function () {
+  var input = document.getElementById('channel-filter');
+  if (!input) return;
+  input.addEventListener('input', function () {
+    var q = input.value.trim().toLowerCase();
+    document.querySelectorAll('[data-group]').forEach(function (g) {
+      var hits = 0;
+      g.querySelectorAll('li[data-name]').forEach(function (li) {
+        var ok = !q || li.dataset.name.indexOf(q) >= 0;
+        li.hidden = !ok;
+        if (ok) hits++;
+      });
+      var title = (g.dataset.title || '').indexOf(q) >= 0;
+      g.hidden = q && !hits && !title;
+      var det = g.querySelector('details');
+      if (det && q && hits) det.open = true;
+    });
+  });
+})();
+</script>
+{{end}}
+
+{{define "groups"}}{{if .Groups}}
+<h3 class="kind-title">{{icon (kindIcon .Kind)}}{{t .Label}}</h3>
+{{range .Groups}}
+<section class="card group{{if .Hidden}} is-hidden{{end}}" id="group-{{.ID}}" data-group data-title="{{lower .Name}}">
+  <div class="group-head">
+    <div class="group-title">
+      <strong>{{.Name}}</strong> <span class="muted">{{if eq .ChannelCount 1}}{{t "1 channel"}}{{else}}{{tf "%d channels" .ChannelCount}}{{end}}</span>
+      {{if .Hidden}}<span class="badge idle">{{t "Hidden"}}</span>{{end}}
+      {{if .Locked}}<a class="badge warn" href="/account/parental">{{t "Locked"}}</a>{{end}}
+    </div>
+    <div class="row-actions">
+      <form method="post" action="/account/channels/groups/move"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="category" value="{{.ID}}"><input type="hidden" name="dir" value="up">
+        <button class="secondary sm icon-only" title="{{t "Move up"}}"{{if .First}} disabled{{end}}>{{icon "arrow-up"}}<span class="sr-only">{{t "Move up"}}</span></button></form>
+      <form method="post" action="/account/channels/groups/move"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="category" value="{{.ID}}"><input type="hidden" name="dir" value="down">
+        <button class="secondary sm icon-only" title="{{t "Move down"}}"{{if .Last}} disabled{{end}}>{{icon "arrow-down"}}<span class="sr-only">{{t "Move down"}}</span></button></form>
+      <form method="post" action="/account/channels/groups/hide"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="category" value="{{.ID}}">
+        {{if .Hidden}}<input type="hidden" name="hidden" value="0"><button class="secondary sm">{{icon "eye"}}<span class="label">{{t "Show"}}</span></button>
+        {{else}}<input type="hidden" name="hidden" value="1"><button class="secondary sm">{{icon "eye-off"}}<span class="label">{{t "Hide"}}</span></button>{{end}}</form>
+    </div>
+  </div>
+  <details{{if eq $.Open .ID}} open{{end}}><summary>{{t "Show channels"}}</summary>
+    {{template "channel-list" (channelList .Channels $.CSRF)}}
+  </details>
+</section>
+{{end}}{{end}}{{end}}
+
+{{define "channel-list"}}
+<ul class="channel-list">
+{{range .Channels}}
+  <li data-name="{{lower .Name}}">
+    <span class="ch-logo">{{if .Logo}}<img src="{{.Logo}}" alt="" loading="lazy">{{else}}{{icon (kindIcon .Kind)}}{{end}}</span>
+    <span class="ch-name">{{.Name}}</span>
+    <form method="post" action="/account/channels/favourite"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="channel" value="{{.ID}}">
+      {{if .Favourite}}<input type="hidden" name="on" value="0"><button class="star on" title="{{t "Remove from favourites"}}" aria-pressed="true">{{icon "star"}}<span class="sr-only">{{t "Remove from favourites"}}</span></button>
+      {{else}}<input type="hidden" name="on" value="1"><button class="star" title="{{t "Add to favourites"}}" aria-pressed="false">{{icon "star"}}<span class="sr-only">{{t "Add to favourites"}}</span></button>{{end}}
+    </form>
+  </li>
+{{end}}
+</ul>
+{{end}}

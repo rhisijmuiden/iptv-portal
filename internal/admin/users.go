@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/rhisijmuiden/iptv-portal/internal/mail"
+	"github.com/rhisijmuiden/iptv-portal/internal/prefs"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 	"github.com/rhisijmuiden/iptv-portal/internal/web"
 )
@@ -84,6 +85,8 @@ type userFormData struct {
 	Devices []store.Device
 	Used    []usedDevice
 	Now     time.Time
+	// Prefs are the user's favourites and parental controls.
+	Prefs prefs.Form
 }
 
 // usedDevice is a player that watched with an account.
@@ -146,6 +149,10 @@ func (h *Handler) renderUserFormData(w http.ResponseWriter, r *http.Request, ses
 		}
 		for _, u := range used {
 			d.Used = append(d.Used, usedDevice{UsedDevice: u, App: web.PlayerName(u.UserAgent)})
+		}
+		if d.Prefs, err = prefs.FormData(r.Context(), h.store, h.media, d.User); err != nil {
+			h.serverError(w, err)
+			return
 		}
 	}
 	h.render(w, r, "user", page{Title: title, Nav: "users", Session: &sess, Error: errMsg, Data: d})

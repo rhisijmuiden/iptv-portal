@@ -1,0 +1,124 @@
+{{define "content"}}
+{{$d := .Data}}{{$csrf := .Session.CSRF}}
+<div class="titlebar">
+  <div>
+    <h1>{{t "Parental controls"}}</h1>
+    <p class="subtitle">{{t "Lock channel groups and On Demand categories with a PIN. Your player does not show what is locked until you unlock it here with your PIN."}}</p>
+  </div>
+</div>
+
+{{if not $d.PINSet}}
+<div class="grid-2">
+<section class="card">
+  <h2>{{icon "shield"}} {{t "How it works"}}</h2>
+  <ol class="how">
+    <li>{{t "Choose a PIN of 4 to 8 digits. Only someone who knows it can change these settings."}}</li>
+    <li>{{t "Lock the channel groups and On Demand categories children should not see, or set an age limit for movies and series."}}</li>
+    <li>{{t "Locked content disappears from your player. To watch it yourself, unlock it here for a few hours."}}</li>
+  </ol>
+</section>
+<form method="post" action="/account/parental/pin" class="card stack-card">
+  <input type="hidden" name="csrf" value="{{$csrf}}">
+  <h2>{{icon "key"}} {{t "Set a PIN"}}</h2>
+  <label>{{t "PIN"}} <input type="password" name="pin" inputmode="numeric" pattern="[0-9]{4,8}" minlength="4" maxlength="8" autocomplete="new-password" required>
+    <small>{{t "4 to 8 digits. Do not use the password of your account."}}</small></label>
+  <label>{{t "Repeat PIN"}} <input type="password" name="confirm" inputmode="numeric" pattern="[0-9]{4,8}" minlength="4" maxlength="8" autocomplete="new-password" required></label>
+  <div class="form-actions"><button>{{t "Set PIN"}}</button></div>
+</form>
+</div>
+
+{{else if not $d.Open}}
+<section class="card narrow pin-card">
+  <div class="pin-icon">{{icon "lock"}}</div>
+  {{template "status" $d}}
+  <form method="post" action="/account/parental/open" class="stack">
+    <input type="hidden" name="csrf" value="{{$csrf}}">
+    <label>{{t "PIN"}} <input type="password" name="pin" inputmode="numeric" pattern="[0-9]{4,8}" maxlength="8" autocomplete="off" autofocus required>
+      <small>{{t "Enter your PIN to change the parental controls or to unlock."}}</small></label>
+    <button>{{icon "unlock"}}{{t "Continue"}}</button>
+  </form>
+  {{if $d.Unlocked}}
+  <form method="post" action="/account/parental/lock" class="spaced">
+    <input type="hidden" name="csrf" value="{{$csrf}}">
+    <button class="secondary">{{icon "lock"}}{{t "Lock again now"}}</button>
+  </form>
+  {{end}}
+  <p class="muted center"><small>{{t "Forgot your PIN? Ask the portal admin to remove it, then set a new one."}}</small></p>
+</section>
+
+{{else}}
+<section class="card status-card">
+  <div class="card-head">
+    {{template "status" $d}}
+    <form method="post" action="/account/parental/close"><input type="hidden" name="csrf" value="{{$csrf}}">
+      <button class="secondary sm" title="{{t "Close the settings until the PIN is entered again"}}">{{icon "lock"}}<span class="label">{{t "Close"}}</span></button></form>
+  </div>
+  <div class="buttons">
+  {{if $d.Unlocked}}
+    <form method="post" action="/account/parental/lock"><input type="hidden" name="csrf" value="{{$csrf}}"><button>{{icon "lock"}}{{t "Lock again now"}}</button></form>
+  {{else}}
+    {{range $d.Hours}}
+    <form method="post" action="/account/parental/unlock"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="hours" value="{{.}}">
+      <button class="secondary">{{icon "unlock"}}{{if eq . 1}}{{t "Unlock for 1 hour"}}{{else}}{{tf "Unlock for %d hours" .}}{{end}}</button></form>
+    {{end}}
+  {{end}}
+  </div>
+  <p class="muted"><small>{{tf "These settings stay open until %s. Your player shows the change after you refresh its channel list or restart it." (clock $d.OpenUntil)}}</small></p>
+</section>
+
+<form method="post" action="/account/parental/save" class="stack">
+  <input type="hidden" name="csrf" value="{{$csrf}}">
+  <section class="card">
+    <h2>{{icon "tv"}} {{t "Channel groups"}}</h2>
+    {{if or $d.TV $d.Radio}}
+    <p class="muted">{{t "Tick the groups to lock."}}</p>
+    {{with $d.TV}}<div class="lock-grid">{{range .}}{{template "lock" (lockItem . "group")}}{{end}}</div>{{end}}
+    {{with $d.Radio}}<h3 class="kind-title">{{icon "radio"}}{{t "Radio"}}</h3><div class="lock-grid">{{range .}}{{template "lock" (lockItem . "group")}}{{end}}</div>{{end}}
+    {{else}}
+    <p class="muted">{{t "Your packages do not include any channel groups."}}</p>
+    {{end}}
+  </section>
+  {{if $d.OnDemand}}
+  <section class="card">
+    <h2>{{icon "film"}} {{t "On Demand"}}</h2>
+    <label class="age">{{t "Age limit"}}
+      <select name="max_age">
+        <option value="0">{{t "No age limit"}}</option>
+        {{range $d.Ages}}<option value="{{.}}"{{if eq . $d.MaxAge}} selected{{end}}>{{tf "Up to %d years" .}}</option>{{end}}
+      </select>
+      <small>{{t "Hides movies and series with a higher age rating. Titles without an age rating are always shown."}}</small></label>
+    {{with $d.Movies}}<h3 class="kind-title">{{t "Movies"}}</h3><div class="lock-grid">{{range .}}{{template "lock" (lockItem . "media")}}{{end}}</div>{{end}}
+    {{with $d.Shows}}<h3 class="kind-title">{{t "Series"}}</h3><div class="lock-grid">{{range .}}{{template "lock" (lockItem . "media")}}{{end}}</div>{{end}}
+  </section>
+  {{else}}
+  <input type="hidden" name="max_age" value="{{$d.MaxAge}}">
+  {{end}}
+  <div class="form-actions"><button>{{t "Save parental controls"}}</button></div>
+</form>
+
+<form method="post" action="/account/parental/pin" class="stack spaced">
+  <input type="hidden" name="csrf" value="{{$csrf}}">
+  <section class="card stack-card">
+    <h2>{{icon "key"}} {{t "Change PIN"}}</h2>
+    <div class="row">
+      <label>{{t "New PIN"}} <input type="password" name="pin" inputmode="numeric" pattern="[0-9]{4,8}" minlength="4" maxlength="8" autocomplete="new-password" required></label>
+      <label>{{t "Repeat PIN"}} <input type="password" name="confirm" inputmode="numeric" pattern="[0-9]{4,8}" minlength="4" maxlength="8" autocomplete="new-password" required></label>
+    </div>
+  </section>
+  <div class="form-actions"><button class="secondary">{{t "Change PIN"}}</button></div>
+</form>
+{{end}}
+{{end}}
+
+{{define "status"}}
+<div class="lock-status">
+  {{if .Unlocked}}<span class="badge warn">{{icon "unlock"}}{{tf "Unlocked until %s" (clock (deref .UnlockedUntil))}}</span>
+  {{else}}<span class="badge on">{{icon "lock"}}{{t "Locked"}}</span>{{end}}
+  <span class="muted">{{lockSummary .Form}}</span>
+</div>
+{{end}}
+
+{{define "lock"}}
+<label class="check lock-item"><input type="checkbox" name="{{.Field}}" value="{{.Row.Key}}"{{if .Row.Locked}} checked{{end}}>
+  <span>{{if eq .Row.Name "Other"}}{{t "Other"}}{{else}}{{.Row.Name}}{{end}} <small>{{.Row.Count}}</small></span></label>
+{{end}}

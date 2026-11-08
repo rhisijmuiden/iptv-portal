@@ -283,6 +283,10 @@ When **account pages** are on (Settings), users log in at `<portal>/account` wit
 - register the **MAC address** of up to 10 devices, and see which players watched with their account in the last 30 days and which are online now. Admins see both on the user page;
 - compare the **packages** (channels per category, radio, On Demand, device limit, plus an optional description and price you set on the package) and **request** one. Answer requests under **Subscribers → Package requests**: approve to add the package or to replace the user's packages, or reject, with an optional reply. Users with an email address get the answer by email when a mail server is set up. Untick **Users can see and request this package** to keep a package off the account pages;
 - see their own **viewing statistics**: views per day, per hour of the day, TV/radio/On Demand split and the channels they watched.
+- pick **favourite channels** under **My channels**. Players get them as a *Favourites* group at the top of the channel list (Xtream and M3U; the user can turn the group off), in the user's own order. Users can also put the channel groups in their own order and **hide** groups they never watch;
+- set up **parental controls** with a PIN of 4-8 digits: lock channel groups and On Demand categories, and set an age limit for On Demand (titles without an age rating are always shown). Locked content is left out of the player (lists, guide and playback) until someone unlocks it with the PIN for 1, 3 or 12 hours. The settings themselves need the PIN, since the account login is the same as the player's; 5 wrong PINs block further tries for 15 minutes. Admins see favourites and locks on the user page, can change the locks without the PIN, and remove a forgotten PIN.
+
+Players keep the channel list they loaded, so changes show up after refreshing the playlist or restarting the app.
 
 ### Connection limits
 
