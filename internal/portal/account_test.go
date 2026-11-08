@@ -307,7 +307,7 @@ func TestAccountInDutch(t *testing.T) {
 	b.client.Jar.SetCookies(u, []*http.Cookie{{Name: i18n.Cookie, Value: "nl"}})
 	b.do("POST", "/account/login", url.Values{"username": {"jan"}, "password": {"secret1"}})
 	_, _, body := b.do("GET", "/account", nil)
-	for _, want := range []string{"Hallo, jan", "Je tv instellen", "Kijkgeschiedenis", "Je abonnement", `lang="nl"`} {
+	for _, want := range []string{"Hallo, jan", "Je tv instellen", "Kijkstatistieken", "Mijn apparaten", "Je abonnement", `lang="nl"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Dutch overview lacks %q:\n%s", want, body)
 		}

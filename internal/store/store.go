@@ -225,6 +225,48 @@ var migrations = []string{
 
 	// On Demand is grouped by genre unless a server says otherwise.
 	`ALTER TABLE media_servers ADD COLUMN categories TEXT NOT NULL DEFAULT 'genres';`,
+
+	// Setup guides, devices users register, and package requests from the
+	// account pages. The default guides are added by seedGuides.
+	`CREATE TABLE guides (
+		id          INTEGER PRIMARY KEY,
+		builtin     TEXT NOT NULL DEFAULT '',
+		icon        TEXT NOT NULL DEFAULT 'tv',
+		title       TEXT NOT NULL,
+		body        TEXT NOT NULL,
+		title_nl    TEXT NOT NULL DEFAULT '',
+		body_nl     TEXT NOT NULL DEFAULT '',
+		sort_order  INTEGER NOT NULL DEFAULT 0,
+		enabled     INTEGER NOT NULL DEFAULT 1
+	);
+	CREATE TABLE user_devices (
+		id         INTEGER PRIMARY KEY,
+		user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		name       TEXT NOT NULL,
+		mac        TEXT NOT NULL,
+		created_at DATETIME NOT NULL,
+		UNIQUE (user_id, mac)
+	);
+	CREATE TABLE package_requests (
+		id         INTEGER PRIMARY KEY,
+		user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		package_id INTEGER NOT NULL REFERENCES packages(id) ON DELETE CASCADE,
+		message    TEXT NOT NULL DEFAULT '',
+		status     TEXT NOT NULL DEFAULT 'pending',
+		reply      TEXT NOT NULL DEFAULT '',
+		created_at DATETIME NOT NULL,
+		decided_at DATETIME
+	);
+	CREATE INDEX package_requests_user ON package_requests(user_id);
+	ALTER TABLE packages ADD COLUMN description TEXT NOT NULL DEFAULT '';
+	ALTER TABLE packages ADD COLUMN price TEXT NOT NULL DEFAULT '';
+	ALTER TABLE packages ADD COLUMN public INTEGER NOT NULL DEFAULT 1;`,
+}
+
+// afterMigration runs Go code in the transaction of a migration, keyed by
+// schema version.
+var afterMigration = map[int]func(context.Context, *sql.Tx) error{
+	12: seedGuides,
 }
 
 func (s *Store) migrate(ctx context.Context) error {
@@ -240,6 +282,12 @@ func (s *Store) migrate(ctx context.Context) error {
 		if _, err := tx.ExecContext(ctx, migrations[i]); err != nil {
 			tx.Rollback()
 			return fmt.Errorf("migration %d: %w", i+1, err)
+		}
+		if fn := afterMigration[i+1]; fn != nil {
+			if err := fn(ctx, tx); err != nil {
+				tx.Rollback()
+				return fmt.Errorf("migration %d: %w", i+1, err)
+			}
 		}
 		if _, err := tx.ExecContext(ctx, fmt.Sprintf(`PRAGMA user_version = %d`, i+1)); err != nil {
 			tx.Rollback()

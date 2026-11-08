@@ -5,6 +5,13 @@
     <p class="subtitle">{{t "Add the portal to your TV box or IPTV app with these details."}}</p>
   </div>
 </div>
+{{with .Data}}
+<h2 class="section-title">{{t "Step-by-step guides"}}</h2>
+<div class="guide-cards">
+  {{range .}}<a class="card guide-card" href="/account/guides/{{.ID}}"><span class="stat-icon">{{icon .Icon}}</span><div><strong>{{.Title}}</strong>{{with .Summary}}<span>{{.}}</span>{{end}}</div></a>{{end}}
+</div>
+<h2 class="section-title">{{t "Your details"}}</h2>
+{{end}}
 <section class="card">
   <h2>{{t "Xtream Codes login (recommended)"}}</h2>
   <p class="muted">{{t "For MyTVOnline (Formuler), TiviMate, IPTV Smarters and most other apps."}}</p>

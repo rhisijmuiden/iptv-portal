@@ -36,6 +36,8 @@
     <a href="{{base}}/users" {{if eq .Nav "users"}}class="active"{{end}}>{{icon "users"}}{{t "Users"}}</a>
     <a href="{{base}}/packages" {{if eq .Nav "packages"}}class="active"{{end}}>{{icon "package"}}{{t "Packages"}}</a>
     <a href="{{base}}/invites" {{if eq .Nav "invites"}}class="active"{{end}}>{{icon "mail"}}{{t "Invitations"}}</a>
+    <a href="{{base}}/requests" {{if eq .Nav "requests"}}class="active"{{end}}>{{icon "upgrade"}}{{t "Package requests"}}{{if .Requests}}<span class="nav-count" title="{{t "Requests waiting for an answer"}}">{{.Requests}}</span>{{end}}</a>
+    <a href="{{base}}/guides" {{if eq .Nav "guides"}}class="active"{{end}}>{{icon "book"}}{{t "Setup guides"}}</a>
     <p class="nav-group">{{t "System"}}</p>
     <a href="{{base}}/settings" {{if eq .Nav "settings"}}class="active"{{end}}>{{icon "settings"}}{{t "Settings"}}</a>
     <a href="{{base}}/backups" {{if eq .Nav "backups"}}class="active"{{end}}>{{icon "archive"}}{{t "Backups"}}</a>

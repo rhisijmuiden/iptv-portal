@@ -59,6 +59,34 @@
     <button class="secondary"{{if not .Data.Connections}} disabled{{end}}>{{t "Release connections"}}</button>
   </form>
 </section>
+<section class="card" id="devices">
+  <h2>{{t "Devices"}}</h2>
+  {{if .Data.Devices}}
+  <table>
+    <thead><tr><th>{{t "Name"}}</th><th>{{t "MAC address"}}</th><th>{{t "Added"}}</th><th></th></tr></thead>
+    <tbody>
+    {{range .Data.Devices}}
+    <tr><td>{{.Name}}</td><td><code>{{.MAC}}</code></td><td class="nowrap">{{date (ptr .CreatedAt)}}</td>
+      <td class="actions"><form method="post" action="{{base}}/users/{{$u.ID}}/devices/{{.ID}}/delete" onsubmit="return confirm('{{t "Remove this device?"}}')">
+        <input type="hidden" name="csrf" value="{{$.Session.CSRF}}"><button class="danger sm" title="{{t "Remove"}}">{{icon "trash"}}<span class="label">{{t "Remove"}}</span></button></form></td></tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">{{t "The user has not registered a device (MAC address) on their account page."}}</p>
+  {{end}}
+  {{with .Data.Used}}
+  <h2>{{t "Used to watch in the last 30 days"}}</h2>
+  <table>
+    <thead><tr><th>{{t "Player"}}</th><th>{{t "IP address"}}</th><th>{{t "Views"}}</th><th>{{t "Last used"}}</th></tr></thead>
+    <tbody>
+    {{range .}}
+    <tr><td><span title="{{.UserAgent}}">{{t .App}}</span></td><td><code>{{.IP}}</code></td><td>{{.Views}}</td><td class="nowrap">{{ago $.Data.Now .Last}}</td></tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{end}}
+</section>
 <section class="card">
   <h2>{{t "Setup details"}}</h2>
   <p>{{t "Give these to the user for their TV box (Xtream Codes login):"}}</p>

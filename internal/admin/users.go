@@ -10,6 +10,7 @@ import (
 
 	"github.com/rhisijmuiden/iptv-portal/internal/mail"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
+	"github.com/rhisijmuiden/iptv-portal/internal/web"
 )
 
 // formIDs returns the positive integer values of a multi-value form field.
@@ -78,6 +79,17 @@ type userFormData struct {
 	SendLogin bool // the "email the login details" box is ticked
 	// Connections is how many places the user watches from now.
 	Connections int
+	// Devices are the devices the user registered on their account page,
+	// Used the players that watched in the last 30 days.
+	Devices []store.Device
+	Used    []usedDevice
+	Now     time.Time
+}
+
+// usedDevice is a player that watched with an account.
+type usedDevice struct {
+	store.UsedDevice
+	App string
 }
 
 func (h *Handler) userForm(w http.ResponseWriter, r *http.Request, sess store.Session) {
@@ -122,6 +134,19 @@ func (h *Handler) renderUserFormData(w http.ResponseWriter, r *http.Request, ses
 	d.Packages, d.PortalURL, d.MailOn = pkgs, PortalURL(st, r), st.Mail.Configured()
 	if d.User.ID != 0 {
 		d.Connections = h.activity.ActiveConnections(d.User.ID)
+		d.Now = time.Now()
+		if d.Devices, err = h.store.UserDevices(r.Context(), d.User.ID); err != nil {
+			h.serverError(w, err)
+			return
+		}
+		used, err := h.store.UsedDevices(r.Context(), d.User.ID, d.Now.AddDate(0, 0, -30), 20)
+		if err != nil {
+			h.serverError(w, err)
+			return
+		}
+		for _, u := range used {
+			d.Used = append(d.Used, usedDevice{UsedDevice: u, App: web.PlayerName(u.UserAgent)})
+		}
 	}
 	h.render(w, r, "user", page{Title: title, Nav: "users", Session: &sess, Error: errMsg, Data: d})
 }
@@ -276,7 +301,7 @@ type packageFormData struct {
 }
 
 func (h *Handler) packageForm(w http.ResponseWriter, r *http.Request, sess store.Session) {
-	var p store.Package
+	p := store.Package{Public: true}
 	if id, ok := pathID(r); ok {
 		var err error
 		p, err = h.store.Package(r.Context(), id)
@@ -315,6 +340,9 @@ func (h *Handler) packageSave(w http.ResponseWriter, r *http.Request, sess store
 		AllChannels: r.FormValue("all_channels") == "on",
 		CategoryIDs: formIDs(r, "category"),
 		OnDemand:    r.FormValue("on_demand") == "on",
+		Description: r.FormValue("description"),
+		Price:       r.FormValue("price"),
+		Public:      r.FormValue("public") == "on",
 	}
 	if id, ok := pathID(r); ok {
 		p.ID = id

@@ -1,0 +1,51 @@
+{{define "content"}}
+{{$d := .Data}}{{$now := $d.Now}}
+<div class="titlebar">
+  <div>
+    <h1>{{t "Package requests"}}</h1>
+    <p class="subtitle">{{t "Users ask for a package on their account page. Approve to give it to them, in addition to their packages or instead of them."}}</p>
+  </div>
+  <a class="button secondary" href="{{base}}/packages">{{icon "package"}}{{t "Packages"}}</a>
+</div>
+{{if $d.Open}}
+{{range $d.Open}}
+<section class="card request-card">
+  <div class="card-head">
+    <h2><a href="{{base}}/users/{{.UserID}}">{{.Username}}</a> {{t "asks for"}} <a href="{{base}}/packages/{{.PackageID}}">{{.Package}}</a></h2>
+    <span class="muted nowrap">{{ago $now .CreatedAt}}</span>
+  </div>
+  <table class="details">
+    <tr><th>{{t "Current packages"}}</th><td>{{range $i, $p := .Current}}{{if $i}}, {{end}}{{$p}}{{else}}<span class="muted">{{t "none"}}</span>{{end}}</td></tr>
+    {{with .Message}}<tr><th>{{t "Message"}}</th><td>{{.}}</td></tr>{{end}}
+  </table>
+  <form method="post" action="{{base}}/requests/{{.ID}}" class="stack">
+    <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+    <label>{{t "Reply to the user (optional)"}} <input name="reply" maxlength="500" placeholder="{{if $d.MailOn}}{{if .Email}}{{t "Shown on their account page and emailed to them"}}{{else}}{{t "Shown on their account page"}}{{end}}{{else}}{{t "Shown on their account page"}}{{end}}"></label>
+    <div class="form-actions">
+      <button name="action" value="add">{{icon "plus"}}{{t "Approve, add to their packages"}}</button>
+      {{if .Current}}<button name="action" value="replace" class="secondary">{{icon "swap"}}{{t "Approve, replace their packages"}}</button>{{end}}
+      <button name="action" value="reject" class="danger">{{icon "ban"}}{{t "Reject"}}</button>
+    </div>
+  </form>
+</section>
+{{end}}
+{{else}}
+<section class="card empty">{{t "No requests are waiting for an answer."}}</section>
+{{end}}
+{{with $d.Decided}}
+<h2 class="section-title">{{t "Answered"}}</h2>
+<section class="card flush">
+  <table>
+    <thead><tr><th>{{t "User"}}</th><th>{{t "Package"}}</th><th>{{t "Status"}}</th><th>{{t "Reply"}}</th><th>{{t "Answered"}}</th></tr></thead>
+    <tbody>
+    {{range .}}
+    <tr><td><a class="name" href="{{base}}/users/{{.UserID}}">{{.Username}}</a></td><td>{{.Package}}</td>
+      <td>{{if eq .Status "approved"}}<span class="badge on">{{t "Approved"}}</span>{{else if eq .Status "rejected"}}<span class="badge off">{{t "Rejected"}}</span>{{else}}<span class="badge idle">{{t "Withdrawn"}}</span>{{end}}</td>
+      <td>{{with .Reply}}{{.}}{{else}}<span class="muted">-</span>{{end}}</td>
+      <td class="nowrap">{{with .DecidedAt}}{{ago $now .}}{{end}}</td></tr>
+    {{end}}
+    </tbody>
+  </table>
+</section>
+{{end}}
+{{end}}

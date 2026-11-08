@@ -22,13 +22,19 @@
   {{if $d.Radio}}<div class="card stat"><span class="stat-icon">{{icon "radio"}}</span><div><strong>{{$d.Radio}}</strong><span>{{t "radio stations"}}</span></div></div>{{end}}
   <a class="card stat" href="/account/history"><span class="stat-icon">{{icon "chart"}}</span><div><strong>{{duration $d.Watched.Time}}</strong><span>{{t "watched in the last 30 days"}}</span></div></a>
 </div>
+<div class="actions-grid spaced-bottom">
+  <a class="action" href="/account/setup">{{icon "book"}}{{t "Setup guides"}}</a>
+  <a class="action" href="/account/devices">{{icon "devices"}}{{t "My devices"}}</a>
+  <a class="action" href="/account/packages">{{icon "upgrade"}}{{t "Upgrade your package"}}</a>
+  <a class="action" href="/account/history">{{icon "chart"}}{{t "Viewing statistics"}}</a>
+</div>
 <section class="card">
   <h2>{{t "Your subscription"}}</h2>
   <table class="details">
     <tr><th>{{t "Username"}}</th><td><code>{{$u.Username}}</code></td></tr>
     <tr><th>{{t "Status"}}</th><td>{{if not $u.Enabled}}<span class="badge off">{{t "Disabled"}}</span>{{else if $u.Expired}}<span class="badge off">{{t "Expired"}}</span>{{else}}<span class="badge on">{{t "Active"}}</span>{{end}}</td></tr>
     <tr><th>{{t "Valid until"}}</th><td>{{with $u.ExpiresAt}}{{longdate .}}{{else}}{{t "No end date"}}{{end}}</td></tr>
-    <tr><th>{{t "Packages"}}</th><td>{{range $i, $p := $u.Packages}}{{if $i}}, {{end}}{{$p}}{{else}}<span class="muted">{{t "none"}}</span>{{end}}</td></tr>
+    <tr><th>{{t "Packages"}}</th><td>{{range $i, $p := $u.Packages}}{{if $i}}, {{end}}{{$p}}{{else}}<span class="muted">{{t "none"}}</span>{{end}} · <a href="/account/packages">{{t "Upgrade"}}</a></td></tr>
     <tr><th>{{t "On Demand (movies and series)"}}</th><td>{{if $d.OnDemand}}{{t "Included"}}{{else}}{{t "Not included"}}{{end}}</td></tr>
     <tr><th>{{t "Devices at the same time"}}</th><td>{{with $u.ConnectionLimit}}{{if eq . 1}}{{t "1 device"}}{{else}}{{tf "%d devices" .}}{{end}}{{else}}{{t "No limit"}}{{end}}</td></tr>
     <tr><th>{{t "Member since"}}</th><td>{{longdate $u.CreatedAt}}</td></tr>

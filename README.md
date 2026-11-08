@@ -274,6 +274,15 @@ systemctl restart iptv-portal
 
 Invitation links point to the portal (port 80 by default), not the admin panel, so the admin panel does not have to be reachable from the internet.
 
+### Account pages for users
+
+When **account pages** are on (Settings), users log in at `<portal>/account` with their player username and password. There they can:
+
+- read **setup guides** (Formuler/MyTVOnline, TiviMate, smart TVs with IPTV Smarters, Apple devices, VLC and Kodi) with their own server address and username filled in. Edit, hide, reorder or add guides under **Subscribers → Setup guides**; guides are written in simple Markdown with an optional Dutch version, and removed standard guides can be added back;
+- register the **MAC address** of up to 10 devices, and see which players watched with their account in the last 30 days and which are online now. Admins see both on the user page;
+- compare the **packages** (channels per category, radio, On Demand, device limit, plus an optional description and price you set on the package) and **request** one. Answer requests under **Subscribers → Package requests**: approve to add the package or to replace the user's packages, or reject, with an optional reply. Users with an email address get the answer by email when a mail server is set up. Untick **Users can see and request this package** to keep a package off the account pages;
+- see their own **viewing statistics**: views per day, per hour of the day, TV/radio/On Demand split and the channels they watched.
+
 ### Connection limits
 
 To stop people from sharing an account, set **Maximum connections per user** on a package, or **Maximum connections** on a user to override it. It is the number of places (IP addresses) that can watch at the same time; a user with several packages gets the highest limit, and leaving it empty everywhere means no limit. Players see the limit and their current connections in the Xtream account info.

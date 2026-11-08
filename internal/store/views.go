@@ -388,3 +388,67 @@ func (s *Store) UnwatchedChannels(ctx context.Context, kind string, since time.T
 	})
 	return out, nil
 }
+
+// HourViews counts the views that started in one hour of the day.
+type HourViews struct {
+	Hour  int // 0-23, local time
+	Views int
+	Time  time.Duration
+}
+
+// ViewsByHour returns the views matching f per hour of the day, all 24
+// hours included.
+func (s *Store) ViewsByHour(ctx context.Context, f ViewFilter) ([]HourViews, error) {
+	where, args := f.where()
+	rows, err := s.db.QueryContext(ctx, `SELECT CAST(strftime('%H', v.started_at, 'unixepoch', 'localtime') AS INTEGER) AS hour,
+		COUNT(*), SUM(v.ended_at - v.started_at) FROM views v`+where+` GROUP BY hour`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]HourViews, 24)
+	for i := range out {
+		out[i].Hour = i
+	}
+	for rows.Next() {
+		var h HourViews
+		var secs int64
+		if err := rows.Scan(&h.Hour, &h.Views, &secs); err != nil {
+			return nil, err
+		}
+		if h.Hour >= 0 && h.Hour < 24 {
+			h.Time = time.Duration(secs) * time.Second
+			out[h.Hour] = h
+		}
+	}
+	return out, rows.Err()
+}
+
+// KindViews adds up the views of one kind (TV, radio, On Demand).
+type KindViews struct {
+	Kind  string
+	Views int
+	Time  time.Duration
+}
+
+// ViewsByKind returns the views matching f per kind, longest first.
+func (s *Store) ViewsByKind(ctx context.Context, f ViewFilter) ([]KindViews, error) {
+	where, args := f.where()
+	rows, err := s.db.QueryContext(ctx, `SELECT v.kind, COUNT(*), SUM(v.ended_at - v.started_at) FROM views v`+where+`
+		GROUP BY v.kind ORDER BY SUM(v.ended_at - v.started_at) DESC`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []KindViews
+	for rows.Next() {
+		var k KindViews
+		var secs int64
+		if err := rows.Scan(&k.Kind, &k.Views, &secs); err != nil {
+			return nil, err
+		}
+		k.Time = time.Duration(secs) * time.Second
+		out = append(out, k)
+	}
+	return out, rows.Err()
+}

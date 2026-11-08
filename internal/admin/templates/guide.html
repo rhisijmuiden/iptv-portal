@@ -1,0 +1,55 @@
+{{define "content"}}
+{{$d := .Data}}{{$g := $d.Guide}}
+<a class="back" href="{{base}}/guides">&larr; {{t "Setup guides"}}</a>
+<h1>{{t .Title}}</h1>
+<div class="guide-layout">
+<section class="card">
+<form method="post" action="{{base}}{{if $g.ID}}/guides/{{$g.ID}}{{else}}/guides/new{{end}}" class="stack">
+  <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+  <div class="row">
+    <label>{{t "Title"}} <input name="title" value="{{$g.Title}}" required placeholder="{{t "For example Formuler with MyTVOnline"}}"></label>
+    <label>{{t "Title in Dutch"}} <input name="title_nl" value="{{$g.TitleNL}}" placeholder="{{t "Optional"}}"></label>
+  </div>
+  <label>{{t "Text"}} <textarea name="body" rows="16" required class="mono">{{$g.Body}}</textarea></label>
+  <label>{{t "Text in Dutch"}} <textarea name="body_nl" rows="10" class="mono" placeholder="{{t "Optional. Without it, Dutch users see the English text."}}">{{$g.BodyNL}}</textarea></label>
+  <div class="row">
+    <fieldset>
+      <legend>{{t "Icon"}}</legend>
+      <div class="icon-choice">{{range $d.Icons}}<label class="check"><input type="radio" name="icon" value="{{.}}"{{if eq . $g.Icon}} checked{{end}}> {{icon .}}</label>{{end}}</div>
+    </fieldset>
+    <label>{{t "Order"}} <input type="number" name="sort_order" value="{{$g.SortOrder}}" class="small"><small>{{t "Lower numbers come first."}}</small></label>
+  </div>
+  <label class="check"><input type="checkbox" name="enabled" {{if $g.Enabled}}checked{{end}}> {{t "Show on the account pages"}}</label>
+  <div class="form-actions">
+    <button>{{t "Save"}}</button>
+    <a class="button secondary" href="{{base}}/guides">{{t "Cancel"}}</a>
+  </div>
+</form>
+</section>
+<aside>
+  <section class="card">
+    <h2>{{t "Writing a guide"}}</h2>
+    <table class="details compact">
+      <tr><th><code>## {{t "Heading"}}</code></th><td>{{t "a heading"}}</td></tr>
+      <tr><th><code>1. {{t "Step"}}</code></th><td>{{t "a numbered step"}}</td></tr>
+      <tr><th><code>- {{t "Item"}}</code></th><td>{{t "a bullet"}}</td></tr>
+      <tr><th><code>&gt; {{t "Tip"}}</code></th><td>{{t "a highlighted tip"}}</td></tr>
+      <tr><th><code>**{{t "bold"}}**</code></th><td>{{t "bold text"}}</td></tr>
+      <tr><th><code>`{{t "code"}}`</code></th><td>{{t "a value to type over"}}</td></tr>
+      <tr><th><code>[{{t "text"}}](https://…)</code></th><td>{{t "a link"}}</td></tr>
+    </table>
+    <p class="muted"><small>{{t "An empty line starts a new paragraph. These placeholders are replaced with the details of the user reading the guide:"}}</small></p>
+    <p>{{range $i, $p := $d.Placeholders}}{{if $i}} {{end}}<code>{{$p}}</code>{{end}}</p>
+    <p class="muted"><small>{{t "The password is never filled in: users type it themselves."}}</small></p>
+  </section>
+  {{if $g.ID}}
+  <section class="card">
+    <h2>{{t "Preview"}}</h2>
+    <p class="muted"><small>{{t "As saved, for an example user."}}</small></p>
+    <div class="guide">{{$d.Preview}}</div>
+    {{with $d.PreviewNL}}<h2>{{t "Preview in Dutch"}}</h2><div class="guide">{{.}}</div>{{end}}
+  </section>
+  {{end}}
+</aside>
+</div>
+{{end}}

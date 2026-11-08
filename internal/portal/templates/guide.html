@@ -1,0 +1,29 @@
+{{define "content"}}
+{{$d := .Data}}
+<div class="titlebar">
+  <div>
+    <p class="crumb"><a href="/account/setup">{{icon "tv"}}{{t "Set up your TV"}}</a></p>
+    <h1>{{$d.Guide.Title}}</h1>
+  </div>
+</div>
+<div class="guide-layout">
+  <section class="card guide">{{$d.HTML}}</section>
+  <aside>
+    <section class="card">
+      <h2>{{t "Your details"}}</h2>
+      <table class="details">
+        <tr><th>{{t "Server / portal URL"}}</th><td><code>{{.Base}}</code></td></tr>
+        <tr><th>{{t "Username"}}</th><td><code>{{.Session.User.Username}}</code></td></tr>
+        <tr><th>{{t "Password"}}</th><td>{{t "The password you log in here with"}}</td></tr>
+      </table>
+      <p class="muted"><small>{{th `Need the M3U playlist or the program guide link? They are on <a href="/account/setup">Set up your TV</a>.`}}</small></p>
+    </section>
+    {{with $d.Others}}
+    <section class="card">
+      <h2>{{t "Other guides"}}</h2>
+      <ul class="guide-list">{{range .}}<li><a href="/account/guides/{{.ID}}">{{icon .Icon}}{{.Title}}</a></li>{{end}}</ul>
+    </section>
+    {{end}}
+  </aside>
+</div>
+{{end}}
