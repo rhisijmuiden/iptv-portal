@@ -21,6 +21,6 @@
     <select name="lang" onchange="this.form.submit()" aria-label="{{t "Language"}}">{{range languages}}<option value="{{.Code}}"{{if eq .Code lang}} selected{{end}}>{{.Name}}</option>{{end}}</select>
   </label>
   <noscript><button class="secondary sm">{{t "Change"}}</button></noscript>
-</form></footer>
+</form><a href="{{source}}" target="_blank" rel="noopener">{{t "Source code"}}</a> · <a href="{{licenseURL}}" target="_blank" rel="noopener license">{{license}}</a></footer>
 </body>
 </html>

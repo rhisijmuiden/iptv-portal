@@ -27,7 +27,9 @@ func TestInfoReleaseChannel(t *testing.T) {
 	out := render(infoData{Version: "v1.0.0", Status: update.Status{Current: "v1.0.0", Channel: update.Test,
 		Releases: []update.Release{{Tag: "v1.1.0-rc.1", Prerelease: true}, {Tag: "v1.0.0"}}}})
 	for _, want := range []string{`<option value="test" selected>`, `<span class="badge warn">test</span>`,
-		`Update to v1.1.0-rc.1`, `<span class="badge warn">pre-release</span>`} {
+		`Update to v1.1.0-rc.1`, `<span class="badge warn">pre-release</span>`,
+		"GNU Affero General Public License v3.0", "<code>AGPL-3.0-only</code>",
+		`href="https://github.com/rhisijmuiden/iptv-portal"`} {
 		if !strings.Contains(out, want) {
 			t.Errorf("test channel page is missing %q", want)
 		}

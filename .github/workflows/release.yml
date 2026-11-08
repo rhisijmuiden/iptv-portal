@@ -47,8 +47,9 @@ jobs:
             CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath \
               -ldflags "-s -w -X github.com/rhisijmuiden/iptv-portal/internal/version.Version=${VERSION}" \
               -o dist/iptv-portal ./cmd/iptv-portal
-            tar -C dist -czf dist/iptv-portal_linux_${arch}.tar.gz iptv-portal
-            rm dist/iptv-portal
+            cp LICENSE dist/LICENSE
+            tar -C dist -czf dist/iptv-portal_linux_${arch}.tar.gz iptv-portal LICENSE
+            rm dist/iptv-portal dist/LICENSE
           done
           (cd dist && sha256sum *.tar.gz > checksums.txt)
       - name: Publish release
