@@ -60,9 +60,18 @@ type Service struct {
 	log   *slog.Logger
 	now   func() time.Time
 
-	run     sync.Mutex // held while a backup or restore runs
-	mu      sync.Mutex // guards running
-	running string
+	run      sync.Mutex // held while a backup or restore runs
+	mu       sync.Mutex // guards running and onFinish
+	running  string
+	onFinish func(context.Context, error)
+}
+
+// OnFinish sets a function called after every backup with its error, nil
+// when it worked, e.g. to alert the admins.
+func (s *Service) OnFinish(fn func(context.Context, error)) {
+	s.mu.Lock()
+	s.onFinish = fn
+	s.mu.Unlock()
 }
 
 // New returns the backup service for the database in st.
@@ -185,6 +194,12 @@ func (s *Service) backup(ctx context.Context, forceFull bool) (File, error) {
 	}
 	if serr := s.saveState(st); serr != nil {
 		s.log.Warn("saving backup state", "err", serr)
+	}
+	s.mu.Lock()
+	fn := s.onFinish
+	s.mu.Unlock()
+	if fn != nil && ctx.Err() == nil {
+		fn(ctx, err)
 	}
 	return f, err
 }

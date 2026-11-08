@@ -49,7 +49,7 @@ func TestDutchPages(t *testing.T) {
 		return w
 	}
 	for _, path := range []string{"/", "/channels", "/channels/new", "/categories", "/epg", "/health", "/media", "/media/new",
-		"/import", "/users", "/users/new", "/packages", "/packages/new", "/invites", "/settings", "/backups", "/info", "/password"} {
+		"/import", "/users", "/users/new", "/packages", "/packages/new", "/invites", "/settings", "/backups", "/alerts", "/info", "/password"} {
 		w := get(path, "nl")
 		body := w.Body.String()
 		if w.Code != http.StatusOK {
