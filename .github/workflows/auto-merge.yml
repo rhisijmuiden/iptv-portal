@@ -1,0 +1,67 @@
+name: Auto-merge
+
+# Merges a pull request into main as soon as CI passes, and then publishes
+# a test release, so a finished feature reaches the test channel without
+# manual steps.
+#
+# Only pull requests that are opened by the repository owner from a branch
+# in this repository, target main and are not drafts are merged. Add the
+# label "no-auto-merge" to a pull request to keep it open for review.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  merge:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SHA: ${{ github.event.workflow_run.head_sha }}
+      BRANCH: ${{ github.event.workflow_run.head_branch }}
+      OWNER: ${{ github.repository_owner }}
+    steps:
+      - name: Merge pull request
+        id: merge
+        run: |
+          pr=$(gh pr list --head "$BRANCH" --base main --state open \
+            --json number,isDraft,author,headRefOid,labels \
+            --jq '.[0] // empty')
+          if [ -z "$pr" ]; then
+            echo "No open pull request into main for $BRANCH."
+            exit 0
+          fi
+          number=$(jq -r .number <<<"$pr")
+          if [ "$(jq -r .headRefOid <<<"$pr")" != "$SHA" ]; then
+            echo "#$number has newer commits; waiting for their CI run."
+            exit 0
+          fi
+          if [ "$(jq -r .isDraft <<<"$pr")" = true ]; then
+            echo "#$number is a draft."
+            exit 0
+          fi
+          if [ "$(jq -r .author.login <<<"$pr")" != "$OWNER" ]; then
+            echo "#$number is not opened by $OWNER."
+            exit 0
+          fi
+          if jq -e '.labels[] | select(.name == "no-auto-merge")' <<<"$pr" >/dev/null; then
+            echo "#$number has the no-auto-merge label."
+            exit 0
+          fi
+          gh pr merge "$number" --merge --match-head-commit "$SHA"
+          echo "merged=true" >> "$GITHUB_OUTPUT"
+      # A merge made with the workflow token does not start other workflows
+      # by itself, so start the test release explicitly.
+      - name: Publish test release
+        if: steps.merge.outputs.merged == 'true'
+        run: gh workflow run test-release.yml --ref main

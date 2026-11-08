@@ -1,0 +1,48 @@
+name: Test release
+
+# Publishes a pre-release such as v0.5.1-rc.3 for every change on main, so
+# portals on the "test" release channel are offered new features right
+# away. The version is worked out by scripts/next-test-version.sh. Stable
+# releases stay manual: push a tag such as v0.6.0 or run the Release
+# workflow by hand.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One test release at a time, in the order of the changes.
+concurrency:
+  group: test-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.next.outputs.version }}
+      ref: ${{ steps.next.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: next
+        run: |
+          if tag=$(git tag --points-at HEAD -l 'v*' | head -n1) && [ -n "$tag" ]; then
+            echo "This commit is already released as $tag."
+            exit 0
+          fi
+          version=$(scripts/next-test-version.sh)
+          echo "Next test release: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  release:
+    needs: version
+    if: needs.version.outputs.version != ''
+    uses: ./.github/workflows/release.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+      ref: ${{ needs.version.outputs.ref }}

@@ -212,6 +212,15 @@ There are two release channels:
 
 A version with an `-rc.N`, `-beta.N` or `-alpha.N` suffix is published as a GitHub pre-release. Only portals on the test channel are offered it; the installers and stable portals ignore it. Once `v0.4.0` itself is released, portals on the test channel move on to it like everyone else. To try a pre-release on a fresh install, pass it to the installer: `--version v0.4.0-rc.1`.
 
+### Automatic test releases
+
+New features reach the test channel without manual steps:
+
+1. **Auto-merge.** When CI passes on a pull request into `main`, the **Auto-merge** workflow merges it. Only pull requests opened by the repository owner from a branch in this repository are merged, and never drafts. Add the label `no-auto-merge` to keep a pull request open for review.
+2. **Test release.** Every change on `main` (auto-merged or merged by hand) starts the **Test release** workflow. It publishes the next pre-release, for example `v0.5.1-rc.3` after `v0.5.1-rc.2`, or `v0.5.2-rc.1` after `v0.5.1` was released as stable. Portals on the test channel are offered it at their next update check.
+
+Stable releases stay manual: push a tag such as `v0.6.0`, or run the **Release** workflow by hand. To start test releases for a new minor or major version, release its first pre-release by hand (for example `v0.6.0-rc.1`); the next automatic test releases continue from there.
+
 ## Updates
 
 The **Info** page in the admin panel shows the installed version and the release notes of every version. **Release channel** picks which releases are offered: *Stable* (the default) or *Test*, which also offers pre-releases (see [Releases](#releases)). **Check for updates** asks GitHub for new releases; with *Check automatically every 24 hours* switched on (the default), the dashboard shows a banner when a new version is out. **Update now** downloads the release, verifies its checksum, checks that it starts, keeps the current program as `iptv-portal.old` and restarts the portal. Settings, channels and users are kept. See [docs/installation.md](docs/installation.md#updating) for rolling back.
