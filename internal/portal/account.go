@@ -33,6 +33,7 @@ type accountPage struct {
 	PortalName string
 	Base       string // the portal address entered in the player
 	MailOn     bool
+	StalkerOn  bool // MAG boxes can log in with a registered MAC address
 	Session    *store.UserSession
 	Flash      string
 	Error      string
@@ -120,6 +121,7 @@ func (h *Handler) renderAccount(w http.ResponseWriter, r *http.Request, name str
 	p.PortalName = st.PortalName
 	p.Base = web.BaseURL(st.PublicURL, r)
 	p.MailOn = st.Mail.Configured()
+	p.StalkerOn = st.StalkerPortal
 	if p.Flash == "" {
 		p.Flash = r.URL.Query().Get("ok")
 	}

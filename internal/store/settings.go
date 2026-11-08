@@ -55,6 +55,10 @@ type Settings struct {
 	// account, their player details and their viewing history, change
 	// their password and reset a forgotten one by email.
 	AccountPortal bool
+	// StalkerPortal lets MAG boxes and apps that emulate them log in with
+	// the MAC address of the device (Stalker / Ministra middleware API).
+	// Off by default: a MAC address is easier to guess than a password.
+	StalkerPortal bool
 	// SSO lets admins sign in with Microsoft Entra ID next to the local
 	// accounts, which keep working as a fallback.
 	SSO entra.Config
@@ -109,6 +113,7 @@ const (
 	keyNowPlaying = "radio_now_playing"
 	keyAccounts   = "account_portal"
 	keyRadioLabel = "radio_category_label"
+	keyStalker    = "stalker_portal"
 
 	keySMTPHost     = "smtp_host"
 	keySMTPPort     = "smtp_port"
@@ -171,6 +176,8 @@ func (s *Store) Settings(ctx context.Context) (Settings, error) {
 			out.AccountPortal = v == "1"
 		case keyRadioLabel:
 			out.RadioLabel = v == "1"
+		case keyStalker:
+			out.StalkerPortal = v == "1"
 		case keySMTPHost:
 			out.Mail.Host = v
 		case keySMTPPort:
@@ -342,6 +349,7 @@ func (s *Store) SaveSettings(ctx context.Context, st Settings) error {
 		keyNowPlaying: boolString(st.RadioNowPlaying),
 		keyAccounts:   boolString(st.AccountPortal),
 		keyRadioLabel: boolString(st.RadioLabel),
+		keyStalker:    boolString(st.StalkerPortal),
 
 		keySMTPHost:     st.Mail.Host,
 		keySMTPPort:     strconv.Itoa(st.Mail.Port),

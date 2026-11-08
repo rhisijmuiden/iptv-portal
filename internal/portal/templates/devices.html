@@ -9,6 +9,7 @@
 <section class="card">
   <div class="card-head"><h2>{{t "Registered devices"}}</h2><span class="muted">{{tf "%d of %d" (len $d.Devices) $d.Max}}</span></div>
   <p class="muted">{{t "The MAC address helps the portal admin recognise your device when you need help. You find it in the settings of your box, usually under About or Network, or on a sticker underneath it."}}</p>
+  {{if .StalkerOn}}<p class="muted">{{th "A MAG box or MAC portal app logs in with a MAC address registered here, at <code>%s/c/</code>." .Base}}</p>{{end}}
   {{if $d.Devices}}
   <table class="my-devices">
     <thead><tr><th>{{t "Name"}}</th><th>{{t "MAC address"}}</th><th>{{t "Added"}}</th><th></th></tr></thead>

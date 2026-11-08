@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rhisijmuiden/iptv-portal/internal/activity"
@@ -49,6 +50,9 @@ type Handler struct {
 	logos      *logos.Cache
 	// stats records views for the viewing statistics; nil records none.
 	stats *stats.Recorder
+	// linkSecret signs the play links of the Stalker portal.
+	linkMu     sync.Mutex
+	linkSecret []byte
 }
 
 // SetStats makes the portal record views in rec.
@@ -77,6 +81,7 @@ func New(st *store.Store, guide *epg.Guide, tracker *activity.Tracker, vod *medi
 	h.mux.HandleFunc("GET /vod-image/{id}/{kind}", h.vodImage)
 	h.mux.HandleFunc("GET /logo/{file}", h.logo)
 	h.accountRoutes()
+	h.stalkerRoutes()
 	return h, nil
 }
 

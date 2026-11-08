@@ -75,6 +75,15 @@
   {{else}}
   <p class="muted">{{t "The user has not registered a device (MAC address) on their account page."}}</p>
   {{end}}
+  {{if lt (len .Data.Devices) .Data.MaxDevices}}
+  <form method="post" action="{{base}}/users/{{$u.ID}}/devices" class="inline">
+    <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+    <label>{{t "Name"}} <input name="name" maxlength="60" placeholder="{{t "For example Living room"}}" required></label>
+    <label>{{t "MAC address"}} <input name="mac" maxlength="17" placeholder="00:1A:79:12:34:56" autocomplete="off" spellcheck="false" required></label>
+    <button class="secondary">{{icon "plus"}}{{t "Add device"}}</button>
+  </form>
+  {{end}}
+  {{if .Data.StalkerOn}}<p class="muted"><small>{{th "MAG boxes and MAC portal apps log in at <code>%s/c/</code> with a MAC address registered here." .Data.PortalURL}}</small></p>{{end}}
   {{with .Data.Used}}
   <h2>{{t "Used to watch in the last 30 days"}}</h2>
   <table>

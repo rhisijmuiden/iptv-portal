@@ -783,6 +783,7 @@ func (h *Handler) settingsSave(w http.ResponseWriter, r *http.Request, sess stor
 	st.PublicURL = r.FormValue("public_url")
 	st.Language = r.FormValue("language")
 	st.AccountPortal = r.FormValue("account_portal") == "1"
+	st.StalkerPortal = r.FormValue("stalker_portal") == "1"
 	st.AdminPort, _ = strconv.Atoi(r.FormValue("admin_port"))
 	st.PortalPort, _ = strconv.Atoi(r.FormValue("portal_port"))
 	err = st.Validate()

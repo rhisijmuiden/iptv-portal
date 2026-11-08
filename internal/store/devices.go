@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net"
 	"strings"
@@ -85,6 +86,14 @@ func (s *Store) AddUserDevice(ctx context.Context, userID int64, name, mac strin
 	if n >= MaxUserDevices {
 		return d, errors.New("you can register at most 10 devices; remove one first")
 	}
+	// A MAC address logs in on the MAG / Stalker portal, so it can belong
+	// to one account only.
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM user_devices WHERE mac = ? AND user_id <> ?`, d.MAC, userID).Scan(&n); err != nil {
+		return d, err
+	}
+	if n > 0 {
+		return d, errors.New("this MAC address is registered to another account")
+	}
 	res, err := s.db.ExecContext(ctx, `INSERT INTO user_devices(user_id, name, mac, created_at) VALUES(?, ?, ?, ?)`,
 		userID, d.Name, d.MAC, d.CreatedAt)
 	if err != nil {
@@ -92,6 +101,61 @@ func (s *Store) AddUserDevice(ctx context.Context, userID int64, name, mac strin
 	}
 	d.ID, _ = res.LastInsertId()
 	return d, nil
+}
+
+// UserDevice returns one device by id.
+func (s *Store) UserDevice(ctx context.Context, id int64) (Device, error) {
+	var d Device
+	err := s.db.QueryRowContext(ctx, `SELECT id, user_id, name, mac, created_at FROM user_devices WHERE id = ?`, id).
+		Scan(&d.ID, &d.UserID, &d.Name, &d.MAC, &d.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return d, ErrNotFound
+	}
+	return d, err
+}
+
+// AuthenticateDevice finds the user a MAC address is registered to, for
+// players that log in with the MAC address of the box (MAG / Stalker
+// portal). It returns ErrNotFound for an unknown address, or one that
+// several accounts registered before addresses had to be unique, and
+// ErrUserInactive with the user when the account is disabled or expired.
+func (s *Store) AuthenticateDevice(ctx context.Context, mac string) (Device, User, error) {
+	mac, err := NormalizeMAC(mac)
+	if err != nil {
+		return Device{}, User{}, ErrNotFound
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT id, user_id, name, mac, created_at FROM user_devices WHERE mac = ? LIMIT 2`, mac)
+	if err != nil {
+		return Device{}, User{}, err
+	}
+	var found []Device
+	for rows.Next() {
+		var d Device
+		if err := rows.Scan(&d.ID, &d.UserID, &d.Name, &d.MAC, &d.CreatedAt); err != nil {
+			rows.Close()
+			return Device{}, User{}, err
+		}
+		found = append(found, d)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return Device{}, User{}, err
+	}
+	if len(found) != 1 {
+		return Device{}, User{}, ErrNotFound
+	}
+	d := found[0]
+	u, err := s.User(ctx, d.UserID)
+	if err != nil {
+		return d, u, err
+	}
+	if !u.Active() {
+		return d, u, ErrUserInactive
+	}
+	if u.LastSeenAt == nil || time.Since(*u.LastSeenAt) > time.Minute {
+		s.db.ExecContext(ctx, `UPDATE users SET last_seen_at = ? WHERE id = ?`, time.Now().UTC(), u.ID)
+	}
+	return d, u, nil
 }
 
 // DeleteUserDevice removes a device of a user. Another user's device is

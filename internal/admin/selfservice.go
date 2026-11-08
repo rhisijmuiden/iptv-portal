@@ -28,6 +28,7 @@ func (h *Handler) selfServiceRoutes(auth func(string, func(http.ResponseWriter, 
 	auth("POST /guides/{id}/delete", h.guideDelete)
 	auth("GET /requests", h.requestList)
 	auth("POST /requests/{id}", h.requestDecide)
+	auth("POST /users/{id}/devices", h.userDeviceAdd)
 	auth("POST /users/{id}/devices/{device}/delete", h.userDeviceDelete)
 }
 
@@ -244,6 +245,30 @@ func (h *Handler) mailRequestAnswer(r *http.Request, rq store.PackageRequest) {
 			h.log.Warn("emailing package request answer", "username", rq.Username, "err", err)
 		}
 	}()
+}
+
+// userDeviceAdd registers a device (MAC address) for a user, for example
+// the MAG box the admin hands out.
+func (h *Handler) userDeviceAdd(w http.ResponseWriter, r *http.Request, sess store.Session) {
+	id, ok := pathID(r)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	if _, err := h.store.User(r.Context(), id); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+		h.serverError(w, err)
+		return
+	}
+	back := "/users/" + strconv.FormatInt(id, 10)
+	if _, err := h.store.AddUserDevice(r.Context(), id, r.FormValue("name"), r.FormValue("mac")); err != nil {
+		redirectError(w, r, back, err.Error())
+		return
+	}
+	redirectFlash(w, r, back, "The device has been added.")
 }
 
 func (h *Handler) userDeviceDelete(w http.ResponseWriter, r *http.Request, sess store.Session) {
