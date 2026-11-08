@@ -265,6 +265,12 @@ input.link-field { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; 
 /* iptv-org browser */
 table.iptvorg td { vertical-align: top; }
 table.iptvorg th label.check { font-weight: 600; }
+label.check.option { align-items: flex-start; }
+label.check.option input { margin-top: .25rem; }
+label.check.option small { display: block; color: var(--muted); font-weight: 400; margin-top: .15rem; }
+label.indent { margin-left: 1.75rem; }
+.pre-line { white-space: pre-line; }
+.error-text { color: var(--err); font-size: .85rem; margin-top: .25rem; }
 label.check.stream { align-items: flex-start; font-weight: 400; margin: .2rem 0; }
 label.check.stream input { margin-top: .25rem; }
 @media (min-width: 900px) and (min-height: 820px) {

@@ -261,6 +261,23 @@ var migrations = []string{
 	ALTER TABLE packages ADD COLUMN description TEXT NOT NULL DEFAULT '';
 	ALTER TABLE packages ADD COLUMN price TEXT NOT NULL DEFAULT '';
 	ALTER TABLE packages ADD COLUMN public INTEGER NOT NULL DEFAULT 1;`,
+
+	// Alerts to admins and reminders to users: what was already sent, so
+	// nothing is sent twice, and a log of the alerts.
+	`CREATE TABLE alerts_sent (
+		key     TEXT PRIMARY KEY,
+		sent_at DATETIME NOT NULL
+	);
+	CREATE TABLE alert_log (
+		id       INTEGER PRIMARY KEY,
+		at       DATETIME NOT NULL,
+		kind     TEXT NOT NULL,
+		title    TEXT NOT NULL,
+		detail   TEXT NOT NULL DEFAULT '',
+		channels TEXT NOT NULL DEFAULT '',
+		error    TEXT NOT NULL DEFAULT ''
+	);
+	CREATE INDEX alert_log_at ON alert_log(at);`,
 }
 
 // afterMigration runs Go code in the transaction of a migration, keyed by

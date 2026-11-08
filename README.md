@@ -24,6 +24,7 @@ It can also offer the movies and series of your own **Jellyfin** or **Plex** ser
 - **Microsoft Entra sign-in** for the admin panel (optional), limited to the groups or app roles you choose, with local accounts as a fallback.
 - **System resources**: CPU, memory, disk, load, network and the portal process itself, live with a chart of the last hour or day.
 - **Backups** to FTP, FTPS or SCP: full and incremental, scheduled or by hand, optionally encrypted, and restored from the admin panel.
+- **Alerts and reminders**: get a message by email, Telegram or Discord when streams stop working, subscriptions are about to expire or a backup fails, and email users a reminder before their subscription ends. See [Alerts and reminders](#alerts-and-reminders).
 - **Updates from the admin panel** with release notes, stable and test release channels, an optional daily check and automatic rollback.
 - **English and Dutch.** English is the default; every admin picks a language at the bottom of the menu, and subscribers can switch on the invitation pages. See [Languages](#languages).
 - **Simple to host**: one Go binary with SQLite, an installer for any systemd Linux and a script for Proxmox VE LXC.
@@ -392,6 +393,24 @@ The directory is created when it does not exist. The connection test writes and 
 To move to a new server or recover from a lost one: install the portal, log in with the one-time password, enter the same remote location (and passphrase) under **Backups**, and restore the newest backup.
 
 A backup is a gzipped tar file with `manifest.json` (what the backup restores to) and either `portal.db` (full) or `blocks` (incremental). Without the portal, a full backup can be unpacked with `tar -xzf` (after `age -d` when encrypted) to get the database file.
+
+## Alerts and reminders
+
+Under *System → Alerts* you choose how the portal reaches you and what it tells you about.
+
+- **Email** goes through the mail server under *Settings*, to one or more addresses.
+- **Telegram**: create a bot with [@BotFather](https://t.me/BotFather), add it to your chat, group or channel (or send it a message) and enter its token and the chat ID.
+- **Discord**: in the channel settings choose *Integrations → Webhooks → New Webhook* and paste the webhook URL.
+
+Each has a **Save and send test** button. The bot token and webhook URL are never shown in the browser again after saving.
+
+You get an alert when:
+
+- **a stream stops working**: after a number of failed checks in a row (default 3), in one message per stream check, and again when it works. Channels you switched off yourself are left out.
+- **a subscription expires soon**: once per user, a number of days before the end (default 7).
+- **a backup fails**: once, and again when backups work.
+
+**Reminders to users** email every user with an email address a number of days before their subscription ends (default 7 and 1 days), in the default language, with an optional line on how to extend. Extending a subscription starts the reminders over. The last 20 alerts, and whether they went out, are listed on the page.
 
 ## Program guide (EPG)
 
