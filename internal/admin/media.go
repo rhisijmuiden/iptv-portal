@@ -59,6 +59,9 @@ type mediaFormData struct {
 	Libraries []media.Library
 	// LibraryError says why the libraries could not be listed.
 	LibraryError string
+	// MovieCategories and ShowCategories are the categories of the last
+	// refresh.
+	MovieCategories, ShowCategories []media.Category
 }
 
 // libraries asks a media server for its movie and series libraries.
@@ -98,7 +101,17 @@ func (h *Handler) mediaForm(w http.ResponseWriter, r *http.Request, sess store.S
 
 func (h *Handler) renderMediaForm(w http.ResponseWriter, r *http.Request, sess store.Session, s store.MediaServer, errMsg string) {
 	d := mediaFormData{Server: s}
+	if s.Categories == "" {
+		d.Server.Categories = store.CategoriesGenres
+	}
 	if s.ID != 0 {
+		for _, c := range h.media.ServerCategories(s.ID) {
+			if c.Type == media.Movies {
+				d.MovieCategories = append(d.MovieCategories, c)
+			} else {
+				d.ShowCategories = append(d.ShowCategories, c)
+			}
+		}
 		stored, err := h.store.MediaServer(r.Context(), s.ID)
 		if err == nil {
 			libs, err := libraries(r.Context(), stored)
@@ -118,12 +131,13 @@ func (h *Handler) renderMediaForm(w http.ResponseWriter, r *http.Request, sess s
 
 func (h *Handler) mediaSave(w http.ResponseWriter, r *http.Request, sess store.Session) {
 	s := store.MediaServer{
-		Name:    r.FormValue("name"),
-		Kind:    r.FormValue("kind"),
-		URL:     r.FormValue("url"),
-		Token:   r.FormValue("token"),
-		Direct:  r.FormValue("direct") == "1",
-		Enabled: r.FormValue("enabled") == "on",
+		Name:       r.FormValue("name"),
+		Kind:       r.FormValue("kind"),
+		URL:        r.FormValue("url"),
+		Token:      r.FormValue("token"),
+		Direct:     r.FormValue("direct") == "1",
+		Enabled:    r.FormValue("enabled") == "on",
+		Categories: r.FormValue("categories"),
 	}
 	if id, ok := pathID(r); ok {
 		s.ID = id

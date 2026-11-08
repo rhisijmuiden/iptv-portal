@@ -14,14 +14,25 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 )
 
-// Category is an offered library, shown to players as a VOD or series
+// Category is a genre or library, shown to players as a VOD or series
 // category.
 type Category struct {
 	ID       int64
 	ServerID int64
 	Name     string
 	Type     LibraryType
+	// Other is the category of items without a genre.
+	Other bool
+	// Items is the number of movies or series in the category.
+	Items int
 }
+
+// OtherName is the name of the category of items without a genre.
+const OtherName = "Other"
+
+// libraryGenreSep separates the library and genre in category names like
+// "Films | Action".
+const libraryGenreSep = " | "
 
 // ServerStatus describes the last refresh of one server.
 type ServerStatus struct {
@@ -29,7 +40,9 @@ type ServerStatus struct {
 	Movies    int
 	Shows     int
 	Episodes  int
-	Error     string
+	// Categories is the number of movie and series categories.
+	Categories int
+	Error      string
 }
 
 // snapshot is everything read from one server.
@@ -151,6 +164,7 @@ func (c *Catalog) Refresh(ctx context.Context) {
 					st.Episodes++
 				}
 			}
+			st.Categories = len(snap.categories)
 		}
 		c.status[s.ID] = st
 		c.mu.Unlock()
@@ -191,32 +205,45 @@ func (c *Catalog) load(ctx context.Context, s store.MediaServer) (*snapshot, err
 		libItems = append(libItems, items)
 	}
 
-	// Numeric ids for libraries and items.
-	keys := []string{}
+	// Every movie and series gets the categories of the server's
+	// grouping; catKeys holds them per library, in item order.
+	catKeys := make([][][]catRef, len(offered))
 	for i, l := range offered {
-		keys = append(keys, "library:"+l.ID)
-		for _, it := range libItems[i] {
+		catKeys[i] = make([][]catRef, len(libItems[i]))
+		for j, it := range libItems[i] {
+			if it.Type != Episode {
+				catKeys[i][j] = categoryRefs(s.Categories, l, it.Genres)
+			}
+		}
+	}
+
+	// Numeric ids for categories and items.
+	keys := []string{}
+	for i := range offered {
+		for j, it := range libItems[i] {
 			keys = append(keys, itemKey(it.Type, it.Key))
+			for _, ref := range catKeys[i][j] {
+				keys = append(keys, ref.key)
+			}
 		}
 	}
 	ids, err := c.store.MediaIDs(ctx, s.ID, keys)
 	if err != nil {
 		return nil, err
 	}
+	cats := map[int64]*Category{}
+	var order []int64
 	for i, l := range offered {
-		catID := ids["library:"+l.ID]
-		snap.categories = append(snap.categories, Category{ID: catID, ServerID: s.ID, Name: l.Name, Type: l.Type})
 		shows := map[string]int64{}
 		for _, it := range libItems[i] {
 			if it.Type == Show {
 				shows[it.Key] = ids[itemKey(Show, it.Key)]
 			}
 		}
-		for _, it := range libItems[i] {
+		for j, it := range libItems[i] {
 			it := it
 			it.ID = ids[itemKey(it.Type, it.Key)]
 			it.ServerID = s.ID
-			it.CategoryID = catID
 			if it.Type == Episode {
 				if it.ShowID = shows[it.ShowKey]; it.ShowID == 0 {
 					continue // episode of a series outside this library
@@ -225,10 +252,57 @@ func (c *Catalog) load(ctx context.Context, s store.MediaServer) (*snapshot, err
 			if it.Type != Show && it.Stream == "" {
 				continue // nothing to play
 			}
+			for _, ref := range catKeys[i][j] {
+				id := ids[ref.key]
+				cat := cats[id]
+				if cat == nil {
+					cat = &Category{ID: id, ServerID: s.ID, Name: ref.name, Type: l.Type,
+						Other: strings.HasPrefix(ref.key, "other:")}
+					cats[id] = cat
+					order = append(order, id)
+				}
+				cat.Items++
+				it.CategoryIDs = append(it.CategoryIDs, id)
+			}
 			snap.items = append(snap.items, &it)
 		}
 	}
+	for _, id := range order {
+		snap.categories = append(snap.categories, *cats[id])
+	}
 	return snap, nil
+}
+
+// catRef is a category of an item: its key in the media id table and its
+// name.
+type catRef struct{ key, name string }
+
+// categoryRefs returns the category keys (unique per server) and names of
+// a movie or series in library l.
+func categoryRefs(mode string, l Library, genres []string) []catRef {
+	type ref = catRef
+	if mode == store.CategoriesLibraries {
+		return []ref{{"library:" + l.ID, l.Name}}
+	}
+	scope, prefix := string(l.Type), ""
+	if mode == store.CategoriesLibraryGenres {
+		scope, prefix = l.ID, l.Name+libraryGenreSep
+	}
+	var out []ref
+	seen := map[string]bool{}
+	for _, g := range genres {
+		g = strings.Join(strings.Fields(g), " ")
+		k := strings.ToLower(g)
+		if g == "" || seen[k] {
+			continue
+		}
+		seen[k] = true
+		out = append(out, ref{"genre:" + scope + ":" + k, prefix + g})
+	}
+	if len(out) == 0 {
+		out = append(out, ref{"other:" + scope, prefix + OtherName})
+	}
+	return out
 }
 
 func itemKey(t ItemType, key string) string {
@@ -255,12 +329,47 @@ func (c *Catalog) rebuild() {
 		ids = append(ids, id)
 	}
 	slices.Sort(ids)
+	// Categories with the same name on several servers become one; the
+	// first server's id is kept.
+	type catName struct {
+		t    LibraryType
+		name string
+	}
+	merged := map[catName]int{} // index in c.categories
+	remap := map[int64]int64{}
+	for _, id := range ids {
+		for _, cat := range c.snaps[id].categories {
+			k := catName{cat.Type, strings.ToLower(cat.Name)}
+			if i, ok := merged[k]; ok {
+				remap[cat.ID] = c.categories[i].ID
+				c.categories[i].Items += cat.Items
+				continue
+			}
+			merged[k] = len(c.categories)
+			c.categories = append(c.categories, cat)
+		}
+	}
+	slices.SortStableFunc(c.categories, compareCategories)
 	for _, id := range ids {
 		snap := c.snaps[id]
 		c.clients[id] = snap.client
 		c.servers[id] = snap.server
-		c.categories = append(c.categories, snap.categories...)
 		for _, it := range snap.items {
+			if len(remap) > 0 && len(it.CategoryIDs) > 0 {
+				// Copy, so the snapshot keeps its own ids for the next
+				// rebuild.
+				cp := *it
+				cp.CategoryIDs = nil
+				for _, cid := range it.CategoryIDs {
+					if to, ok := remap[cid]; ok {
+						cid = to
+					}
+					if !slices.Contains(cp.CategoryIDs, cid) {
+						cp.CategoryIDs = append(cp.CategoryIDs, cid)
+					}
+				}
+				it = &cp
+			}
 			c.byID[it.ID] = it
 			switch it.Type {
 			case Movie:
@@ -284,7 +393,8 @@ func (c *Catalog) rebuild() {
 	}
 }
 
-// Categories returns the offered libraries of the given type.
+// Categories returns the categories of the given type: genres or
+// libraries, by name, with "Other" last.
 func (c *Catalog) Categories(t LibraryType) []Category {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -295,6 +405,33 @@ func (c *Catalog) Categories(t LibraryType) []Category {
 		}
 	}
 	return out
+}
+
+// ServerCategories returns the categories read from one server, movies
+// first, each by name with "Other" last.
+func (c *Catalog) ServerCategories(serverID int64) []Category {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	snap := c.snaps[serverID]
+	if snap == nil {
+		return nil
+	}
+	out := slices.Clone(snap.categories)
+	slices.SortStableFunc(out, func(a, b Category) int {
+		return cmp.Or(cmp.Compare(a.Type, b.Type), compareCategories(a, b)) // "movies" < "shows"
+	})
+	return out
+}
+
+// compareCategories orders categories by name, with "Other" last.
+func compareCategories(a, b Category) int {
+	if a.Other != b.Other {
+		if a.Other {
+			return 1
+		}
+		return -1
+	}
+	return cmp.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name))
 }
 
 // Movies returns all movies, sorted by title.

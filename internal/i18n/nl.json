@@ -1018,5 +1018,15 @@
  "of %s cores · portal %s": "van %s kernen · portaal %s",
  "of %s": "van %s",
  "↑ %s upload": "↑ %s upload",
- "Last 15 minutes": "Laatste 15 minuten"
+ "Last 15 minutes": "Laatste 15 minuten",
+ "As read at the last refresh. Saving a different grouping reads the server again.": "Zoals gelezen bij de laatste vernieuwing. Na het opslaan van een andere indeling wordt de server opnieuw gelezen.",
+ "By genre (recommended). One category per genre, such as Action or Comedy. A movie or series with several genres is listed in each of them.": "Per genre (aanbevolen). Eén categorie per genre, zoals Actie of Komedie. Een film of serie met meerdere genres staat in elk daarvan.",
+ "By library and genre. Like by genre, but kept apart per library, such as Films | Action and Kids | Action.": "Per bibliotheek en genre. Zoals per genre, maar gescheiden per bibliotheek, zoals Films | Actie en Kids | Actie.",
+ "By library. One category per library, with all its movies or series from A to Z.": "Per bibliotheek. Eén categorie per bibliotheek, met alle films of series van A tot Z.",
+ "Categories on the boxes": "Categorieën op de boxen",
+ "Genres come from the media server. Items without a genre are listed under Other. Categories with the same name on several servers are combined.": "De genres komen van de mediaserver. Titels zonder genre staan onder Other. Categorieën met dezelfde naam op meerdere servers worden samengevoegd.",
+ "by genre": "per genre",
+ "by library and genre": "per bibliotheek en genre",
+ "by library": "per bibliotheek",
+ "choose how to group the categories": "kies hoe de categorieën worden ingedeeld"
 }

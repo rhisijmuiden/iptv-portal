@@ -102,14 +102,26 @@ func TestVODAPI(t *testing.T) {
 
 	var cats []map[string]any
 	f.json(t, "/player_api.php?"+vodCreds+"&action=get_vod_categories", &cats)
-	if len(cats) != 1 || cats[0]["category_name"] != "Films" {
+	if len(cats) != 2 || cats[0]["category_name"] != "Crime" || cats[1]["category_name"] != "Drama" {
 		t.Fatalf("vod categories = %v", cats)
 	}
+	crime, drama := cats[0]["category_id"].(string), cats[1]["category_id"].(string)
 	var movies []map[string]any
-	f.json(t, "/player_api.php?"+vodCreds+"&action=get_vod_streams&category_id="+cats[0]["category_id"].(string), &movies)
+	// A movie with two genres is listed in both, under the asked-for one.
+	f.json(t, "/player_api.php?"+vodCreds+"&action=get_vod_streams&category_id="+drama, &movies)
 	if len(movies) != 1 || movies[0]["name"] != "Heat" || movies[0]["container_extension"] != "mkv" ||
-		movies[0]["rating"] != "8.3" || movies[0]["stream_type"] != "movie" {
+		movies[0]["rating"] != "8.3" || movies[0]["stream_type"] != "movie" || movies[0]["category_id"] != drama ||
+		len(movies[0]["category_ids"].([]any)) != 2 {
 		t.Fatalf("vod streams = %v", movies)
+	}
+	f.json(t, "/player_api.php?"+vodCreds+"&action=get_vod_streams", &movies)
+	if len(movies) != 1 || movies[0]["category_id"] != crime {
+		t.Fatalf("all vod streams = %v", movies)
+	}
+	var scats []map[string]any
+	f.json(t, "/player_api.php?"+vodCreds+"&action=get_series_categories", &scats)
+	if len(scats) != 1 || scats[0]["category_name"] != "Other" {
+		t.Fatalf("series categories = %v", scats)
 	}
 	icon := movies[0]["stream_icon"].(string)
 	if !strings.HasPrefix(icon, f.srv.URL+"/vod-image/") {

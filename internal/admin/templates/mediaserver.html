@@ -28,6 +28,13 @@
     <label class="check"><input type="radio" name="direct" value="0" {{if not $s.Direct}}checked{{end}}> {{t "Through the portal (recommended). The boxes only talk to the portal: the token stays private and the media server does not have to be reachable from the internet. All video passes through the portal."}}</label>
     <label class="check"><input type="radio" name="direct" value="1" {{if $s.Direct}}checked{{end}}> {{t "Directly from the media server. The boxes are sent to the server address above, which must be reachable from the boxes, and the token is part of the stream address the boxes see."}}</label>
   </fieldset>
+  <fieldset>
+    <legend>{{t "Categories on the boxes"}}</legend>
+    <label class="check"><input type="radio" name="categories" value="genres" {{if eq $s.Categories "genres"}}checked{{end}}> {{t "By genre (recommended). One category per genre, such as Action or Comedy. A movie or series with several genres is listed in each of them."}}</label>
+    <label class="check"><input type="radio" name="categories" value="library_genres" {{if eq $s.Categories "library_genres"}}checked{{end}}> {{t "By library and genre. Like by genre, but kept apart per library, such as Films | Action and Kids | Action."}}</label>
+    <label class="check"><input type="radio" name="categories" value="libraries" {{if eq $s.Categories "libraries"}}checked{{end}}> {{t "By library. One category per library, with all its movies or series from A to Z."}}</label>
+    <small>{{t "Genres come from the media server. Items without a genre are listed under Other. Categories with the same name on several servers are combined."}}</small>
+  </fieldset>
   {{if $s.ID}}
   <fieldset>
     <legend>{{t "Libraries to offer"}}</legend>
@@ -48,5 +55,23 @@
   </div>
 </form>
 </section>
+{{if or $d.MovieCategories $d.ShowCategories}}
+<section class="card">
+  <h2>{{t "Categories"}}</h2>
+  <p class="muted">{{t "As read at the last refresh. Saving a different grouping reads the server again."}}</p>
+  {{with $d.MovieCategories}}
+  <div class="categories-group">
+    <h3>{{t "Movies"}}</h3>
+    <div class="categories">{{range .}}<span class="category">{{icon "film"}}{{.Name}} <span class="count">{{.Items}}</span></span> {{end}}</div>
+  </div>
+  {{end}}
+  {{with $d.ShowCategories}}
+  <div class="categories-group">
+    <h3>{{t "Series"}}</h3>
+    <div class="categories">{{range .}}<span class="category">{{icon "tv"}}{{.Name}} <span class="count">{{.Items}}</span></span> {{end}}</div>
+  </div>
+  {{end}}
+</section>
+{{end}}
 <p class="muted">{{th `Which users see On Demand is set per <a href="%s/packages">package</a>.` base}}</p>
 {{end}}

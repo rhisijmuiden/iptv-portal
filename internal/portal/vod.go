@@ -38,6 +38,34 @@ func vodCategories(cats []media.Category) []map[string]any {
 	return out
 }
 
+// itemCategory is the category id a player files an item under: the
+// asked-for category when the list is for one category, otherwise the
+// item's main one. ok is false when the item is not in the asked-for
+// category.
+func itemCategory(it *media.Item, want string) (id string, ok bool) {
+	if want == "" {
+		if len(it.CategoryIDs) == 0 {
+			return "0", true
+		}
+		return strconv.FormatInt(it.CategoryIDs[0], 10), true
+	}
+	for _, c := range it.CategoryIDs {
+		if strconv.FormatInt(c, 10) == want {
+			return want, true
+		}
+	}
+	return "", false
+}
+
+// categoryIDs lists all categories of an item; players that know
+// category_ids show a movie in each of its genres.
+func categoryIDs(it *media.Item) []int64 {
+	if it.CategoryIDs == nil {
+		return []int64{}
+	}
+	return it.CategoryIDs
+}
+
 func rating(it *media.Item) (string, float64) {
 	if it.Rating == 0 {
 		return "", 0
@@ -127,8 +155,8 @@ func (h *Handler) vodStreams(w http.ResponseWriter, r *http.Request, base string
 	want := r.FormValue("category_id")
 	out := []map[string]any{}
 	for i, it := range h.vod.Movies() {
-		cat := strconv.FormatInt(it.CategoryID, 10)
-		if want != "" && want != cat {
+		cat, ok := itemCategory(it, want)
+		if !ok {
 			continue
 		}
 		rt, rt5 := rating(it)
@@ -144,7 +172,7 @@ func (h *Handler) vodStreams(w http.ResponseWriter, r *http.Request, base string
 			"rating_5based":       rt5,
 			"added":               unix(it.Added),
 			"category_id":         cat,
-			"category_ids":        []int64{it.CategoryID},
+			"category_ids":        categoryIDs(it),
 			"container_extension": it.Container,
 			"custom_sid":          "",
 			"direct_source":       "",
@@ -162,6 +190,7 @@ func (h *Handler) vodInfo(w http.ResponseWriter, r *http.Request, base string) {
 	}
 	rt, _ := rating(it)
 	poster := imageURL(base, it, "poster")
+	cat, _ := itemCategory(it, "")
 	writeJSON(w, map[string]any{
 		"info": map[string]any{
 			"name":            it.Title,
@@ -188,7 +217,8 @@ func (h *Handler) vodInfo(w http.ResponseWriter, r *http.Request, base string) {
 			"stream_id":           it.ID,
 			"name":                it.Title,
 			"added":               unix(it.Added),
-			"category_id":         strconv.FormatInt(it.CategoryID, 10),
+			"category_id":         cat,
+			"category_ids":        categoryIDs(it),
 			"container_extension": it.Container,
 			"custom_sid":          "",
 			"direct_source":       "",
@@ -196,7 +226,7 @@ func (h *Handler) vodInfo(w http.ResponseWriter, r *http.Request, base string) {
 	})
 }
 
-func (h *Handler) showInfo(base string, it *media.Item, num int) map[string]any {
+func (h *Handler) showInfo(base string, it *media.Item, num int, cat string) map[string]any {
 	rt, rt5 := rating(it)
 	lastModified := it.Added
 	for _, ep := range h.vod.Episodes(it.ID) {
@@ -222,8 +252,8 @@ func (h *Handler) showInfo(base string, it *media.Item, num int) map[string]any 
 		"backdrop_path":    backdrops(base, it),
 		"youtube_trailer":  "",
 		"episode_run_time": "",
-		"category_id":      strconv.FormatInt(it.CategoryID, 10),
-		"category_ids":     []int64{it.CategoryID},
+		"category_id":      cat,
+		"category_ids":     categoryIDs(it),
 	}
 }
 
@@ -231,10 +261,11 @@ func (h *Handler) seriesList(w http.ResponseWriter, r *http.Request, base string
 	want := r.FormValue("category_id")
 	out := []map[string]any{}
 	for i, it := range h.vod.Shows() {
-		if want != "" && want != strconv.FormatInt(it.CategoryID, 10) {
+		cat, ok := itemCategory(it, want)
+		if !ok {
 			continue
 		}
-		out = append(out, h.showInfo(base, it, i+1))
+		out = append(out, h.showInfo(base, it, i+1, cat))
 	}
 	writeJSON(w, out)
 }
@@ -289,7 +320,8 @@ func (h *Handler) seriesInfo(w http.ResponseWriter, r *http.Request, base string
 	if seasons == nil {
 		seasons = []map[string]any{}
 	}
-	info := h.showInfo(base, show, 1)
+	cat, _ := itemCategory(show, "")
+	info := h.showInfo(base, show, 1, cat)
 	delete(info, "num")
 	writeJSON(w, map[string]any{"seasons": seasons, "info": info, "episodes": episodes})
 }

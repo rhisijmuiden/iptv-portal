@@ -222,6 +222,9 @@ var migrations = []string{
 		expires_at DATETIME NOT NULL
 	);
 	CREATE INDEX password_resets_user ON password_resets(user_id);`,
+
+	// On Demand is grouped by genre unless a server says otherwise.
+	`ALTER TABLE media_servers ADD COLUMN categories TEXT NOT NULL DEFAULT 'genres';`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

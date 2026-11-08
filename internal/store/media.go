@@ -13,6 +13,18 @@ const (
 	MediaPlex     = "plex"
 )
 
+// How the movies and series of a media server are grouped into the
+// categories players show.
+const (
+	// CategoriesGenres makes one category per genre, e.g. "Action".
+	CategoriesGenres = "genres"
+	// CategoriesLibraries makes one category per library, e.g. "Films".
+	CategoriesLibraries = "libraries"
+	// CategoriesLibraryGenres makes one category per genre within each
+	// library, e.g. "Films | Action".
+	CategoriesLibraryGenres = "library_genres"
+)
+
 // MediaServer is a Jellyfin or Plex server whose movies and series are
 // offered to players as On Demand.
 type MediaServer struct {
@@ -31,6 +43,9 @@ type MediaServer struct {
 	// the players, and they see the token in the stream address.
 	Direct  bool
 	Enabled bool
+	// Categories is how items are grouped: CategoriesGenres (the
+	// default), CategoriesLibraries or CategoriesLibraryGenres.
+	Categories string
 }
 
 // KindName is the display name of the server software.
@@ -68,6 +83,13 @@ func (m *MediaServer) Validate() error {
 	if !isHTTPURL(m.URL) {
 		return errors.New("server address must start with http:// or https://")
 	}
+	switch m.Categories {
+	case CategoriesGenres, CategoriesLibraries, CategoriesLibraryGenres:
+	case "":
+		m.Categories = CategoriesGenres
+	default:
+		return errors.New("choose how to group the categories")
+	}
 	if m.Token == "" {
 		if m.Kind == MediaPlex {
 			return errors.New("enter the Plex token")
@@ -77,12 +99,12 @@ func (m *MediaServer) Validate() error {
 	return nil
 }
 
-const mediaServerSelect = `SELECT id, name, kind, url, token, libraries, direct, enabled FROM media_servers`
+const mediaServerSelect = `SELECT id, name, kind, url, token, libraries, direct, enabled, categories FROM media_servers`
 
 func scanMediaServer(sc interface{ Scan(...any) error }) (MediaServer, error) {
 	var m MediaServer
 	var libs string
-	err := sc.Scan(&m.ID, &m.Name, &m.Kind, &m.URL, &m.Token, &libs, &m.Direct, &m.Enabled)
+	err := sc.Scan(&m.ID, &m.Name, &m.Kind, &m.URL, &m.Token, &libs, &m.Direct, &m.Enabled, &m.Categories)
 	m.Libraries = strings.Fields(libs)
 	return m, err
 }
@@ -130,16 +152,17 @@ func (s *Store) SaveMediaServer(ctx context.Context, m MediaServer) (int64, erro
 	libs := strings.Join(m.Libraries, " ")
 	if m.ID == 0 {
 		res, err := s.db.ExecContext(ctx,
-			`INSERT INTO media_servers(name, kind, url, token, libraries, direct, enabled) VALUES(?, ?, ?, ?, ?, ?, ?)`,
-			m.Name, m.Kind, m.URL, m.Token, libs, m.Direct, m.Enabled)
+			`INSERT INTO media_servers(name, kind, url, token, libraries, direct, enabled, categories)
+			 VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
+			m.Name, m.Kind, m.URL, m.Token, libs, m.Direct, m.Enabled, m.Categories)
 		if err != nil {
 			return 0, uniqueErr(err, "a media server with this name already exists")
 		}
 		return res.LastInsertId()
 	}
 	res, err := s.db.ExecContext(ctx,
-		`UPDATE media_servers SET name = ?, kind = ?, url = ?, token = ?, libraries = ?, direct = ?, enabled = ?
-		 WHERE id = ?`, m.Name, m.Kind, m.URL, m.Token, libs, m.Direct, m.Enabled, m.ID)
+		`UPDATE media_servers SET name = ?, kind = ?, url = ?, token = ?, libraries = ?, direct = ?, enabled = ?,
+		 categories = ? WHERE id = ?`, m.Name, m.Kind, m.URL, m.Token, libs, m.Direct, m.Enabled, m.Categories, m.ID)
 	if err != nil {
 		return 0, uniqueErr(err, "a media server with this name already exists")
 	}
