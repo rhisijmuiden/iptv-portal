@@ -33,6 +33,7 @@ type accountPage struct {
 	PortalName string
 	Base       string // the portal address entered in the player
 	MailOn     bool
+	WebPlayer  bool // the web player is on: show "Watch" in the menu
 	Session    *store.UserSession
 	Flash      string
 	Error      string
@@ -60,6 +61,7 @@ func (h *Handler) accountRoutes() {
 	auth("POST /account/password", h.accountPassword)
 	auth("POST /account/logout", h.accountLogout)
 	h.selfServiceRoutes(auth)
+	h.watchRoutes(auth)
 }
 
 // accountOn answers 404 while the admin has the account pages turned off.
@@ -120,6 +122,7 @@ func (h *Handler) renderAccount(w http.ResponseWriter, r *http.Request, name str
 	p.PortalName = st.PortalName
 	p.Base = web.BaseURL(st.PublicURL, r)
 	p.MailOn = st.Mail.Configured()
+	p.WebPlayer = st.WebPlayer
 	if p.Flash == "" {
 		p.Flash = r.URL.Query().Get("ok")
 	}

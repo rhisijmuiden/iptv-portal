@@ -20,6 +20,16 @@
     </label>
     <label class="check"><input type="checkbox" name="account_portal" value="1" {{if .Data.AccountPortal}}checked{{end}}> {{t "Account pages for users"}}</label>
     <p class="muted"><small>{{th `Users log in at <code>%s/account</code> with the username and password of their player to see until when their account is valid, find their player details and viewing history, and change their password. With a mail server they can also reset a forgotten password.` .Data.PortalURL}}</small></p>
+    <label class="check"><input type="checkbox" name="web_player" value="1" {{if .Data.WebPlayer}}checked{{end}}> {{t "Web player in the account pages"}}</label>
+    <p class="muted"><small>{{t "Users can watch their TV channels, radio stations and On Demand in the browser, on a computer or phone. Their package and connection limit apply as in their player."}}</small></p>
+    <label>{{t "Streams in the web player"}}
+      <select name="web_player_proxy">
+        <option value="auto"{{if eq .Data.WebPlayerProxy "auto"}} selected{{end}}>{{t "From the source, through the portal when the browser needs it (recommended)"}}</option>
+        <option value="always"{{if eq .Data.WebPlayerProxy "always"}} selected{{end}}>{{t "Always through the portal"}}</option>
+        <option value="never"{{if eq .Data.WebPlayerProxy "never"}} selected{{end}}>{{t "Always from the source"}}</option>
+      </select>
+      <small>{{t "Browsers refuse http streams on an https portal and streams from sources that do not allow other websites. The portal then passes the stream on, which uses its bandwidth. On Demand always goes through the portal."}}</small>
+    </label>
   </section>
   <section class="card stack-card">
     <h2>{{t "Network"}}</h2>

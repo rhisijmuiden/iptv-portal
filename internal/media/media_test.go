@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -333,7 +334,9 @@ func (f fakeClient) Libraries(context.Context) ([]Library, error) { return f.lib
 func (f fakeClient) Items(_ context.Context, l Library) ([]Item, error) {
 	return f.items[l.ID], nil
 }
-func (f fakeClient) URL(p string) string { return p }
+func (f fakeClient) URL(p string) string     { return p }
+func (f fakeClient) WebPath(it *Item) string { return it.Stream }
+func (f fakeClient) Auth() url.Values        { return nil }
 
 func TestCatalogGenres(t *testing.T) {
 	ctx := context.Background()

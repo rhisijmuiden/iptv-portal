@@ -18,6 +18,7 @@ It can also offer the movies and series of your own **Jellyfin** or **Plex** ser
 - **Users, packages and invitations.** Decide per user which channels they see, set expiry dates and connection limits, switch accounts off, and send invitation links so people create their own login.
 - **Xtream Codes API, M3U and XMLTV.** Works with MyTVOnline (Formuler), TiviMate, IPTV Smarters and most other players.
 - **Program guide** merged from your own XMLTV sources and filtered per user.
+- **Web player** in the account pages: subscribers watch their TV channels, radio stations and On Demand in the browser on a computer or phone, within their package and connection limit.
 - **Viewing statistics** per channel and per user, for TV, radio and On Demand, with a list of channels nobody watches so you can clean them up.
 - **Stream health checks** that test every channel like a player would, show which streams are down and can switch dead channels off until they work again.
 - **Settings in the browser**: portal name, public URL and both ports, ready for a reverse proxy.
@@ -282,7 +283,20 @@ When **account pages** are on (Settings), users log in at `<portal>/account` wit
 - read **setup guides** (Formuler/MyTVOnline, TiviMate, smart TVs with IPTV Smarters, Apple devices, VLC and Kodi) with their own server address and username filled in. Edit, hide, reorder or add guides under **Subscribers → Setup guides**; guides are written in simple Markdown with an optional Dutch version, and removed standard guides can be added back;
 - register the **MAC address** of up to 10 devices, and see which players watched with their account in the last 30 days and which are online now. Admins see both on the user page;
 - compare the **packages** (channels per category, radio, On Demand, device limit, plus an optional description and price you set on the package) and **request** one. Answer requests under **Subscribers → Package requests**: approve to add the package or to replace the user's packages, or reject, with an optional reply. Users with an email address get the answer by email when a mail server is set up. Untick **Users can see and request this package** to keep a package off the account pages;
-- see their own **viewing statistics**: views per day, per hour of the day, TV/radio/On Demand split and the channels they watched.
+- see their own **viewing statistics**: views per day, per hour of the day, TV/radio/On Demand split and the channels they watched;
+- **watch** in the browser (see below).
+
+### Web player
+
+With **Web player in the account pages** on (Settings, on by default) users get a **Watch** page in their account. It lists the TV channels and radio stations of their packages, and the movies and series when their packages include On Demand, with search and categories. TV plays with [hls.js](https://github.com/video-dev/hls.js) (bundled, Apache 2.0), radio in the browser's own audio player, and the guide shows what is on now and next. Starting a stream counts as opening it in a player: it is recorded in the viewing statistics and the connection limit applies, and while it plays the page checks in every 5 minutes to keep its connection.
+
+Browsers are stricter than IPTV players. They refuse an `http://` stream on an `https://` portal (mixed content), and they only read a stream from another website when that website allows it (CORS). **Streams in the web player** decides what the portal does about it:
+
+- **From the source, through the portal when the browser needs it** (default): the browser plays from the broadcaster; http streams on an https portal go through the portal, and when a source refuses the browser, the player tries once more through the portal.
+- **Always through the portal**: every live stream goes through the portal. Uses the most bandwidth.
+- **Always from the source**: the portal never passes live streams on, so channels that need it will not play in the browser.
+
+Passed-on streams use addresses under `/account/stream/` that only work for the logged-in user, are encrypted (the source address and any media server token are not visible) and expire after 12 hours or a restart. HLS playlists are rewritten so every part goes through the portal. On Demand always goes through the portal: Jellyfin and Plex turn videos that browsers cannot play (such as MKV) into HLS with H.264 and AAC, copying what already fits; MP4 and WebM files play as they are. Streams that browsers cannot play at all (MPEG-TS `.ts`, RTMP, DASH) show a message to use the TV box instead.
 
 ### Connection limits
 
