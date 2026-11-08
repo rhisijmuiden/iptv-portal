@@ -2,13 +2,19 @@
 {{$d := .Data}}{{$now := $d.Now}}
 <div class="titlebar">
   <div>
-    <h1>{{t "Viewing history"}}</h1>
+    <h1>{{t "Viewing statistics"}}</h1>
     <p class="subtitle">{{t "What you watched, and for how long. Only you and the portal admin can see this."}}</p>
   </div>
 </div>
 <form method="get" action="/account/history" class="filters">
   <select name="days" onchange="this.form.submit()" aria-label="{{t "Period"}}">
     {{range $d.Periods}}<option value="{{.}}"{{if eq . $d.Days}} selected{{end}}>{{if eq . 7}}{{t "Last 7 days"}}{{else if eq . 30}}{{t "Last 30 days"}}{{else}}{{t "Last 90 days"}}{{end}}</option>{{end}}
+  </select>
+  <select name="kind" onchange="this.form.submit()" aria-label="{{t "Type"}}">
+    <option value="">{{t "TV, radio and On Demand"}}</option>
+    <option value="tv"{{if eq $d.Kind "tv"}} selected{{end}}>{{t "TV channels"}}</option>
+    <option value="radio"{{if eq $d.Kind "radio"}} selected{{end}}>{{t "Radio stations"}}</option>
+    <option value="vod"{{if eq $d.Kind "vod"}} selected{{end}}>{{t "On Demand"}}</option>
   </select>
   <noscript><button class="secondary">{{t "Show"}}</button></noscript>
 </form>
@@ -25,6 +31,26 @@
   </div>
   <div class="chart-axis">{{with index $d.Chart 0}}<span>{{longdate .Day}}</span>{{end}}<span>{{t "today"}}</span></div>
 </section>
+<div class="grid-2">
+<section class="card">
+  <h2>{{t "When you watch"}}</h2>
+  <div class="chart hours" role="img" aria-label="{{t "Views per hour of the day"}}">
+    {{range $d.Hours}}<span class="bar" title="{{printf "%02d:00" .Hour}}: {{if eq .Views 1}}{{t "1 view"}}{{else}}{{tf "%d views" .Views}}{{end}}, {{duration .Time}}"><span style="height: {{.Height}}%"></span></span>{{end}}
+  </div>
+  <div class="chart-axis"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:00</span></div>
+</section>
+{{if $d.Kinds}}
+<section class="card">
+  <h2>{{t "What you watch"}}</h2>
+  <ul class="shares">
+  {{range $d.Kinds}}
+    <li><div><span>{{template "kind" .Kind}}</span><strong>{{duration .Time}}</strong> <span class="muted">· {{if eq .Views 1}}{{t "1 view"}}{{else}}{{tf "%d views" .Views}}{{end}} · {{.Percent}}%</span></div>
+      <span class="meter"><b style="width: {{.Percent}}%"></b></span></li>
+  {{end}}
+  </ul>
+</section>
+{{end}}
+</div>
 <h2 class="section-title">{{t "Channels watched"}}</h2>
 <section class="card flush">
   <table>

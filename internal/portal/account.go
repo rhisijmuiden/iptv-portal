@@ -59,6 +59,7 @@ func (h *Handler) accountRoutes() {
 	auth("POST /account/email", h.accountEmail)
 	auth("POST /account/password", h.accountPassword)
 	auth("POST /account/logout", h.accountLogout)
+	h.selfServiceRoutes(auth)
 }
 
 // accountOn answers 404 while the admin has the account pages turned off.
@@ -230,7 +231,12 @@ func (h *Handler) accountOverview(w http.ResponseWriter, r *http.Request, sess s
 }
 
 func (h *Handler) accountSetup(w http.ResponseWriter, r *http.Request, sess store.UserSession) {
-	h.renderAccount(w, r, "setup", http.StatusOK, accountPage{Title: "Set up your TV", Nav: "setup", Session: &sess})
+	cards, err := h.guideCards(r)
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	h.renderAccount(w, r, "setup", http.StatusOK, accountPage{Title: "Set up your TV", Nav: "setup", Session: &sess, Data: cards})
 }
 
 // ---- viewing history ----
@@ -241,8 +247,11 @@ var historyPeriods = []int{7, 30, 90}
 type historyData struct {
 	Days     int
 	Periods  []int
+	Kind     string // "" for everything, or store.KindTV, KindRadio, KindVOD
 	Summary  store.ViewSummary
 	Chart    []historyBar
+	Hours    []hourBar
+	Kinds    []kindShare
 	Channels []store.ChannelViews
 	Recent   []store.View
 	Assume   int // minutes a view is assumed to last
@@ -252,6 +261,18 @@ type historyData struct {
 type historyBar struct {
 	store.DayViews
 	Height int // percent of the highest bar
+}
+
+type hourBar struct {
+	store.HourViews
+	Height int // percent of the highest bar
+}
+
+// kindShare is the part of the viewing time spent on TV, radio or On
+// Demand.
+type kindShare struct {
+	store.KindViews
+	Percent int
 }
 
 func (h *Handler) accountHistory(w http.ResponseWriter, r *http.Request, sess store.UserSession) {
@@ -264,8 +285,12 @@ func (h *Handler) accountHistory(w http.ResponseWriter, r *http.Request, sess st
 			}
 		}
 	}
+	switch k := r.FormValue("kind"); k {
+	case store.KindTV, store.KindRadio, store.KindVOD:
+		d.Kind = k
+	}
 	today := time.Date(d.Now.Year(), d.Now.Month(), d.Now.Day(), 0, 0, 0, 0, time.Local)
-	f := store.ViewFilter{UserID: sess.User.ID, Since: today.AddDate(0, 0, 1-d.Days)}
+	f := store.ViewFilter{UserID: sess.User.ID, Since: today.AddDate(0, 0, 1-d.Days), Kind: d.Kind}
 	var err error
 	if d.Summary, err = h.store.ViewSummary(ctx, f); err != nil {
 		h.serverError(w, err)
@@ -287,6 +312,36 @@ func (h *Handler) accountHistory(w http.ResponseWriter, r *http.Request, sess st
 		}
 		d.Chart = append(d.Chart, b)
 	}
+	hours, err := h.store.ViewsByHour(ctx, f)
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	highest = 0
+	for _, hv := range hours {
+		highest = max(highest, hv.Views)
+	}
+	for _, hv := range hours {
+		b := hourBar{HourViews: hv}
+		if highest > 0 {
+			b.Height = hv.Views * 100 / highest
+		}
+		d.Hours = append(d.Hours, b)
+	}
+	if d.Kind == "" {
+		kinds, err := h.store.ViewsByKind(ctx, f)
+		if err != nil {
+			h.serverError(w, err)
+			return
+		}
+		for _, k := range kinds {
+			ks := kindShare{KindViews: k}
+			if d.Summary.Time > 0 {
+				ks.Percent = int(math.Round(float64(k.Time) * 100 / float64(d.Summary.Time)))
+			}
+			d.Kinds = append(d.Kinds, ks)
+		}
+	}
 	if d.Channels, err = h.store.ChannelViews(ctx, f); err != nil {
 		h.serverError(w, err)
 		return
@@ -295,7 +350,7 @@ func (h *Handler) accountHistory(w http.ResponseWriter, r *http.Request, sess st
 		h.serverError(w, err)
 		return
 	}
-	h.renderAccount(w, r, "history", http.StatusOK, accountPage{Title: "Viewing history", Nav: "history", Session: &sess, Data: d})
+	h.renderAccount(w, r, "history", http.StatusOK, accountPage{Title: "Viewing statistics", Nav: "history", Session: &sess, Data: d})
 }
 
 // ---- settings ----

@@ -1,0 +1,77 @@
+{{define "content"}}
+{{$d := .Data}}
+<div class="titlebar">
+  <div>
+    <h1>{{t "Packages"}}</h1>
+    <p class="subtitle">{{t "See what each package includes, and ask for the one you want. The portal admin looks at your request and lets you know."}}</p>
+  </div>
+</div>
+{{if $d.Offers}}
+<div class="package-cards">
+{{range $d.Offers}}
+  <section class="card package-card{{if .Mine}} mine{{end}}" id="package-{{.ID}}">
+    <div class="card-head">
+      <h2>{{.Name}}</h2>
+      {{if .Mine}}<span class="badge on">{{t "Your package"}}</span>{{else if .RequestID}}<span class="badge warn">{{t "Requested"}}</span>{{end}}
+    </div>
+    {{with .Price}}<p class="price">{{.}}</p>{{end}}
+    {{with .Description}}<p class="package-desc">{{.}}</p>{{end}}
+    <ul class="includes">
+      <li>{{icon "tv"}}{{if .AllChannels}}{{t "All TV channels"}} <span class="muted">({{.TV}})</span>{{else if eq .TV 1}}{{t "1 TV channel"}}{{else}}{{tf "%d TV channels" .TV}}{{end}}</li>
+      {{if .Radio}}<li>{{icon "radio"}}{{if eq .Radio 1}}{{t "1 radio station"}}{{else}}{{tf "%d radio stations" .Radio}}{{end}}</li>{{end}}
+      <li class="{{if not .OnDemand}}no{{end}}">{{icon "film"}}{{if .OnDemand}}{{t "On Demand movies and series"}}{{else}}{{t "No On Demand"}}{{end}}</li>
+      <li>{{icon "devices"}}{{with .MaxConnections}}{{if eq . 1}}{{t "Watch on 1 device at a time"}}{{else}}{{tf "Watch on %d devices at a time" .}}{{end}}{{else}}{{t "No limit on devices"}}{{end}}</li>
+      {{if and (not .Mine) .New}}<li class="new">{{icon "plus"}}{{if eq .New 1}}{{t "1 channel you do not have yet"}}{{else}}{{tf "%d channels you do not have yet" .New}}{{end}}</li>{{end}}
+    </ul>
+    {{if .Categories}}
+    <details class="package-content">
+      <summary>{{t "Show all channels"}}</summary>
+      {{range .Categories}}
+      <h3>{{with .Name}}{{.}}{{else}}{{t "Other"}}{{end}}{{if .Radio}} <span class="chip">{{t "Radio"}}</span>{{end}} <span class="muted">({{len .Channels}})</span></h3>
+      <p class="channel-names">{{range $i, $c := .Channels}}{{if $i}}, {{end}}{{$c}}{{end}}</p>
+      {{end}}
+    </details>
+    {{end}}
+    {{if not .Mine}}
+    <div class="package-action">
+    {{if .RequestID}}
+      <form method="post" action="/account/requests/{{.RequestID}}/cancel">
+        <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+        <button class="secondary">{{t "Withdraw request"}}</button>
+      </form>
+    {{else}}
+      <details class="request"{{if eq $d.FormFor .ID}} open{{end}}>
+        <summary class="button">{{icon "upgrade"}}{{t "Request this package"}}</summary>
+        <form method="post" action="/account/packages/{{.ID}}/request" class="stack">
+          <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+          <label>{{t "Message for the admin (optional)"}}
+            <textarea name="message" rows="3" maxlength="500" placeholder="{{t "For example: instead of my current package, or in addition to it"}}">{{if eq $d.FormFor .ID}}{{$d.Message}}{{end}}</textarea></label>
+          <button>{{t "Send request"}}</button>
+        </form>
+      </details>
+    {{end}}
+    </div>
+    {{end}}
+  </section>
+{{end}}
+</div>
+{{else}}
+<section class="card empty">{{t "There are no packages to choose from at the moment. Contact the person who gave you access."}}</section>
+{{end}}
+{{with $d.Requests}}
+<h2 class="section-title">{{t "Your requests"}}</h2>
+<section class="card flush">
+  <table>
+    <thead><tr><th>{{t "Package"}}</th><th>{{t "Requested"}}</th><th>{{t "Status"}}</th><th>{{t "Answer"}}</th></tr></thead>
+    <tbody>
+    {{range .}}
+    <tr><td><span class="name">{{.Package}}</span>{{with .Message}}<div class="muted"><small>{{.}}</small></div>{{end}}</td>
+      <td class="nowrap">{{longdate .CreatedAt}}</td>
+      <td>{{if eq .Status "pending"}}<span class="badge warn">{{t "Waiting for an answer"}}</span>{{else if eq .Status "approved"}}<span class="badge on">{{t "Approved"}}</span>{{else if eq .Status "rejected"}}<span class="badge off">{{t "Not approved"}}</span>{{else}}<span class="badge idle">{{t "Withdrawn"}}</span>{{end}}</td>
+      <td>{{with .Reply}}{{.}}{{else}}<span class="muted">-</span>{{end}}</td></tr>
+    {{end}}
+    </tbody>
+  </table>
+</section>
+{{end}}
+{{end}}

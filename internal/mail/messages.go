@@ -76,3 +76,21 @@ func TestMessage(lang, to, portalName string) Message {
 	return Message{To: to, Subject: i18n.Tf(lang, "%s test email", portalName),
 		Body: i18n.Tf(lang, "This is a test email from %s.\n\nYour mail server settings work.\n", portalName)}
 }
+
+// PackageAnswerMessage, in language lang, tells a user what the admin
+// decided about the package they asked for.
+func PackageAnswerMessage(lang, to, portalName, username, pkg string, approved bool, reply, accountURL string) Message {
+	var b strings.Builder
+	if approved {
+		fmt.Fprintf(&b, i18n.T(lang, "Hello %s,\n\nGood news: your request for the package %s at %s has been approved. The new channels show up in your TV box or IPTV app the next time it loads the channel list; restart the app if you do not see them.\n"),
+			username, pkg, portalName)
+	} else {
+		fmt.Fprintf(&b, i18n.T(lang, "Hello %s,\n\nYour request for the package %s at %s has not been approved.\n"), username, pkg, portalName)
+	}
+	if reply != "" {
+		fmt.Fprintf(&b, i18n.T(lang, "\nMessage from the admin:\n\n  %s\n"), reply)
+	}
+	fmt.Fprintf(&b, i18n.T(lang, "\nSee your packages at:\n\n  %s\n"), accountURL)
+	subject := i18n.Tf(lang, "Your package request at %s", portalName)
+	return Message{To: to, Subject: subject, Body: b.String()}
+}

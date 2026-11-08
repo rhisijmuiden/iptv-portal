@@ -371,6 +371,7 @@ func (h *Handler) routes() {
 	auth("POST /users/{id}/send-login", h.userSendLogin)
 	auth("POST /invites/{id}/send", h.inviteSend)
 	h.backupRoutes(auth)
+	h.selfServiceRoutes(auth)
 
 	api := func(pattern string, fn http.HandlerFunc) {
 		m.Handle(pattern, h.requireToken(fn))
@@ -520,7 +521,9 @@ type page struct {
 	// Suggestions is the number of failing channels with a suggested
 	// replacement, shown in the menu.
 	Suggestions int
-	Data        any
+	// Requests is the number of package requests waiting for an answer.
+	Requests int
+	Data     any
 }
 
 func (h *Handler) render(w http.ResponseWriter, r *http.Request, name string, p page) {
@@ -548,6 +551,7 @@ func (h *Handler) render(w http.ResponseWriter, r *http.Request, name string, p 
 	p.Path = pagePath(r)
 	if p.Session != nil {
 		p.Suggestions, _ = h.store.CountSuggestions(r.Context())
+		p.Requests, _ = h.store.CountPendingRequests(r.Context())
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")

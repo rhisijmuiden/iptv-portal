@@ -86,7 +86,7 @@ func New(st *store.Store, guide *epg.Guide, tracker *activity.Tracker, vod *medi
 // rendered by executing "layout.html".
 func (h *Handler) parseTemplates() error {
 	plain := []string{"invite", "welcome", "login", "forgot", "reset"}
-	app := []string{"account", "setup", "history", "profile"}
+	app := []string{"account", "setup", "history", "profile", "guide", "devices", "packages"}
 	h.pages = map[string]map[string]*template.Template{}
 	for _, l := range i18n.Languages {
 		funcs := templateFuncs(l.Code)

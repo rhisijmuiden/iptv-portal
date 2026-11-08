@@ -28,7 +28,12 @@ type Package struct {
 	// MaxConnections is how many places a user of this package may watch
 	// from at once; 0 = no limit from this package.
 	MaxConnections int
-	UserCount      int
+	// Description and Price are shown to users choosing a package on
+	// their account page; Public shows the package there at all.
+	Description string
+	Price       string
+	Public      bool
+	UserCount   int
 }
 
 // User is an account an IPTV player logs in with.
@@ -73,7 +78,7 @@ func (u User) Active() bool { return u.Enabled && !u.Expired() }
 // Packages returns all packages with their categories and user counts.
 func (s *Store) Packages(ctx context.Context) ([]Package, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT p.id, p.name, p.all_channels, p.on_demand, p.max_connections,
+		`SELECT p.id, p.name, p.all_channels, p.on_demand, p.max_connections, p.description, p.price, p.public,
 		 (SELECT COUNT(*) FROM user_packages up WHERE up.package_id = p.id)
 		 FROM packages p ORDER BY p.name`)
 	if err != nil {
@@ -82,7 +87,8 @@ func (s *Store) Packages(ctx context.Context) ([]Package, error) {
 	var out []Package
 	for rows.Next() {
 		var p Package
-		if err := rows.Scan(&p.ID, &p.Name, &p.AllChannels, &p.OnDemand, &p.MaxConnections, &p.UserCount); err != nil {
+		if err := rows.Scan(&p.ID, &p.Name, &p.AllChannels, &p.OnDemand, &p.MaxConnections,
+			&p.Description, &p.Price, &p.Public, &p.UserCount); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -105,8 +111,8 @@ func (s *Store) Packages(ctx context.Context) ([]Package, error) {
 func (s *Store) Package(ctx context.Context, id int64) (Package, error) {
 	var p Package
 	err := s.db.QueryRowContext(ctx,
-		`SELECT id, name, all_channels, on_demand, max_connections FROM packages WHERE id = ?`, id).
-		Scan(&p.ID, &p.Name, &p.AllChannels, &p.OnDemand, &p.MaxConnections)
+		`SELECT id, name, all_channels, on_demand, max_connections, description, price, public FROM packages WHERE id = ?`, id).
+		Scan(&p.ID, &p.Name, &p.AllChannels, &p.OnDemand, &p.MaxConnections, &p.Description, &p.Price, &p.Public)
 	if errors.Is(err, sql.ErrNoRows) {
 		return p, ErrNotFound
 	}
@@ -129,17 +135,21 @@ func (s *Store) SavePackage(ctx context.Context, p Package) (int64, error) {
 	if p.MaxConnections < 0 {
 		return 0, errors.New("maximum connections must not be negative")
 	}
+	p.Description, p.Price = strings.TrimSpace(p.Description), strings.TrimSpace(p.Price)
+	if len(p.Description) > 2000 || len(p.Price) > 100 {
+		return 0, errors.New("the description or price is too long")
+	}
 	err := s.withTx(ctx, func(tx *sql.Tx) error {
 		if p.ID == 0 {
-			res, err := tx.ExecContext(ctx, `INSERT INTO packages(name, all_channels, on_demand, max_connections) VALUES(?, ?, ?, ?)`,
-				p.Name, p.AllChannels, p.OnDemand, p.MaxConnections)
+			res, err := tx.ExecContext(ctx, `INSERT INTO packages(name, all_channels, on_demand, max_connections, description, price, public) VALUES(?, ?, ?, ?, ?, ?, ?)`,
+				p.Name, p.AllChannels, p.OnDemand, p.MaxConnections, p.Description, p.Price, p.Public)
 			if err != nil {
 				return uniqueErr(err, "package already exists")
 			}
 			p.ID, _ = res.LastInsertId()
 		} else {
-			res, err := tx.ExecContext(ctx, `UPDATE packages SET name = ?, all_channels = ?, on_demand = ?, max_connections = ? WHERE id = ?`,
-				p.Name, p.AllChannels, p.OnDemand, p.MaxConnections, p.ID)
+			res, err := tx.ExecContext(ctx, `UPDATE packages SET name = ?, all_channels = ?, on_demand = ?, max_connections = ?, description = ?, price = ?, public = ? WHERE id = ?`,
+				p.Name, p.AllChannels, p.OnDemand, p.MaxConnections, p.Description, p.Price, p.Public, p.ID)
 			if err != nil {
 				return uniqueErr(err, "package already exists")
 			}

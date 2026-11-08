@@ -1,0 +1,53 @@
+{{define "content"}}
+{{$d := .Data}}{{$now := $d.Now}}
+<div class="titlebar">
+  <div>
+    <h1>{{t "My devices"}}</h1>
+    <p class="subtitle">{{t "Register the MAC address of your TV box, and see which devices watched with your account."}}</p>
+  </div>
+</div>
+<section class="card">
+  <div class="card-head"><h2>{{t "Registered devices"}}</h2><span class="muted">{{tf "%d of %d" (len $d.Devices) $d.Max}}</span></div>
+  <p class="muted">{{t "The MAC address helps the portal admin recognise your device when you need help. You find it in the settings of your box, usually under About or Network, or on a sticker underneath it."}}</p>
+  {{if $d.Devices}}
+  <table class="my-devices">
+    <thead><tr><th>{{t "Name"}}</th><th>{{t "MAC address"}}</th><th>{{t "Added"}}</th><th></th></tr></thead>
+    <tbody>
+    {{range $d.Devices}}
+    <tr><td><span class="name">{{.Name}}</span></td><td><code>{{.MAC}}</code></td><td class="nowrap">{{longdate .CreatedAt}}</td>
+      <td class="actions"><form method="post" action="/account/devices/{{.ID}}/delete" onsubmit="return confirm('{{t "Remove this device?"}}')">
+        <input type="hidden" name="csrf" value="{{$.Session.CSRF}}">
+        <button class="danger sm" title="{{t "Remove"}}">{{icon "trash"}}<span class="label">{{t "Remove"}}</span></button></form></td></tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{end}}
+  {{if lt (len $d.Devices) $d.Max}}
+  <form method="post" action="/account/devices" class="inline device-form">
+    <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+    <label>{{t "Name"}} <input name="name" value="{{$d.Name}}" maxlength="60" placeholder="{{t "For example Living room"}}" required></label>
+    <label>{{t "MAC address"}} <input name="mac" value="{{$d.MAC}}" maxlength="17" placeholder="00:1A:79:12:34:56" autocomplete="off" spellcheck="false" required></label>
+    <button>{{icon "plus"}}{{t "Add device"}}</button>
+  </form>
+  {{end}}
+</section>
+<h2 class="section-title">{{tf "Used to watch in the last %d days" $d.Days}}</h2>
+{{if $d.Used}}
+<section class="card flush">
+  <table class="used-devices">
+    <thead><tr><th>{{t "Device"}}</th><th>{{t "IP address"}}</th><th>{{t "Views"}}</th><th>{{t "Viewing time"}}</th><th>{{t "Last used"}}</th></tr></thead>
+    <tbody>
+    {{range $d.Used}}
+    <tr><td><span class="name">{{t .App}}</span>
+        {{if .Watching}}<span class="badge on">{{t "Watching now"}}</span>{{else if .Online}}<span class="badge idle">{{t "Online"}}</span>{{end}}
+        <div class="device" title="{{.UserAgent}}">{{if .Watching}}{{.Channel}}{{else if .LastChannel}}{{tf "Last: %s" .LastChannel}}{{else}}{{.UserAgent}}{{end}}</div></td>
+      <td><code>{{.IP}}</code></td><td>{{.Views}}</td><td class="nowrap">{{duration .Time}}</td><td class="nowrap">{{ago $now .Last}}</td></tr>
+    {{end}}
+    </tbody>
+  </table>
+</section>
+<p class="muted"><small>{{if $d.Limit}}{{if eq $d.Limit 1}}{{t "Your account can watch from 1 place at the same time."}}{{else}}{{tf "Your account can watch from %d places at the same time." $d.Limit}}{{end}} {{end}}{{t "Do you see a device you do not know? Change your password in the account settings, and then in your own TV box as well."}}</small></p>
+{{else}}
+<section class="card empty">{{t "No device has watched with your account in this period."}}</section>
+{{end}}
+{{end}}

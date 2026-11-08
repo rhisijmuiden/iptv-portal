@@ -19,6 +19,15 @@
     <legend>{{t "On Demand"}}</legend>
     <label class="check"><input type="checkbox" name="on_demand" {{if $p.OnDemand}}checked{{end}}> {{th `Movies and series from the <a href="%s/media">media servers</a>` base}}</label>
   </fieldset>
+  <fieldset>
+    <legend>{{t "On the account pages"}}</legend>
+    <label class="check"><input type="checkbox" name="public" {{if $p.Public}}checked{{end}}> {{t "Users can see and request this package"}}</label>
+    <div class="row">
+      <label>{{t "Description"}} <textarea name="description" rows="3" maxlength="2000" placeholder="{{t "For example: all regional channels from the north of the country"}}">{{$p.Description}}</textarea></label>
+      <label>{{t "Price"}} <input name="price" value="{{$p.Price}}" maxlength="100" placeholder="{{t "Optional, for example € 5 per month"}}">
+        <small>{{t "Shown as you type it. The portal does not handle payments."}}</small></label>
+    </div>
+  </fieldset>
   <label>{{t "Maximum connections per user"}} <input type="number" name="max_connections" value="{{if $p.MaxConnections}}{{$p.MaxConnections}}{{end}}" min="0" placeholder="{{t "No limit"}}">
     <small>{{t "How many places (IP addresses) a user can watch from at the same time. Leave empty for no limit. A user with several packages gets the highest limit; you can override it per user."}}</small></label>
   <div class="form-actions">
