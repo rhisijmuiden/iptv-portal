@@ -4,7 +4,9 @@ package media
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/tls"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -96,6 +98,23 @@ type Client interface {
 	// URL turns a path from an item into a full address including the
 	// token.
 	URL(path string) string
+	// WebPath is the path that plays a movie or episode in a web browser:
+	// the file itself when browsers play its container, otherwise an HLS
+	// stream the server makes from it.
+	WebPath(it *Item) string
+	// Auth is the query parameter that carries the token, for addresses
+	// the server hands out in its HLS playlists.
+	Auth() url.Values
+}
+
+// browserFile reports whether web browsers play files with the given
+// container themselves.
+func browserFile(container string) bool {
+	switch strings.ToLower(container) {
+	case "mp4", "m4v", "webm":
+		return true
+	}
+	return false
 }
 
 // NewClient returns the client for a media server.
@@ -201,4 +220,11 @@ func ext(p string) string {
 		return strings.ToLower(p[i+1:])
 	}
 	return ""
+}
+
+// randomID returns a random session id for the media server.
+func randomID() string {
+	b := make([]byte, 12)
+	rand.Read(b)
+	return hex.EncodeToString(b)
 }

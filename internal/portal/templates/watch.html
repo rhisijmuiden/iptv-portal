@@ -1,0 +1,100 @@
+{{define "content"}}
+{{$d := .Data}}
+<div class="titlebar">
+  <div>
+    <h1>{{t "Watch"}}</h1>
+    <p class="subtitle">{{t "Watch your channels, radio stations and On Demand right here in the browser, on your computer or phone."}}</p>
+  </div>
+</div>
+{{if not $d.Active}}
+<p class="flash err">{{t "Your account is not active, so nothing can be played."}}</p>
+{{end}}
+<section class="card player-card" id="player" hidden aria-live="polite">
+  <div class="player-stage">
+    <video id="video" controls playsinline preload="none"></video>
+    <div class="radio-stage" id="radio-stage" hidden>
+      <span class="radio-logo"><img id="radio-logo" alt=""></span>
+      <span class="radio-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+      <audio id="audio" controls preload="none"></audio>
+    </div>
+    <p class="player-msg" id="player-msg" hidden></p>
+  </div>
+  <div class="player-info">
+    <div>
+      <h2 id="player-title"></h2>
+      <p class="muted" id="player-now"></p>
+    </div>
+    <button type="button" class="icon-button" id="player-close" title="{{t "Stop"}}" aria-label="{{t "Stop"}}">{{icon "close"}}</button>
+  </div>
+</section>
+
+<div class="watch-tabs" role="tablist">
+  {{if $d.TV}}<button type="button" role="tab" data-tab="tv">{{icon "tv"}}{{t "TV"}} <span class="count">{{len $d.TV}}</span></button>{{end}}
+  {{if $d.Radio}}<button type="button" role="tab" data-tab="radio">{{icon "radio"}}{{t "Radio"}} <span class="count">{{len $d.Radio}}</span></button>{{end}}
+  {{if $d.OnDemand}}<button type="button" role="tab" data-tab="movies">{{icon "film"}}{{t "Movies"}}</button>
+  <button type="button" role="tab" data-tab="series">{{icon "film"}}{{t "Series"}}</button>{{end}}
+</div>
+
+{{if or $d.TV $d.Radio $d.OnDemand}}
+<div class="filters watch-filters">
+  <input type="search" id="watch-search" placeholder="{{t "Search"}}" aria-label="{{t "Search"}}" autocomplete="off">
+  <select id="watch-cat" aria-label="{{t "Category"}}"></select>
+</div>
+{{else}}
+<section class="card empty">{{t "Your package does not include anything to watch yet."}} <a href="/account/packages">{{t "Upgrade your package"}}</a></section>
+{{end}}
+
+{{if $d.TV}}
+<div class="watch-panel" data-panel="tv" role="tabpanel" hidden>
+  <div class="tile-grid">
+  {{range $d.TV}}
+    <button type="button" class="tile" data-kind="live" data-id="{{.ID}}" data-cat="{{.Category}}" data-name="{{.Name}}">
+      <span class="tile-logo">{{if .Logo}}<img src="{{.Logo}}" alt="" loading="lazy" referrerpolicy="no-referrer">{{end}}<b>{{.Name}}</b></span>
+      <span class="tile-name">{{.Name}}</span>
+    </button>
+  {{end}}
+  </div>
+  <p class="card empty" hidden>{{t "Nothing found."}}</p>
+</div>
+{{end}}
+{{if $d.Radio}}
+<div class="watch-panel" data-panel="radio" role="tabpanel" hidden>
+  <div class="tile-grid">
+  {{range $d.Radio}}
+    <button type="button" class="tile radio" data-kind="live" data-radio="1" data-id="{{.ID}}" data-cat="{{.Category}}" data-name="{{.Name}}">
+      <span class="tile-logo"><img src="{{.Logo}}" alt="" loading="lazy"><b>{{.Name}}</b></span>
+      <span class="tile-name">{{.Name}}</span>
+    </button>
+  {{end}}
+  </div>
+  <p class="card empty" hidden>{{t "Nothing found."}}</p>
+</div>
+{{end}}
+{{if $d.OnDemand}}
+<div class="watch-panel" data-panel="movies" role="tabpanel" hidden>
+  <div class="poster-grid"></div>
+  <p class="card empty" hidden>{{t "Nothing found."}}</p>
+  <div class="more" hidden><button type="button" class="secondary">{{t "Show more"}}</button></div>
+</div>
+<div class="watch-panel" data-panel="series" role="tabpanel" hidden>
+  <div class="poster-grid"></div>
+  <p class="card empty" hidden>{{t "Nothing found."}}</p>
+  <div class="more" hidden><button type="button" class="secondary">{{t "Show more"}}</button></div>
+  <section class="card series-detail" hidden>
+    <button type="button" class="back link">← {{t "Back"}}</button>
+    <div class="series-head">
+      <img alt="" class="series-poster">
+      <div>
+        <h2 class="series-title"></h2>
+        <p class="series-plot muted"></p>
+        <label>{{t "Season"}} <select class="season-select"></select></label>
+      </div>
+    </div>
+    <ol class="episodes"></ol>
+  </section>
+</div>
+{{end}}
+<script type="application/json" id="watch-config">{{$d.Config}}</script>
+<script src="/static/vendor/hls.min.js" defer></script>
+<script src="/static/watch.js" defer></script>
+{{end}}

@@ -19,6 +19,7 @@
   <a class="brand" href="/account"><picture><source srcset="/static/brand/rhis-logo-wit.svg" media="(prefers-color-scheme: dark)"><img class="brand-logo" src="/static/brand/rhis-logo.svg" alt="RHIS"></picture><span>{{.PortalName}}<small>{{t "My account"}}</small></span></a>
   <nav>
     <a href="/account" {{if eq .Nav "account"}}class="active"{{end}}>{{icon "dashboard"}}{{t "Overview"}}</a>
+    {{if .WebPlayer}}<a href="/account/watch" {{if eq .Nav "watch"}}class="active"{{end}}>{{icon "play"}}{{t "Watch"}}</a>{{end}}
     <a href="/account/setup" {{if eq .Nav "setup"}}class="active"{{end}}>{{icon "tv"}}{{t "Set up your TV"}}</a>
     <a href="/account/channels" {{if eq .Nav "channels"}}class="active"{{end}}>{{icon "star"}}{{t "My channels"}}</a>
     <a href="/account/parental" {{if eq .Nav "parental"}}class="active"{{end}}>{{icon "shield"}}{{t "Parental controls"}}</a>
