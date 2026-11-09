@@ -22,6 +22,7 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/mail"
 	"github.com/rhisijmuiden/iptv-portal/internal/media"
 	"github.com/rhisijmuiden/iptv-portal/internal/nowplaying"
+	"github.com/rhisijmuiden/iptv-portal/internal/prefs"
 	"github.com/rhisijmuiden/iptv-portal/internal/stats"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 	"github.com/rhisijmuiden/iptv-portal/internal/version"
@@ -38,6 +39,8 @@ type Handler struct {
 	mux     *http.ServeMux
 	pages   map[string]map[string]*template.Template // pages[lang][name]
 	limiter *web.Limiter
+	// pinLimiter counts wrong parental control PINs per account.
+	pinLimiter *web.Limiter
 	// authLimiter slows down password guessing on the player endpoints.
 	authLimiter *web.Limiter
 	guide       *epg.Guide
@@ -61,7 +64,8 @@ func (h *Handler) SetStats(rec *stats.Recorder) { h.stats = rec }
 func New(st *store.Store, guide *epg.Guide, tracker *activity.Tracker, vod *media.Catalog, log *slog.Logger) (*Handler, error) {
 	h := &Handler{store: st, log: log, mux: http.NewServeMux(), guide: guide, activity: tracker, vod: vod,
 		nowPlaying: nowplaying.New(), logos: logos.New(), streams: newStreamTokens(),
-		limiter: web.NewLimiter(20, 15*time.Minute), authLimiter: web.NewLimiter(30, 15*time.Minute)}
+		limiter: web.NewLimiter(20, 15*time.Minute), authLimiter: web.NewLimiter(30, 15*time.Minute),
+		pinLimiter: web.NewLimiter(5, 15*time.Minute)}
 	if err := h.parseTemplates(); err != nil {
 		return nil, err
 	}
@@ -89,7 +93,7 @@ func New(st *store.Store, guide *epg.Guide, tracker *activity.Tracker, vod *medi
 // rendered by executing "layout.html".
 func (h *Handler) parseTemplates() error {
 	plain := []string{"invite", "welcome", "login", "forgot", "reset"}
-	app := []string{"account", "setup", "history", "profile", "guide", "devices", "packages", "watch"}
+	app := []string{"account", "setup", "history", "profile", "guide", "devices", "packages", "channels", "parental", "watch"}
 	h.pages = map[string]map[string]*template.Template{}
 	for _, l := range i18n.Languages {
 		funcs := templateFuncs(l.Code)
@@ -136,6 +140,43 @@ func templateFuncs(lang string) template.FuncMap {
 			return i18n.Tf(lang, "%d h", m/60)
 		},
 	}
+	funcs["inc"] = func(i int) int { return i + 1 }
+	funcs["lower"] = strings.ToLower
+	funcs["kindIcon"] = func(kind string) string {
+		if kind == store.KindRadio {
+			return "radio"
+		}
+		return "tv"
+	}
+	// groupList and channelList pass a list with what its rows need to the
+	// sub-templates of the My channels page.
+	funcs["groupList"] = func(groups []groupRow, open int64, csrf, label string) map[string]any {
+		kind := store.KindTV
+		if label == "Radio" {
+			kind = store.KindRadio
+		}
+		return map[string]any{"Groups": groups, "Open": open, "CSRF": csrf, "Label": label, "Kind": kind}
+	}
+	funcs["channelList"] = func(chs []channelRow, csrf string) map[string]any {
+		return map[string]any{"Channels": chs, "CSRF": csrf}
+	}
+	funcs["clock"] = func(t time.Time) string {
+		now := time.Now()
+		if y, m, d := t.Date(); y == now.Year() && m == now.Month() && d == now.Day() {
+			return t.Local().Format("15:04")
+		}
+		return i18n.LongDate(lang, t) + " " + t.Local().Format("15:04")
+	}
+	funcs["deref"] = func(t *time.Time) time.Time {
+		if t == nil {
+			return time.Time{}
+		}
+		return *t
+	}
+	funcs["lockItem"] = func(row prefs.LockRow, field string) map[string]any {
+		return map[string]any{"Row": row, "Field": field}
+	}
+	funcs["lockSummary"] = func(f prefs.Form) string { return prefs.Summary(lang, f) }
 	for k, v := range i18n.Funcs(lang) {
 		funcs[k] = v
 	}

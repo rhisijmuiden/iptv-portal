@@ -61,6 +61,8 @@ func (h *Handler) accountRoutes() {
 	auth("POST /account/password", h.accountPassword)
 	auth("POST /account/logout", h.accountLogout)
 	h.selfServiceRoutes(auth)
+	h.myChannelsRoutes(auth)
+	h.parentalRoutes(auth)
 	h.watchRoutes(auth)
 }
 

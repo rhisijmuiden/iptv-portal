@@ -328,3 +328,25 @@ func TestStreamFormat(t *testing.T) {
 		}
 	}
 }
+
+func TestWatchParentalLock(t *testing.T) {
+	f := setup(t)
+	ctx := context.Background()
+	u := mustUser(t, f, "jan")
+	c, _ := f.store.Channel(ctx, f.nh)
+	if err := f.store.SetParentalPIN(ctx, u.ID, "1234"); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.store.SetCategoryLocked(ctx, u.ID, c.CategoryID, true); err != nil {
+		t.Fatal(err)
+	}
+	b := login(t, f, "jan", "secret1")
+	_, _, body := b.do("GET", "/account/watch", nil)
+	if strings.Contains(body, `data-name="NH"`) {
+		t.Error("watch page shows a locked channel")
+	}
+	token := csrfRE.FindStringSubmatch(body)[1]
+	if code, _, _ := b.play(token, "live", f.nh, nil); code != http.StatusNotFound {
+		t.Errorf("locked channel plays: %d", code)
+	}
+}

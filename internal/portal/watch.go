@@ -103,7 +103,9 @@ func (h *Handler) watchPage(w http.ResponseWriter, r *http.Request, sess store.U
 		h.serverError(w, err)
 		return
 	}
-	chs, err := h.playerChannels(r.Context(), sess.User)
+	// The same channels as in the player: hidden groups and groups locked
+	// by parental controls are left out. Favourites come first.
+	view, _, err := h.playerView(r.Context(), sess.User)
 	if err != nil {
 		h.serverError(w, err)
 		return
@@ -117,6 +119,16 @@ func (h *Handler) watchPage(w http.ResponseWriter, r *http.Request, sess store.U
 	base := web.BaseURL(st.PublicURL, r)
 	d := watchData{OnDemand: vod, Active: sess.User.Active()}
 	var tvCats, radioCats []string
+	fav := map[int64]bool{}
+	for _, c := range view.Favourites {
+		fav[c.ID] = true
+	}
+	chs := append([]store.Channel{}, view.Favourites...)
+	for _, c := range view.Channels {
+		if !fav[c.ID] {
+			chs = append(chs, c)
+		}
+	}
 	seen := map[string]bool{}
 	for _, c := range chs {
 		cat := c.Category
@@ -192,17 +204,26 @@ func (h *Handler) watchLibrary(w http.ResponseWriter, r *http.Request, sess stor
 		http.NotFound(w, r)
 		return
 	}
+	g, err := h.vodGate(r.Context(), sess.User)
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
 	lt, list := media.Movies, h.vod.Movies()
 	if r.FormValue("type") == "series" {
 		lt, list = media.Shows, h.vod.Shows()
 	}
 	cats := []watchCategory{}
 	for _, c := range h.vod.Categories(lt) {
-		cats = append(cats, watchCategory{ID: c.ID, Name: c.Name})
+		if g.allowsCategory(c.ID) {
+			cats = append(cats, watchCategory{ID: c.ID, Name: c.Name})
+		}
 	}
 	items := make([]watchItem, 0, len(list))
 	for _, it := range list {
-		items = append(items, webItem(it))
+		if g.allows(it) {
+			items = append(items, webItem(it))
+		}
 	}
 	writeJSON(w, map[string]any{"categories": cats, "items": items})
 }
@@ -235,8 +256,13 @@ func (h *Handler) watchSeries(w http.ResponseWriter, r *http.Request, sess store
 		http.NotFound(w, r)
 		return
 	}
+	g, err := h.vodGate(r.Context(), sess.User)
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
 	show, found := h.vod.Item(id, media.Show)
-	if !found {
+	if !found || !g.allows(show) {
 		http.NotFound(w, r)
 		return
 	}
@@ -321,6 +347,14 @@ func (h *Handler) watchPlay(w http.ResponseWriter, r *http.Request, sess store.U
 		var it *media.Item
 		if ok {
 			it, ok = h.vod.Item(id, t)
+		}
+		if ok {
+			g, err := h.vodGate(r.Context(), u)
+			if err != nil {
+				h.serverError(w, err)
+				return
+			}
+			ok = h.vodAllowed(g, it)
 		}
 		if !ok {
 			jsonError(w, http.StatusNotFound, "error")

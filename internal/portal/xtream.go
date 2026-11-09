@@ -10,12 +10,12 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
+	"github.com/rhisijmuiden/iptv-portal/internal/i18n"
 	"github.com/rhisijmuiden/iptv-portal/internal/store"
 	"github.com/rhisijmuiden/iptv-portal/internal/web"
 )
@@ -232,16 +232,50 @@ func streamType(c store.Channel) string {
 	return "live"
 }
 
-// playerChannels returns the channels of a user in the order players get
-// them: all TV channels first, then the radio stations.
-func (h *Handler) playerChannels(ctx context.Context, u store.User) ([]store.Channel, error) {
-	chs, err := h.store.UserChannels(ctx, u.ID)
+// playerEntry is a channel in the list a player gets, under the group it
+// is listed in.
+type playerEntry struct {
+	store.Channel
+	favourite bool // listed in the Favourites group
+}
+
+func (e playerEntry) categoryID() string {
+	if e.favourite {
+		return strconv.Itoa(favouritesCategory)
+	}
+	return categoryID(e.Channel)
+}
+
+func (e playerEntry) categoryName(label bool, favourites string) string {
+	if e.favourite {
+		return favourites
+	}
+	return categoryName(e.Channel, label)
+}
+
+// playerChannels returns the list of channels players get: the
+// favourites group first when the user wants it, then all TV channels,
+// then the radio stations, each in the user's order of groups.
+func (h *Handler) playerChannels(ctx context.Context, u store.User) ([]playerEntry, error) {
+	v, prefs, err := h.playerView(ctx, u)
 	if err != nil {
 		return nil, err
 	}
-	sort.SliceStable(chs, func(i, j int) bool { return !chs[i].IsRadio() && chs[j].IsRadio() })
-	return chs, nil
+	var out []playerEntry
+	if prefs.FavouritesGroup {
+		for _, c := range v.Favourites {
+			out = append(out, playerEntry{Channel: c, favourite: true})
+		}
+	}
+	for _, c := range v.Channels {
+		out = append(out, playerEntry{Channel: c})
+	}
+	return out, nil
 }
+
+// favouritesName is the name of the Favourites group in the portal's
+// default language.
+func favouritesName(st store.Settings) string { return i18n.T(st.Language, "Favourites") }
 
 func (h *Handler) liveCategories(w http.ResponseWriter, r *http.Request, u store.User) {
 	chs, err := h.playerChannels(r.Context(), u)
@@ -257,12 +291,12 @@ func (h *Handler) liveCategories(w http.ResponseWriter, r *http.Request, u store
 	out := []map[string]any{}
 	seen := map[string]bool{}
 	for _, c := range chs {
-		id := categoryID(c)
+		id := c.categoryID()
 		if seen[id] {
 			continue
 		}
 		seen[id] = true
-		out = append(out, map[string]any{"category_id": id, "category_name": categoryName(c, st.RadioLabel), "parent_id": 0})
+		out = append(out, map[string]any{"category_id": id, "category_name": c.categoryName(st.RadioLabel, favouritesName(st)), "parent_id": 0})
 	}
 	writeJSON(w, out)
 }
@@ -282,19 +316,19 @@ func (h *Handler) liveStreams(w http.ResponseWriter, r *http.Request, u store.Us
 	want := r.FormValue("category_id")
 	out := []map[string]any{}
 	for i, c := range chs {
-		if want != "" && want != categoryID(c) {
+		if want != "" && want != c.categoryID() {
 			continue
 		}
-		cat, _ := strconv.ParseInt(categoryID(c), 10, 64)
+		cat, _ := strconv.ParseInt(c.categoryID(), 10, 64)
 		out = append(out, map[string]any{
 			"num":                 i + 1,
 			"name":                c.Name,
-			"stream_type":         streamType(c),
+			"stream_type":         streamType(c.Channel),
 			"stream_id":           c.ID,
-			"stream_icon":         logoURL(base, c),
-			"epg_channel_id":      nullable(epgID(c)),
+			"stream_icon":         logoURL(base, c.Channel),
+			"epg_channel_id":      nullable(epgID(c.Channel)),
 			"added":               "0",
-			"category_id":         categoryID(c),
+			"category_id":         c.categoryID(),
 			"category_ids":        []int64{cat},
 			"custom_sid":          "",
 			"tv_archive":          0,
@@ -312,17 +346,15 @@ func nullable(s string) any {
 	return s
 }
 
+// userChannel returns a channel the user may open; channels in groups
+// locked by parental control are not found.
 func (h *Handler) userChannel(r *http.Request, u store.User, id int64) (store.Channel, bool, error) {
-	chs, err := h.store.UserChannels(r.Context(), u.ID)
+	v, _, err := h.playerView(r.Context(), u)
 	if err != nil {
 		return store.Channel{}, false, err
 	}
-	for _, c := range chs {
-		if c.ID == id {
-			return c, true, nil
-		}
-	}
-	return store.Channel{}, false, nil
+	c, ok := v.Playable[id]
+	return c, ok, nil
 }
 
 func (h *Handler) shortEPG(w http.ResponseWriter, r *http.Request, u store.User, all bool) {
@@ -456,11 +488,11 @@ func m3uAttr(s string) string {
 
 // m3uGroup is the group-title of a channel; uncategorised TV channels keep
 // an empty group as before.
-func m3uGroup(c store.Channel, label bool) string {
-	if c.CategoryID == 0 && !c.IsRadio() {
+func m3uGroup(c playerEntry, label bool, favourites string) string {
+	if c.CategoryID == 0 && !c.IsRadio() && !c.favourite {
 		return ""
 	}
-	return categoryName(c, label)
+	return c.categoryName(label, favourites)
 }
 
 func (h *Handler) getPlaylist(w http.ResponseWriter, r *http.Request) {
@@ -501,8 +533,8 @@ func (h *Handler) getPlaylist(w http.ResponseWriter, r *http.Request) {
 			if c.IsRadio() {
 				radio = ` radio="true"`
 			}
-			bw.WriteString(`#EXTINF:-1 tvg-id="` + m3uAttr(epgID(c)) + `" tvg-name="` + m3uAttr(c.Name) +
-				`" tvg-logo="` + m3uAttr(logoURL(base, c)) + `" group-title="` + m3uAttr(m3uGroup(c, st.RadioLabel)) + `"` + radio + `,` + m3uAttr(c.Name) + "\n")
+			bw.WriteString(`#EXTINF:-1 tvg-id="` + m3uAttr(epgID(c.Channel)) + `" tvg-name="` + m3uAttr(c.Name) +
+				`" tvg-logo="` + m3uAttr(logoURL(base, c.Channel)) + `" group-title="` + m3uAttr(m3uGroup(c, st.RadioLabel, favouritesName(st))) + `"` + radio + `,` + m3uAttr(c.Name) + "\n")
 		} else {
 			bw.WriteString("#EXTINF:-1," + m3uAttr(c.Name) + "\n")
 		}
@@ -517,11 +549,12 @@ func (h *Handler) xmltv(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	chs, err := h.store.UserChannels(r.Context(), u.ID)
+	v, _, err := h.playerView(r.Context(), u)
 	if err != nil {
 		h.serverError(w, err)
 		return
 	}
+	chs := v.Listed()
 	st, err := h.store.Settings(r.Context())
 	if err != nil {
 		h.serverError(w, err)

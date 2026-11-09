@@ -28,6 +28,7 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/logos"
 	"github.com/rhisijmuiden/iptv-portal/internal/media"
 	"github.com/rhisijmuiden/iptv-portal/internal/nowplaying"
+	"github.com/rhisijmuiden/iptv-portal/internal/prefs"
 	"github.com/rhisijmuiden/iptv-portal/internal/radiobrowser"
 	"github.com/rhisijmuiden/iptv-portal/internal/server"
 	"github.com/rhisijmuiden/iptv-portal/internal/stats"
@@ -239,6 +240,12 @@ func (h *Handler) parseLanguage(lang string) (map[string]*template.Template, err
 			return t.Local().Format("2006-01-02 15:04")
 		},
 		"size": formatSize,
+		// lockSummary says in one line what a user locked with parental
+		// controls.
+		"lockSummary": func(f prefs.Form) string { return prefs.Summary(lang, f) },
+		"lockItem": func(row prefs.LockRow, field string) map[string]any {
+			return map[string]any{"Row": row, "Field": field}
+		},
 		// duration shows a viewing time, e.g. "3 h 20 min".
 		"duration": func(d time.Duration) string {
 			m := int(d / time.Minute)
@@ -381,6 +388,7 @@ func (h *Handler) routes() {
 	h.backupRoutes(auth)
 	h.alertRoutes(auth)
 	h.selfServiceRoutes(auth)
+	h.prefsRoutes(auth)
 
 	api := func(pattern string, fn http.HandlerFunc) {
 		m.Handle(pattern, h.requireToken(fn))
