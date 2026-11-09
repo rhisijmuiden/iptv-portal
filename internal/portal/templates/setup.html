@@ -22,6 +22,17 @@
   </table>
   <p class="muted">{{th "On a Formuler with MyTVOnline: <em>Add portal</em> → choose <em>Xtream Codes</em> (or <em>XC</em>) → enter the details above."}}</p>
 </section>
+{{if .StalkerOn}}
+<section class="card spaced">
+  <h2>{{t "MAG box or MAC portal"}}</h2>
+  <p class="muted">{{t "For MAG boxes and apps that log in with the MAC address of the device instead of a username, such as the Portal (MAC) option of MyTVOnline, STB Emulator and Smart STB."}}</p>
+  <table class="details">
+    <tr><th>{{t "Portal URL"}}</th><td><code>{{.Base}}/c/</code></td></tr>
+    <tr><th>{{t "MAC address"}}</th><td>{{th "Register the MAC address of the device under <a href=\"/account/devices\">My devices</a>"}}</td></tr>
+  </table>
+  <p class="muted"><small>{{t "Does the device ask for a login? Enter your username and password once: the device is then added to your account."}}</small></p>
+</section>
+{{end}}
 <section class="card spaced">
   <h2>{{t "M3U playlist and program guide"}}</h2>
   <p class="muted">{{t "For apps that only accept a playlist link. The links contain your password: type it below to fill it in. It stays on this page and is not sent anywhere."}}</p>

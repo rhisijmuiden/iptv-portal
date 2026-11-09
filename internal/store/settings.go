@@ -55,6 +55,10 @@ type Settings struct {
 	// account, their player details and their viewing history, change
 	// their password and reset a forgotten one by email.
 	AccountPortal bool
+	// StalkerPortal lets MAG boxes and apps that emulate them log in with
+	// the MAC address of the device (Stalker / Ministra middleware API).
+	// Off by default: a MAC address is easier to guess than a password.
+	StalkerPortal bool
 	// WebPlayer lets users watch their channels, radio stations and On
 	// Demand in the browser from the account pages.
 	WebPlayer bool
@@ -129,6 +133,7 @@ const (
 	keyNowPlaying = "radio_now_playing"
 	keyAccounts   = "account_portal"
 	keyRadioLabel = "radio_category_label"
+	keyStalker    = "stalker_portal"
 	keyWebPlayer  = "web_player"
 	keyWebProxy   = "web_player_proxy"
 
@@ -193,6 +198,8 @@ func (s *Store) Settings(ctx context.Context) (Settings, error) {
 			out.AccountPortal = v == "1"
 		case keyRadioLabel:
 			out.RadioLabel = v == "1"
+		case keyStalker:
+			out.StalkerPortal = v == "1"
 		case keyWebPlayer:
 			out.WebPlayer = v == "1"
 		case keyWebProxy:
@@ -375,6 +382,7 @@ func (s *Store) SaveSettings(ctx context.Context, st Settings) error {
 		keyNowPlaying: boolString(st.RadioNowPlaying),
 		keyAccounts:   boolString(st.AccountPortal),
 		keyRadioLabel: boolString(st.RadioLabel),
+		keyStalker:    boolString(st.StalkerPortal),
 		keyWebPlayer:  boolString(st.WebPlayer),
 		keyWebProxy:   st.WebPlayerProxy,
 

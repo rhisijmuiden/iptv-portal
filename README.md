@@ -17,6 +17,7 @@ It can also offer the movies and series of your own **Jellyfin** or **Plex** ser
 - **Radio**: pick stations from the public [Radio Browser](https://www.radio-browser.info/) database or add them by their stream URL, in radio categories of your own that you put in packages.
 - **Users, packages and invitations.** Decide per user which channels they see, set expiry dates and connection limits, switch accounts off, and send invitation links so people create their own login.
 - **Xtream Codes API, M3U and XMLTV.** Works with MyTVOnline (Formuler), TiviMate, IPTV Smarters and most other players.
+- **MAG / Stalker portal (optional).** MAG-style boxes and MAC portal apps log in with a registered MAC address.
 - **Program guide** merged from your own XMLTV sources and filtered per user.
 - **Web player** in the account pages: subscribers watch their TV channels, radio stations and On Demand in the browser on a computer or phone, within their package and connection limit.
 - **Viewing statistics** per channel and per user, for TV, radio and On Demand, with a list of channels nobody watches so you can clean them up.
@@ -374,6 +375,21 @@ Apps that only take a playlist can use:
 ```
 
 Streams are not proxied. A player asks the portal for `/live/USER/PASS/ID.m3u8` (or `.ts`) and is redirected to the broadcaster's own m3u8 address. Disabling or expiring a user takes effect on their next channel switch.
+
+### MAG boxes and MAC portals (Stalker)
+
+MAG boxes and apps with a *MAC portal* or *Stalker portal* option (MyTVOnline's Portal (MAC) mode, STB Emulator, Smart STB, Kodi's Stalker client, ...) log in with the MAC address of the device instead of a username. Turn on **MAG / Stalker portal** under **Settings** first; it is off by default because a MAC address is easier to guess than a password.
+
+| Field | Value |
+|---|---|
+| Portal URL | `<portal>/c/` (`<portal>/stalker_portal/c/` works too) |
+| MAC address | A MAC address registered with the user's account |
+
+A MAC address is registered by the user under **My devices** on the account pages, or by an admin under **Devices** on the user's page; it can belong to one account only. A device with an unknown MAC address gets a login prompt in players that support it: logging in once with the username and password adds the device to that account (within the limit of 10 devices).
+
+The portal answers the Stalker / Ministra middleware API on `load.php` and `portal.php`: the profile and account info, TV channels and genres, radio stations, the program guide (short EPG, day view and EPG info) and On Demand from the media servers, with every season of a series as one item whose episodes players pick by number. The user's own channel order, hidden groups and parental controls apply as with the Xtream login. Players get short signed play links (`/stalker/play/...`, valid for 7 days) instead of stream addresses. Opening one checks that the device is still registered, the account active and the channel in its packages, counts towards the connection limit, and then redirects to the broadcaster (live) or plays On Demand like the Xtream login does. Removing a device stops its links right away.
+
+Real MAG hardware loads the portal's own on-screen menu from `/c/`, which this portal does not have: use an app that brings its own menu, or a MAG box with such an app.
 
 ## On Demand from Jellyfin or Plex
 

@@ -85,6 +85,10 @@ type userFormData struct {
 	Devices []store.Device
 	Used    []usedDevice
 	Now     time.Time
+	// MaxDevices is how many devices a user can have; StalkerOn tells
+	// that MAG boxes log in with them.
+	MaxDevices int
+	StalkerOn  bool
 	// Prefs are the user's favourites and parental controls.
 	Prefs prefs.Form
 }
@@ -135,6 +139,7 @@ func (h *Handler) renderUserFormData(w http.ResponseWriter, r *http.Request, ses
 		title = "Edit user"
 	}
 	d.Packages, d.PortalURL, d.MailOn = pkgs, PortalURL(st, r), st.Mail.Configured()
+	d.MaxDevices, d.StalkerOn = store.MaxUserDevices, st.StalkerPortal
 	if d.User.ID != 0 {
 		d.Connections = h.activity.ActiveConnections(d.User.ID)
 		d.Now = time.Now()

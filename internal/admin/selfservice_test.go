@@ -104,4 +104,14 @@ func TestAdminUserDevices(t *testing.T) {
 	if devs, _ := st.UserDevices(ctx, uid); len(devs) != 0 {
 		t.Error("device not removed")
 	}
+	if w := req("POST", "/users/"+itoa(uid)+"/devices", url.Values{"name": {"MAG"}, "mac": {"001a79abcdef"}}); w.Code != http.StatusSeeOther {
+		t.Errorf("add: %d", w.Code)
+	}
+	if devs, _ := st.UserDevices(ctx, uid); len(devs) != 1 || devs[0].MAC != "00:1A:79:AB:CD:EF" {
+		t.Errorf("devices after add: %+v", devs)
+	}
+	w := req("POST", "/users/"+itoa(uid)+"/devices", url.Values{"name": {"MAG"}, "mac": {"nope"}})
+	if loc := w.Header().Get("Location"); w.Code != http.StatusSeeOther || !strings.Contains(loc, "err=") {
+		t.Errorf("add bad MAC: %d %s", w.Code, loc)
+	}
 }

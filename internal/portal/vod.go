@@ -360,32 +360,38 @@ func (h *Handler) vodPlay(t media.ItemType) http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
-		g, err := h.vodGate(r.Context(), u)
-		if err != nil {
-			h.serverError(w, err)
-			return
-		}
-		if !h.vodAllowed(g, it) {
-			http.NotFound(w, r)
-			return
-		}
-		if !h.open(w, r, u, 0, h.vodTitle(it), store.KindVOD) {
-			return
-		}
-		target, direct := h.vod.URL(it, it.Stream)
-		if target == "" {
-			http.NotFound(w, r)
-			return
-		}
-		w.Header().Set("Cache-Control", "no-store")
-		if direct {
-			http.Redirect(w, r, target, http.StatusFound)
-			return
-		}
-		done := h.activity.Proxy.Start()
-		defer done()
-		h.proxy(&countingWriter{ResponseWriter: w, proxy: &h.activity.Proxy}, r, target)
+		h.playVOD(w, r, u, it)
 	}
+}
+
+// playVOD starts playback of a movie or episode the user may watch,
+// unless parental controls block it.
+func (h *Handler) playVOD(w http.ResponseWriter, r *http.Request, u store.User, it *media.Item) {
+	g, err := h.vodGate(r.Context(), u)
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	if !h.vodAllowed(g, it) {
+		http.NotFound(w, r)
+		return
+	}
+	if !h.open(w, r, u, 0, h.vodTitle(it), store.KindVOD) {
+		return
+	}
+	target, direct := h.vod.URL(it, it.Stream)
+	if target == "" {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	if direct {
+		http.Redirect(w, r, target, http.StatusFound)
+		return
+	}
+	done := h.activity.Proxy.Start()
+	defer done()
+	h.proxy(&countingWriter{ResponseWriter: w, proxy: &h.activity.Proxy}, r, target)
 }
 
 // vodAllowed reports whether a movie or episode may be played; an
