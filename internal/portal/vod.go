@@ -29,9 +29,12 @@ func (h *Handler) onDemand(r *http.Request, u store.User) (bool, error) {
 	return h.store.UserOnDemand(r.Context(), u.ID)
 }
 
-func vodCategories(cats []media.Category) []map[string]any {
+func vodCategories(cats []media.Category, g *vodGate) []map[string]any {
 	out := []map[string]any{}
 	for _, c := range cats {
+		if !g.allowsCategory(c.ID) {
+			continue
+		}
 		out = append(out, map[string]any{
 			"category_id": strconv.FormatInt(c.ID, 10), "category_name": c.Name, "parent_id": 0})
 	}
@@ -135,28 +138,33 @@ func (h *Handler) vodAction(w http.ResponseWriter, r *http.Request, u store.User
 		h.serverError(w, err)
 		return
 	}
+	g, err := h.vodGate(r.Context(), u)
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
 	switch action {
 	case "get_vod_categories":
-		writeJSON(w, vodCategories(h.vod.Categories(media.Movies)))
+		writeJSON(w, vodCategories(h.vod.Categories(media.Movies), g))
 	case "get_series_categories":
-		writeJSON(w, vodCategories(h.vod.Categories(media.Shows)))
+		writeJSON(w, vodCategories(h.vod.Categories(media.Shows), g))
 	case "get_vod_streams":
-		h.vodStreams(w, r, base)
+		h.vodStreams(w, r, base, g)
 	case "get_series":
-		h.seriesList(w, r, base)
+		h.seriesList(w, r, base, g)
 	case "get_vod_info":
-		h.vodInfo(w, r, base)
+		h.vodInfo(w, r, base, g)
 	case "get_series_info":
-		h.seriesInfo(w, r, base)
+		h.seriesInfo(w, r, base, g)
 	}
 }
 
-func (h *Handler) vodStreams(w http.ResponseWriter, r *http.Request, base string) {
+func (h *Handler) vodStreams(w http.ResponseWriter, r *http.Request, base string, g *vodGate) {
 	want := r.FormValue("category_id")
 	out := []map[string]any{}
 	for i, it := range h.vod.Movies() {
 		cat, ok := itemCategory(it, want)
-		if !ok {
+		if !ok || !g.allows(it) {
 			continue
 		}
 		rt, rt5 := rating(it)
@@ -181,10 +189,10 @@ func (h *Handler) vodStreams(w http.ResponseWriter, r *http.Request, base string
 	writeJSON(w, out)
 }
 
-func (h *Handler) vodInfo(w http.ResponseWriter, r *http.Request, base string) {
+func (h *Handler) vodInfo(w http.ResponseWriter, r *http.Request, base string, g *vodGate) {
 	id, _ := strconv.ParseInt(r.FormValue("vod_id"), 10, 64)
 	it, ok := h.vod.Item(id, media.Movie)
-	if !ok {
+	if !ok || !g.allows(it) {
 		writeJSON(w, map[string]any{})
 		return
 	}
@@ -257,12 +265,12 @@ func (h *Handler) showInfo(base string, it *media.Item, num int, cat string) map
 	}
 }
 
-func (h *Handler) seriesList(w http.ResponseWriter, r *http.Request, base string) {
+func (h *Handler) seriesList(w http.ResponseWriter, r *http.Request, base string, g *vodGate) {
 	want := r.FormValue("category_id")
 	out := []map[string]any{}
 	for i, it := range h.vod.Shows() {
 		cat, ok := itemCategory(it, want)
-		if !ok {
+		if !ok || !g.allows(it) {
 			continue
 		}
 		out = append(out, h.showInfo(base, it, i+1, cat))
@@ -270,10 +278,10 @@ func (h *Handler) seriesList(w http.ResponseWriter, r *http.Request, base string
 	writeJSON(w, out)
 }
 
-func (h *Handler) seriesInfo(w http.ResponseWriter, r *http.Request, base string) {
+func (h *Handler) seriesInfo(w http.ResponseWriter, r *http.Request, base string, g *vodGate) {
 	id, _ := strconv.ParseInt(r.FormValue("series_id"), 10, 64)
 	show, ok := h.vod.Item(id, media.Show)
-	if !ok {
+	if !ok || !g.allows(show) {
 		writeJSON(w, map[string]any{})
 		return
 	}
@@ -356,8 +364,18 @@ func (h *Handler) vodPlay(t media.ItemType) http.HandlerFunc {
 	}
 }
 
-// playVOD starts playback of a movie or episode the user may watch.
+// playVOD starts playback of a movie or episode the user may watch,
+// unless parental controls block it.
 func (h *Handler) playVOD(w http.ResponseWriter, r *http.Request, u store.User, it *media.Item) {
+	g, err := h.vodGate(r.Context(), u)
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	if !h.vodAllowed(g, it) {
+		http.NotFound(w, r)
+		return
+	}
 	if !h.open(w, r, u, 0, h.vodTitle(it), store.KindVOD) {
 		return
 	}
@@ -374,6 +392,21 @@ func (h *Handler) playVOD(w http.ResponseWriter, r *http.Request, u store.User, 
 	done := h.activity.Proxy.Start()
 	defer done()
 	h.proxy(&countingWriter{ResponseWriter: w, proxy: &h.activity.Proxy}, r, target)
+}
+
+// vodAllowed reports whether a movie or episode may be played; an
+// episode is judged with its series.
+func (h *Handler) vodAllowed(g *vodGate, it *media.Item) bool {
+	if g == nil {
+		return true
+	}
+	if it.Type == media.Episode {
+		show, ok := h.vod.Item(it.ShowID, media.Show)
+		if !ok || !g.allows(show) {
+			return false
+		}
+	}
+	return g.allows(it)
 }
 
 // countingWriter counts the bytes of a proxied stream for the system

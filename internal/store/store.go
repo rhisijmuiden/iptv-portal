@@ -261,6 +261,55 @@ var migrations = []string{
 	ALTER TABLE packages ADD COLUMN description TEXT NOT NULL DEFAULT '';
 	ALTER TABLE packages ADD COLUMN price TEXT NOT NULL DEFAULT '';
 	ALTER TABLE packages ADD COLUMN public INTEGER NOT NULL DEFAULT 1;`,
+
+	// Alerts to admins and reminders to users: what was already sent, so
+	// nothing is sent twice, and a log of the alerts.
+	`CREATE TABLE alerts_sent (
+		key     TEXT PRIMARY KEY,
+		sent_at DATETIME NOT NULL
+	);
+	CREATE TABLE alert_log (
+		id       INTEGER PRIMARY KEY,
+		at       DATETIME NOT NULL,
+		kind     TEXT NOT NULL,
+		title    TEXT NOT NULL,
+		detail   TEXT NOT NULL DEFAULT '',
+		channels TEXT NOT NULL DEFAULT '',
+		error    TEXT NOT NULL DEFAULT ''
+	);
+	CREATE INDEX alert_log_at ON alert_log(at);`,
+
+	// What users set for their own player on the account pages:
+	// favourites, their own order of the channel groups, hidden groups and
+	// parental controls.
+	`CREATE TABLE user_preferences (
+		user_id          INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+		favourites_group INTEGER NOT NULL DEFAULT 1,
+		pin_hash         TEXT NOT NULL DEFAULT '',
+		max_age          INTEGER NOT NULL DEFAULT 0,
+		unlocked_until   DATETIME
+	);
+	CREATE TABLE user_favourites (
+		user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		channel_id INTEGER NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+		position   INTEGER NOT NULL DEFAULT 0,
+		PRIMARY KEY (user_id, channel_id)
+	);
+	CREATE TABLE user_categories (
+		user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+		position    INTEGER NOT NULL DEFAULT 0,
+		hidden      INTEGER NOT NULL DEFAULT 0,
+		locked      INTEGER NOT NULL DEFAULT 0,
+		PRIMARY KEY (user_id, category_id)
+	);
+	CREATE TABLE user_locked_media (
+		user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		kind    TEXT NOT NULL,
+		name    TEXT NOT NULL COLLATE NOCASE,
+		PRIMARY KEY (user_id, kind, name)
+	);
+	ALTER TABLE user_sessions ADD COLUMN pin_until DATETIME;`,
 }
 
 // afterMigration runs Go code in the transaction of a migration, keyed by

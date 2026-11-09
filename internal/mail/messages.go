@@ -94,3 +94,46 @@ func PackageAnswerMessage(lang, to, portalName, username, pkg string, approved b
 	subject := i18n.Tf(lang, "Your package request at %s", portalName)
 	return Message{To: to, Subject: subject, Body: b.String()}
 }
+
+// AlertMessage, in language lang, is an alert for an admin: title is the
+// subject, text the whole alert.
+func AlertMessage(lang, to, portalName, title, text string) Message {
+	body := text + "\n\n" + i18n.Tf(lang, "Change which alerts you get under Alerts in the admin panel of %s.\n", portalName)
+	return Message{To: to, Subject: "[" + portalName + "] " + title, Body: body}
+}
+
+// Reminder holds what a user needs to know before their subscription ends.
+type Reminder struct {
+	PortalName string
+	Username   string
+	ExpiresAt  time.Time
+	// AccountURL is the user's account page; empty leaves it out.
+	AccountURL string
+	// Contact is how to reach the admin, e.g. an email address; empty
+	// leaves it out.
+	Contact string
+}
+
+// ReminderMessage, in language lang, tells a user their subscription
+// expires in days days.
+func ReminderMessage(lang, to string, r Reminder, days int) Message {
+	when := i18n.LongDate(lang, r.ExpiresAt.Local())
+	var b strings.Builder
+	if days <= 1 {
+		fmt.Fprintf(&b, i18n.T(lang, "Hello %s,\n\nYour subscription to %s expires within a day, on %s. After that your TV box or IPTV app can no longer load the channels.\n"),
+			r.Username, r.PortalName, when)
+	} else {
+		fmt.Fprintf(&b, i18n.T(lang, "Hello %s,\n\nYour subscription to %s expires in %d days, on %s. After that your TV box or IPTV app can no longer load the channels.\n"),
+			r.Username, r.PortalName, days, when)
+	}
+	if r.Contact != "" {
+		fmt.Fprintf(&b, i18n.T(lang, "\nWant to keep watching? Contact us at %s to extend your subscription.\n"), r.Contact)
+	} else {
+		b.WriteString(i18n.T(lang, "\nWant to keep watching? Contact us to extend your subscription.\n"))
+	}
+	if r.AccountURL != "" {
+		fmt.Fprintf(&b, i18n.T(lang, "\nSee your account at:\n\n  %s\n"), r.AccountURL)
+	}
+	subject := i18n.Tf(lang, "Your subscription to %s expires on %s", r.PortalName, when)
+	return Message{To: to, Subject: subject, Body: b.String()}
+}

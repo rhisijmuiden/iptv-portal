@@ -393,13 +393,16 @@ func stalkerPageNumber(r *http.Request) int {
 
 // ---- live TV and radio ----
 
-// kindChannels returns the channels of one kind (TV or radio) the user
-// may watch, in player order.
+// kindChannels returns the channels of one kind (TV or radio) the user's
+// player lists, in player order.
 func (h *Handler) kindChannels(ctx context.Context, u store.User, kind string) ([]store.Channel, error) {
-	chs, err := h.store.UserChannels(ctx, u.ID)
+	// The user's own order of groups, without hidden groups and groups
+	// locked by parental controls, as Xtream players get them.
+	v, _, err := h.playerView(ctx, u)
 	if err != nil {
 		return nil, err
 	}
+	chs := slices.Clone(v.Channels)
 	return slices.DeleteFunc(chs, func(c store.Channel) bool { return c.IsRadio() != (kind == store.KindRadio) }), nil
 }
 
@@ -701,10 +704,13 @@ type vodGroup struct {
 	ids  map[int64]bool
 }
 
-func (h *Handler) vodGroups() []vodGroup {
+func (h *Handler) vodGroups(g *vodGate) []vodGroup {
 	var out []vodGroup
 	byName := map[string]int{}
 	for _, c := range append(h.vod.Categories(media.Movies), h.vod.Categories(media.Shows)...) {
+		if !g.allowsCategory(c.ID) {
+			continue
+		}
 		key := strings.ToLower(c.Name)
 		i, ok := byName[key]
 		if !ok {
@@ -717,20 +723,30 @@ func (h *Handler) vodGroups() []vodGroup {
 	return out
 }
 
-func (h *Handler) stalkerOnDemand(w http.ResponseWriter, r *http.Request, sr stalkerRequest) bool {
+// stalkerOnDemand reports whether the user may watch On Demand, with the
+// parental controls that apply. On an error it writes the response.
+func (h *Handler) stalkerOnDemand(w http.ResponseWriter, r *http.Request, sr stalkerRequest) (*vodGate, bool) {
 	ok, err := h.onDemand(r, sr.user)
 	if err != nil {
 		h.serverError(w, err)
-		return false
+		return nil, false
 	}
-	return ok
+	if !ok {
+		return nil, false
+	}
+	g, err := h.vodGate(r.Context(), sr.user)
+	if err != nil {
+		h.serverError(w, err)
+		return nil, false
+	}
+	return g, true
 }
 
 func (h *Handler) stalkerVODCategories(w http.ResponseWriter, r *http.Request, sr stalkerRequest) {
 	out := []map[string]any{}
-	if h.stalkerOnDemand(w, r, sr) {
+	if gate, ok := h.stalkerOnDemand(w, r, sr); ok {
 		out = append(out, map[string]any{"id": "*", "title": i18n.T(sr.st.Language, "All"), "alias": "*", "censored": 0})
-		for _, g := range h.vodGroups() {
+		for _, g := range h.vodGroups(gate) {
 			out = append(out, map[string]any{"id": g.id, "title": g.name, "alias": strings.ToLower(g.name), "censored": 0})
 		}
 	}
@@ -816,14 +832,15 @@ func (h *Handler) vodEntries() []vodEntry {
 }
 
 func (h *Handler) stalkerVODList(w http.ResponseWriter, r *http.Request, sr stalkerRequest) {
-	if !h.stalkerOnDemand(w, r, sr) {
+	gate, ok := h.stalkerOnDemand(w, r, sr)
+	if !ok {
 		stalkerJSON(w, stalkerPage(nil, 1, 0))
 		return
 	}
 	lang := sr.st.Language
 	var group *vodGroup
 	if want := r.FormValue("category"); want != "" && want != "*" {
-		for _, g := range h.vodGroups() {
+		for _, g := range h.vodGroups(gate) {
 			if g.id == want {
 				group = &g
 				break
@@ -837,6 +854,9 @@ func (h *Handler) stalkerVODList(w http.ResponseWriter, r *http.Request, sr stal
 	search := strings.ToLower(strings.TrimSpace(r.FormValue("search")))
 	var entries []vodEntry
 	for _, e := range h.vodEntries() {
+		if !gate.allows(e.item) {
+			continue
+		}
 		if group != nil && !slices.ContainsFunc(e.item.CategoryIDs, func(id int64) bool { return group.ids[id] }) {
 			continue
 		}
@@ -905,7 +925,8 @@ func (h *Handler) stalkerVODList(w http.ResponseWriter, r *http.Request, sr stal
 // season (the series parameter is the episode number).
 func (h *Handler) stalkerVODLink(w http.ResponseWriter, r *http.Request, sr stalkerRequest) {
 	nothing := func() { stalkerJSON(w, map[string]any{"id": 0, "cmd": "", "error": "nothing_to_play"}) }
-	if !h.stalkerOnDemand(w, r, sr) {
+	gate, ok := h.stalkerOnDemand(w, r, sr)
+	if !ok {
 		nothing()
 		return
 	}
@@ -931,7 +952,7 @@ func (h *Handler) stalkerVODLink(w http.ResponseWriter, r *http.Request, sr stal
 		id, _ := strconv.ParseInt(m[1], 10, 64)
 		it, _ = h.vod.Item(id, media.Movie)
 	}
-	if it == nil {
+	if it == nil || !h.vodAllowed(gate, it) {
 		nothing()
 		return
 	}

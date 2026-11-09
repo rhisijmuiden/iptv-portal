@@ -296,3 +296,60 @@ func TestStalkerVOD(t *testing.T) {
 		t.Errorf("vod categories without On Demand = %v", cats)
 	}
 }
+
+func TestStalkerParentalControls(t *testing.T) {
+	f := setup(t)
+	ctx := context.Background()
+	enableStalker(t, f.store)
+	jan := userID(t, f.store, "jan")
+	if _, err := f.store.AddUserDevice(ctx, jan, "Box", magMAC); err != nil {
+		t.Fatal(err)
+	}
+	cats, _ := f.store.Categories(ctx)
+	for _, c := range cats {
+		if c.Name == "North" {
+			if err := f.store.SetCategoryLocked(ctx, jan, c.ID, true); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	var list struct {
+		Total int `json:"total_items"`
+	}
+	f.stalker(t, magMAC, "type=itv&action=get_all_channels", &list)
+	if list.Total != 0 {
+		t.Errorf("locked channels listed: %d", list.Total)
+	}
+	var link map[string]any
+	f.stalker(t, magMAC, "type=itv&action=create_link&cmd="+url.QueryEscape("ffrt http://localhost/ch/"+itoa(f.nh)), &link)
+	if link["cmd"] != "" {
+		t.Errorf("link to a locked channel = %v", link)
+	}
+}
+
+func TestStalkerVODParental(t *testing.T) {
+	f, _ := vodSetup(t, false)
+	ctx := context.Background()
+	enableStalker(t, f.store)
+	piet := userID(t, f.store, "piet")
+	if _, err := f.store.AddUserDevice(ctx, piet, "Box", magMAC); err != nil {
+		t.Fatal(err)
+	}
+	f.store.SetLockedMedia(ctx, piet, []store.MediaRef{{Kind: "movies", Name: "crime"}})
+	var list struct {
+		Data []map[string]any `json:"data"`
+	}
+	f.stalker(t, magMAC, "type=vod&action=get_ordered_list&sortby=name", &list)
+	for _, it := range list.Data {
+		if it["name"] == "Heat" {
+			t.Errorf("locked movie listed")
+		}
+	}
+	var cats []map[string]any
+	f.stalker(t, magMAC, "type=vod&action=get_categories", &cats)
+	for _, c := range cats {
+		if c["title"] == "Crime" {
+			t.Errorf("locked category listed: %v", cats)
+		}
+	}
+}

@@ -96,6 +96,56 @@
   </table>
   {{end}}
 </section>
+{{$p := .Data.Prefs}}
+<section class="card admin-prefs" id="parental">
+  <h2>{{icon "star"}} {{t "Favourites"}}</h2>
+  {{if $p.FavouriteNames}}
+  <div class="fav-names">{{range $p.FavouriteNames}}<span class="chip">{{.}}</span>{{end}}</div>
+  <p class="muted"><small>{{if $p.Favourites}}{{t "Shown as a Favourites group at the top of the user's channel list."}}{{else}}{{t "The user turned the Favourites group off."}}{{end}}</small></p>
+  {{else}}
+  <p class="muted">{{t "The user has not picked favourite channels on their account page."}}</p>
+  {{end}}
+  <h2>{{icon "shield"}} {{t "Parental controls"}}</h2>
+  <div class="lock-status">
+    {{if $p.PINSet}}<span class="badge on">{{t "PIN set"}}</span>{{else}}<span class="badge idle">{{t "No PIN"}}</span>{{end}}
+    {{if $p.Unlocked}}<span class="badge warn">{{tf "Unlocked until %s" (datetime $p.UnlockedUntil)}}</span>{{end}}
+    <span class="muted">{{lockSummary $p}}</span>
+  </div>
+  <form method="post" action="{{base}}/users/{{$u.ID}}/parental" class="stack spaced">
+    <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+    {{if or $p.TV $p.Radio}}
+    <fieldset><legend>{{t "Locked channel groups"}}</legend>
+      <div class="lock-grid">{{range $p.TV}}{{template "lock" (lockItem . "group")}}{{end}}{{range $p.Radio}}{{template "lock" (lockItem . "group")}}{{end}}</div>
+    </fieldset>
+    {{end}}
+    {{if $p.OnDemand}}
+    <label class="age">{{t "On Demand age limit"}}
+      <select name="max_age">
+        <option value="0">{{t "No age limit"}}</option>
+        {{range $p.Ages}}<option value="{{.}}"{{if eq . $p.MaxAge}} selected{{end}}>{{tf "Up to %d years" .}}</option>{{end}}
+      </select></label>
+    {{with $p.Movies}}<fieldset><legend>{{t "Locked movie categories"}}</legend><div class="lock-grid">{{range .}}{{template "lock" (lockItem . "media")}}{{end}}</div></fieldset>{{end}}
+    {{with $p.Shows}}<fieldset><legend>{{t "Locked series categories"}}</legend><div class="lock-grid">{{range .}}{{template "lock" (lockItem . "media")}}{{end}}</div></fieldset>{{end}}
+    {{else}}
+    <input type="hidden" name="max_age" value="{{$p.MaxAge}}">
+    {{end}}
+    <p class="muted"><small>{{t "Locked content is left out of the user's player until they unlock it with their PIN on their account page. You can change the locks here without the PIN."}}</small></p>
+    <div class="form-actions">
+      <button>{{t "Save parental controls"}}</button>
+    </div>
+  </form>
+  {{if or $p.PINSet $p.Unlocked}}
+  <div class="buttons spaced">
+    {{if $p.Unlocked}}
+    <form method="post" action="{{base}}/users/{{$u.ID}}/parental/lock"><input type="hidden" name="csrf" value="{{.Session.CSRF}}"><button class="secondary">{{icon "lock"}}{{t "Lock again now"}}</button></form>
+    {{end}}
+    {{if $p.PINSet}}
+    <form method="post" action="{{base}}/users/{{$u.ID}}/parental/pin/delete" onsubmit="return confirm('{{t "Remove the PIN? The locks stay, and whoever sets a new PIN on the account page can change them."}}')">
+      <input type="hidden" name="csrf" value="{{.Session.CSRF}}"><button class="danger">{{icon "key"}}{{t "Remove PIN"}}</button></form>
+    {{end}}
+  </div>
+  {{end}}
+</section>
 <section class="card">
   <h2>{{t "Setup details"}}</h2>
   <p>{{t "Give these to the user for their TV box (Xtream Codes login):"}}</p>
@@ -113,4 +163,9 @@
   {{end}}
 </section>
 {{end}}
+{{end}}
+
+{{define "lock"}}
+<label class="check lock-item"><input type="checkbox" name="{{.Field}}" value="{{.Row.Key}}"{{if .Row.Locked}} checked{{end}}>
+  <span>{{if eq .Row.Name "Other"}}{{t "Other"}}{{else}}{{.Row.Name}}{{end}} <small>{{.Row.Count}}</small></span></label>
 {{end}}

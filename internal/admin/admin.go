@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/rhisijmuiden/iptv-portal/internal/activity"
+	"github.com/rhisijmuiden/iptv-portal/internal/alerts"
 	"github.com/rhisijmuiden/iptv-portal/internal/backup"
 	"github.com/rhisijmuiden/iptv-portal/internal/entra"
 	"github.com/rhisijmuiden/iptv-portal/internal/epg"
@@ -27,6 +28,7 @@ import (
 	"github.com/rhisijmuiden/iptv-portal/internal/logos"
 	"github.com/rhisijmuiden/iptv-portal/internal/media"
 	"github.com/rhisijmuiden/iptv-portal/internal/nowplaying"
+	"github.com/rhisijmuiden/iptv-portal/internal/prefs"
 	"github.com/rhisijmuiden/iptv-portal/internal/radiobrowser"
 	"github.com/rhisijmuiden/iptv-portal/internal/server"
 	"github.com/rhisijmuiden/iptv-portal/internal/stats"
@@ -71,6 +73,7 @@ type Handler struct {
 	stats        *stats.Recorder
 	entra        *entra.Client
 	backups      *backup.Service
+	alerts       *alerts.Service
 	health       *health.Checker
 	suggest      *suggest.Finder
 	nowPlaying   *nowplaying.Service
@@ -107,6 +110,9 @@ type Config struct {
 	Entra *entra.Client
 	// Backups makes and restores backups; nil builds one for Store.
 	Backups *backup.Service
+	// Alerts sends alerts to admins and reminders to users; nil builds one
+	// for Store.
+	Alerts *alerts.Service
 	// Health checks channel streams; nil creates a checker that only runs
 	// when asked.
 	Health *health.Checker
@@ -131,7 +137,7 @@ func New(c Config) (*Handler, error) {
 	h := &Handler{store: c.Store, listeners: c.Listeners, log: c.Log, limiter: web.NewLimiter(10, 15*time.Minute),
 		guide: c.Guide, refresh: c.RefreshGuide, updater: c.Updater, restart: c.Restart, iptvorg: c.IPTVOrg,
 		radio: c.Radio,
-		media: c.Media, refreshMedia: c.RefreshMedia, activity: c.Activity, stats: c.Stats, entra: c.Entra, backups: c.Backups,
+		media: c.Media, refreshMedia: c.RefreshMedia, activity: c.Activity, stats: c.Stats, entra: c.Entra, backups: c.Backups, alerts: c.Alerts,
 		health: c.Health, suggest: c.Suggest, nowPlaying: c.NowPlaying, logos: c.Logos, system: c.System, base: c.BasePath}
 	if h.nowPlaying == nil {
 		h.nowPlaying = nowplaying.New()
@@ -169,6 +175,9 @@ func New(c Config) (*Handler, error) {
 	}
 	if h.backups == nil && c.Store != nil {
 		h.backups = backup.New(c.Store, c.Log)
+	}
+	if h.alerts == nil && c.Store != nil {
+		h.alerts = alerts.New(c.Store, c.Log)
 	}
 	if h.media == nil {
 		h.media = media.NewCatalog(c.Store, c.Log)
@@ -231,6 +240,12 @@ func (h *Handler) parseLanguage(lang string) (map[string]*template.Template, err
 			return t.Local().Format("2006-01-02 15:04")
 		},
 		"size": formatSize,
+		// lockSummary says in one line what a user locked with parental
+		// controls.
+		"lockSummary": func(f prefs.Form) string { return prefs.Summary(lang, f) },
+		"lockItem": func(row prefs.LockRow, field string) map[string]any {
+			return map[string]any{"Row": row, "Field": field}
+		},
 		// duration shows a viewing time, e.g. "3 h 20 min".
 		"duration": func(d time.Duration) string {
 			m := int(d / time.Minute)
@@ -371,7 +386,9 @@ func (h *Handler) routes() {
 	auth("POST /users/{id}/send-login", h.userSendLogin)
 	auth("POST /invites/{id}/send", h.inviteSend)
 	h.backupRoutes(auth)
+	h.alertRoutes(auth)
 	h.selfServiceRoutes(auth)
+	h.prefsRoutes(auth)
 
 	api := func(pattern string, fn http.HandlerFunc) {
 		m.Handle(pattern, h.requireToken(fn))

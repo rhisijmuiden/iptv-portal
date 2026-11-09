@@ -25,6 +25,7 @@ It can also offer the movies and series of your own **Jellyfin** or **Plex** ser
 - **Microsoft Entra sign-in** for the admin panel (optional), limited to the groups or app roles you choose, with local accounts as a fallback.
 - **System resources**: CPU, memory, disk, load, network and the portal process itself, live with a chart of the last hour or day.
 - **Backups** to FTP, FTPS or SCP: full and incremental, scheduled or by hand, optionally encrypted, and restored from the admin panel.
+- **Alerts and reminders**: get a message by email, Telegram or Discord when streams stop working, subscriptions are about to expire or a backup fails, and email users a reminder before their subscription ends. See [Alerts and reminders](#alerts-and-reminders).
 - **Updates from the admin panel** with release notes, stable and test release channels, an optional daily check and automatic rollback.
 - **English and Dutch.** English is the default; every admin picks a language at the bottom of the menu, and subscribers can switch on the invitation pages. See [Languages](#languages).
 - **Simple to host**: one Go binary with SQLite, an installer for any systemd Linux and a script for Proxmox VE LXC.
@@ -283,6 +284,10 @@ When **account pages** are on (Settings), users log in at `<portal>/account` wit
 - register the **MAC address** of up to 10 devices, and see which players watched with their account in the last 30 days and which are online now. Admins see both on the user page;
 - compare the **packages** (channels per category, radio, On Demand, device limit, plus an optional description and price you set on the package) and **request** one. Answer requests under **Subscribers → Package requests**: approve to add the package or to replace the user's packages, or reject, with an optional reply. Users with an email address get the answer by email when a mail server is set up. Untick **Users can see and request this package** to keep a package off the account pages;
 - see their own **viewing statistics**: views per day, per hour of the day, TV/radio/On Demand split and the channels they watched.
+- pick **favourite channels** under **My channels**. Players get them as a *Favourites* group at the top of the channel list (Xtream and M3U; the user can turn the group off), in the user's own order. Users can also put the channel groups in their own order and **hide** groups they never watch;
+- set up **parental controls** with a PIN of 4-8 digits: lock channel groups and On Demand categories, and set an age limit for On Demand (titles without an age rating are always shown). Locked content is left out of the player (lists, guide and playback) until someone unlocks it with the PIN for 1, 3 or 12 hours. The settings themselves need the PIN, since the account login is the same as the player's; 5 wrong PINs block further tries for 15 minutes. Admins see favourites and locks on the user page, can change the locks without the PIN, and remove a forgotten PIN.
+
+Players keep the channel list they loaded, so changes show up after refreshing the playlist or restarting the app.
 
 ### Connection limits
 
@@ -368,7 +373,7 @@ MAG boxes and apps with a *MAC portal* or *Stalker portal* option (MyTVOnline's 
 
 A MAC address is registered by the user under **My devices** on the account pages, or by an admin under **Devices** on the user's page; it can belong to one account only. A device with an unknown MAC address gets a login prompt in players that support it: logging in once with the username and password adds the device to that account (within the limit of 10 devices).
 
-The portal answers the Stalker / Ministra middleware API on `load.php` and `portal.php`: the profile and account info, TV channels and genres, radio stations, the program guide (short EPG, day view and EPG info) and On Demand from the media servers, with every season of a series as one item whose episodes players pick by number. Players get short signed play links (`/stalker/play/...`, valid for 7 days) instead of stream addresses. Opening one checks that the device is still registered, the account active and the channel in its packages, counts towards the connection limit, and then redirects to the broadcaster (live) or plays On Demand like the Xtream login does. Removing a device stops its links right away.
+The portal answers the Stalker / Ministra middleware API on `load.php` and `portal.php`: the profile and account info, TV channels and genres, radio stations, the program guide (short EPG, day view and EPG info) and On Demand from the media servers, with every season of a series as one item whose episodes players pick by number. The user's own channel order, hidden groups and parental controls apply as with the Xtream login. Players get short signed play links (`/stalker/play/...`, valid for 7 days) instead of stream addresses. Opening one checks that the device is still registered, the account active and the channel in its packages, counts towards the connection limit, and then redirects to the broadcaster (live) or plays On Demand like the Xtream login does. Removing a device stops its links right away.
 
 Real MAG hardware loads the portal's own on-screen menu from `/c/`, which this portal does not have: use an app that brings its own menu, or a MAG box with such an app.
 
@@ -408,6 +413,24 @@ The directory is created when it does not exist. The connection test writes and 
 To move to a new server or recover from a lost one: install the portal, log in with the one-time password, enter the same remote location (and passphrase) under **Backups**, and restore the newest backup.
 
 A backup is a gzipped tar file with `manifest.json` (what the backup restores to) and either `portal.db` (full) or `blocks` (incremental). Without the portal, a full backup can be unpacked with `tar -xzf` (after `age -d` when encrypted) to get the database file.
+
+## Alerts and reminders
+
+Under *System → Alerts* you choose how the portal reaches you and what it tells you about.
+
+- **Email** goes through the mail server under *Settings*, to one or more addresses.
+- **Telegram**: create a bot with [@BotFather](https://t.me/BotFather), add it to your chat, group or channel (or send it a message) and enter its token and the chat ID.
+- **Discord**: in the channel settings choose *Integrations → Webhooks → New Webhook* and paste the webhook URL.
+
+Each has a **Save and send test** button. The bot token and webhook URL are never shown in the browser again after saving.
+
+You get an alert when:
+
+- **a stream stops working**: after a number of failed checks in a row (default 3), in one message per stream check, and again when it works. Channels you switched off yourself are left out.
+- **a subscription expires soon**: once per user, a number of days before the end (default 7).
+- **a backup fails**: once, and again when backups work.
+
+**Reminders to users** email every user with an email address a number of days before their subscription ends (default 7 and 1 days), in the default language, with an optional line on how to extend. Extending a subscription starts the reminders over. The last 20 alerts, and whether they went out, are listed on the page.
 
 ## Program guide (EPG)
 

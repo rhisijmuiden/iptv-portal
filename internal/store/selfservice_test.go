@@ -3,7 +3,9 @@ package store
 import (
 	"context"
 	"fmt"
+	"slices"
 	"testing"
+	"time"
 )
 
 func TestNormalizeMAC(t *testing.T) {
@@ -102,5 +104,46 @@ func TestPackageRequestReplace(t *testing.T) {
 	}
 	if err := s.CancelPackageRequest(ctx, id, r2.ID); err != nil {
 		t.Error(err)
+	}
+}
+
+func TestPreferencesApply(t *testing.T) {
+	tv := func(id, cat int64) Channel { return Channel{ID: id, CategoryID: cat, Kind: KindTV} }
+	radio := func(id, cat int64) Channel { return Channel{ID: id, CategoryID: cat, Kind: KindRadio} }
+	chs := []Channel{tv(1, 10), tv(2, 10), tv(3, 20), tv(4, 0), radio(5, 30), tv(6, 40)}
+	ids := func(list []Channel) []int64 {
+		var out []int64
+		for _, c := range list {
+			out = append(out, c.ID)
+		}
+		return out
+	}
+	now := time.Now()
+	p := Preferences{Categories: map[int64]UserCategory{
+		40: {Position: 1}, 20: {Position: 2}, 30: {Position: 1},
+		10: {Hidden: true}, 50: {Locked: true},
+	}, Favourites: []int64{2, 99, 5}}
+	v := p.Apply(chs, now)
+	if got := ids(v.Channels); !slices.Equal(got, []int64{6, 3, 4, 5}) {
+		t.Errorf("channels = %v", got)
+	}
+	if got := ids(v.Favourites); !slices.Equal(got, []int64{2, 5}) {
+		t.Errorf("favourites = %v", got)
+	}
+	if got := ids(v.Listed()); !slices.Equal(got, []int64{2, 5, 6, 3, 4}) {
+		t.Errorf("listed = %v", got)
+	}
+	if v.Locked {
+		t.Error("locked without locks on the user's groups")
+	}
+	p.Categories[20] = UserCategory{Locked: true}
+	v = p.Apply(chs, now)
+	if _, ok := v.Playable[3]; ok || !v.Locked {
+		t.Errorf("locked channel playable: %+v", v)
+	}
+	until := now.Add(time.Minute)
+	p.Parental.UnlockedUntil = &until
+	if v = p.Apply(chs, now); v.Playable[3].ID != 3 || v.Locked {
+		t.Errorf("unlocked: %+v", v)
 	}
 }

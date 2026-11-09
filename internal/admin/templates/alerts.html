@@ -1,0 +1,131 @@
+{{define "content"}}
+{{$d := .Data}}
+{{$c := $d.Config}}
+<div class="titlebar">
+  <div>
+    <h1>{{t "Alerts"}}</h1>
+    <p class="subtitle">{{t "Get a message by email, Telegram or Discord when streams stop working, subscriptions are about to expire or a backup fails, and remind users before their subscription ends."}}</p>
+  </div>
+</div>
+{{if not $d.Channels}}
+<p class="flash warn">{{t "No alerts are sent yet. Set up at least one way to reach you below."}}</p>
+{{end}}
+<div class="stats">
+  <div class="card stat"><span class="stat-icon">{{icon "bell"}}</span><div>
+    <strong>{{len $d.Channels}}</strong>
+    <span>{{t "ways to reach you"}}</span></div></div>
+  <div class="card stat"><span class="stat-icon">{{icon "users"}}</span><div>
+    <strong>{{len $d.Expiring}}</strong>
+    <span>{{tf "subscriptions ending within %d days" $c.ExpiringDays}}</span></div></div>
+  <div class="card stat"><span class="stat-icon">{{icon "mail"}}</span><div>
+    <strong>{{if and $c.Reminders $d.MailOK}}{{t "On"}}{{else}}{{t "Off"}}{{end}}</strong>
+    <span>{{t "reminders to users"}}</span></div></div>
+</div>
+
+<form method="post" action="{{base}}/alerts" class="stack">
+  <input type="hidden" name="csrf" value="{{.Session.CSRF}}">
+  <section class="card stack-card">
+    <h2>{{icon "mail"}} {{t "Email"}}</h2>
+    <p class="muted">{{t "Alerts are sent through the mail server of the settings."}}</p>
+    {{if not $d.MailOK}}<p class="flash warn">{{th `No mail server is set up yet. Enter one under <a href="%s/settings#mail">Settings</a> to send alerts and reminders by email.` base}}</p>{{end}}
+    <label>{{t "Send alerts to"}}
+      <input name="email_to" value="{{range $i, $a := $c.EmailTo}}{{if $i}}, {{end}}{{$a}}{{end}}" placeholder="admin@example.com, helpdesk@example.com" autocomplete="off">
+      <small>{{t "One or more email addresses, separated by commas. Leave empty to send no alerts by email."}}</small></label>
+    <div class="form-actions"><button class="secondary" name="action" value="test-email" {{if not $d.MailOK}}disabled{{end}}>{{icon "send"}}{{t "Save and send test"}}</button></div>
+  </section>
+
+  <section class="card stack-card">
+    <h2>{{icon "send"}} {{t "Telegram"}}</h2>
+    <p class="muted">{{th `Create a bot with <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a> and copy its token. Add the bot to your chat, group or channel, or send it a message, and enter the chat ID: your own user ID, a group ID starting with -100, or @channelname.`}}</p>
+    <div class="row">
+      <label>{{t "Bot token"}} <input type="password" name="telegram_token" autocomplete="new-password" {{if $d.HasTelegram}}placeholder="{{t "unchanged"}}"{{else}}placeholder="123456789:AA…"{{end}}>
+        {{if $d.HasTelegram}}<small>{{t "Leave empty to keep the stored token."}}</small>{{end}}</label>
+      <label>{{t "Chat ID"}} <input name="telegram_chat" value="{{$c.TelegramChat}}" placeholder="-1001234567890" autocomplete="off"></label>
+    </div>
+    {{if $d.HasTelegram}}<label class="check"><input type="checkbox" name="clear_telegram"> {{t "Stop sending alerts to Telegram"}}</label>{{end}}
+    <div class="form-actions"><button class="secondary" name="action" value="test-telegram">{{icon "send"}}{{t "Save and send test"}}</button></div>
+  </section>
+
+  <section class="card stack-card">
+    <h2>{{icon "users"}} {{t "Discord"}}</h2>
+    <p class="muted">{{t "In Discord, open the settings of a channel, choose Integrations > Webhooks > New Webhook and copy the webhook URL."}}</p>
+    <label>{{t "Webhook URL"}} <input type="password" name="discord_webhook" autocomplete="off" {{if $d.HasDiscord}}placeholder="{{t "unchanged"}}"{{else}}placeholder="https://discord.com/api/webhooks/…"{{end}}>
+      {{if $d.HasDiscord}}<small>{{t "Leave empty to keep the stored webhook."}}</small>{{end}}</label>
+    {{if $d.HasDiscord}}<label class="check"><input type="checkbox" name="clear_discord"> {{t "Stop sending alerts to Discord"}}</label>{{end}}
+    <div class="form-actions"><button class="secondary" name="action" value="test-discord">{{icon "send"}}{{t "Save and send test"}}</button></div>
+  </section>
+
+  <section class="card stack-card">
+    <h2>{{icon "bell"}} {{t "What you get alerted about"}}</h2>
+    <label class="check option"><input type="checkbox" name="dead_streams" {{if $c.DeadStreams}}checked{{end}}>
+      <span>{{t "Streams that stop working"}} <small>{{t "One message per stream check with every stream that started failing, and when a stream works again. Channels you switched off yourself are left out."}}</small></span></label>
+    <label class="indent">{{t "Alert after this many failed checks in a row"}}
+      <input type="number" name="dead_after" min="1" max="100" value="{{$c.DeadAfter}}" class="small" required>
+      <small>{{tf "Checks run on the schedule under %s." (t "Stream health")}}</small></label>
+    <label class="check option"><input type="checkbox" name="expiring" {{if $c.Expiring}}checked{{end}}>
+      <span>{{t "Subscriptions that expire soon"}} <small>{{t "Once per user, with the users whose subscription ends within the number of days below."}}</small></span></label>
+    <label class="indent">{{t "Days before the end"}}
+      <input type="number" name="expiring_days" min="1" max="90" value="{{$c.ExpiringDays}}" class="small" required></label>
+    <label class="check option"><input type="checkbox" name="backup_failed" {{if $c.BackupFailed}}checked{{end}}>
+      <span>{{t "Failed backups"}} <small>{{t "Once when a backup fails, and once more when backups work again."}}</small></span></label>
+  </section>
+
+  <section class="card stack-card" id="reminders">
+    <h2>{{icon "mail"}} {{t "Reminders to users"}}</h2>
+    <p class="muted">{{t "Users with an email address get an email before their subscription ends, in the default language of the portal. Extending the subscription starts the reminders over."}}</p>
+    <label class="check"><input type="checkbox" name="reminders" {{if $c.Reminders}}checked{{end}} {{if not $d.MailOK}}disabled{{end}}>
+      <span>{{t "Email users before their subscription expires"}}</span></label>
+    {{if not $d.MailOK}}{{if $c.Reminders}}<input type="hidden" name="reminders" value="on">{{end}}{{end}}
+    <div class="row">
+      <label>{{t "Days before the end"}} <input name="reminder_days" value="{{$d.Days}}" placeholder="7, 1" class="small" autocomplete="off">
+        <small>{{t "One reminder for each number, for example 7, 1 for a week and a day before."}}</small></label>
+      <label>{{t "How to extend (optional)"}} <input name="reminder_contact" value="{{$c.ReminderContact}}" maxlength="200" placeholder="{{t "helpdesk@example.com or 06 12345678"}}" autocomplete="off">
+        <small>{{t "Shown in the reminder, so users know whom to contact."}}</small></label>
+    </div>
+  </section>
+
+  <div class="form-actions">
+    <button name="action" value="save">{{icon "check"}}{{t "Save"}}</button>
+  </div>
+</form>
+
+<section class="card spaced">
+  <h2>{{t "Subscriptions ending soon"}}</h2>
+  {{if $d.Expiring}}
+  <table>
+    <thead><tr><th>{{t "User"}}</th><th>{{t "Expires"}}</th><th>{{t "Email"}}</th></tr></thead>
+    <tbody>
+    {{range $d.Expiring}}
+    <tr>
+      <td><a href="{{base}}/users/{{.User.ID}}">{{.User.Username}}</a></td>
+      <td class="nowrap">{{date .User.ExpiresAt}} <span class="muted">({{if le .DaysLeft 1}}{{t "within a day"}}{{else}}{{tf "in %d days" .DaysLeft}}{{end}})</span></td>
+      <td>{{if .User.Email}}{{.User.Email}}{{else}}<span class="badge warn">{{t "no email address"}}</span>{{end}}</td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">{{tf "No subscriptions end within %d days." $c.ExpiringDays}}</p>
+  {{end}}
+</section>
+
+<section class="card spaced">
+  <h2>{{t "Recent alerts"}}</h2>
+  {{if $d.Log}}
+  <table>
+    <thead><tr><th>{{t "When"}}</th><th>{{t "Alert"}}</th><th>{{t "Sent by"}}</th></tr></thead>
+    <tbody>
+    {{range $d.Log}}
+    <tr>
+      <td class="nowrap">{{datetime (ptr .At)}}</td>
+      <td><strong>{{.Title}}</strong>{{if .Detail}}<div class="muted pre-line">{{.Detail}}</div>{{end}}{{if .Error}}<div class="error-text">{{.Error}}</div>{{end}}</td>
+      <td>{{range .Channels}}<span class="badge on">{{t .}}</span> {{end}}{{if .Error}}<span class="badge off">{{t "failed"}}</span>{{end}}</td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">{{t "No alerts were sent yet."}}</p>
+  {{end}}
+</section>
+{{end}}
