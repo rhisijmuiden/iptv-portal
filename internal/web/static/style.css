@@ -466,6 +466,85 @@ textarea.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, mono
   .my-devices code, .used-devices code { white-space: nowrap; font-size: .8rem; }
 }
 
+/* Web player of the account pages. The stage is nacht in both themes, so
+   video always sits on a dark ground; koraal marks what plays. */
+.player-card { padding: 0; overflow: hidden; max-width: 1000px; }
+.player-stage { position: relative; background: var(--nacht); aspect-ratio: 16 / 9; }
+.player-stage video { display: block; width: 100%; height: 100%; background: var(--nacht); }
+.player-card.is-radio .player-stage { aspect-ratio: auto; min-height: 220px; }
+.radio-stage { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 2rem 1rem 1.5rem; color: var(--wolk); }
+.radio-stage[hidden] { display: none; }
+.radio-logo { display: grid; place-items: center; width: 132px; height: 132px; border-radius: var(--radius); background: var(--wolk); overflow: hidden; }
+.radio-logo img { width: 100%; height: 100%; object-fit: contain; }
+.radio-stage audio { width: min(100%, 420px); }
+.radio-wave { display: flex; align-items: flex-end; gap: 4px; height: 22px; }
+.radio-wave i { width: 4px; height: 100%; border-radius: 2px; background: var(--koraal); animation: wave 1.1s ease-in-out infinite; transform-origin: bottom; }
+.radio-wave i:nth-child(2) { animation-delay: -.9s; }
+.radio-wave i:nth-child(3) { animation-delay: -.6s; }
+.radio-wave i:nth-child(4) { animation-delay: -.3s; }
+.radio-wave i:nth-child(5) { animation-delay: -.75s; }
+@keyframes wave { 0%, 100% { transform: scaleY(.25); } 50% { transform: scaleY(1); } }
+.player-card.has-msg .radio-wave { visibility: hidden; }
+.player-msg { position: absolute; inset: auto 1rem 1rem; margin: 0; padding: .7rem 1rem; border-radius: var(--radius-md); background: rgba(20, 33, 61, .92); color: var(--wolk); border: 1px solid rgba(255, 255, 255, .15); font-size: .93rem; }
+.player-msg[hidden] { display: none; }
+.player-info { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; }
+.player-info h2 { margin: 0 0 .15rem; font-size: 1.1rem; }
+.player-info p { margin: 0; font-size: .9rem; min-height: 1.4em; }
+.watch-tabs { display: flex; flex-wrap: wrap; gap: .35rem; margin: 0 0 1rem; padding: .3rem; border-radius: var(--radius-md); background: var(--surface-2); border: 1px solid var(--border); width: fit-content; max-width: 100%; }
+.watch-tabs button { background: transparent; border-color: transparent; color: var(--muted); padding: .45rem .9rem; font-weight: 600; }
+.watch-tabs button:hover { background: var(--surface); border-color: var(--border); color: var(--text); }
+.watch-tabs button[aria-selected="true"] { background: var(--surface); border-color: var(--border); color: var(--text); box-shadow: var(--shadow); }
+.watch-tabs button[aria-selected="true"] .icon { color: var(--koraal); }
+.watch-tabs .count { font-size: .75rem; font-weight: 600; color: var(--muted); }
+.watch-filters select[hidden] { display: none; }
+.tile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .75rem; }
+.poster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem .85rem; }
+.tile, .poster { display: flex; flex-direction: column; align-items: stretch; gap: .5rem; padding: .55rem; white-space: normal; text-align: left; font-weight: 600; font-size: .88rem; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow); }
+.tile:hover, .poster:hover { background: var(--surface); border-color: var(--hover-border); }
+.tile.playing, .poster.playing { border-color: var(--koraal); box-shadow: 0 0 0 1px var(--koraal); }
+.tile-logo, .poster-art { position: relative; display: grid; place-items: center; border-radius: var(--radius-sm); background: var(--surface-2); overflow: hidden; }
+.tile-logo { aspect-ratio: 16 / 10; padding: .6rem; }
+.tile.radio .tile-logo { aspect-ratio: 1; padding: 0; }
+.tile-logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.tile.radio .tile-logo img { width: 100%; height: 100%; object-fit: cover; }
+.poster-art { aspect-ratio: 2 / 3; }
+.poster-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tile-logo b, .poster-art b { padding: .5rem; font-size: .8rem; font-weight: 700; color: var(--muted); text-align: center; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.tile-logo img ~ b, .poster-art img ~ b { display: none; }
+.tile-name, .poster-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile.playing .tile-name::before, .poster.playing .poster-title::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: .4rem; border-radius: 50%; background: var(--koraal); vertical-align: 1px; }
+.poster { padding: 0; background: transparent; border: 0; box-shadow: none; gap: .35rem; }
+.poster:hover { background: transparent; }
+.poster:hover .poster-art { outline: 2px solid var(--hover-border); outline-offset: 2px; }
+.poster.playing { box-shadow: none; }
+.poster-meta { font-size: .78rem; font-weight: 500; color: var(--muted); margin-top: -.3rem; }
+.watch-panel .more { text-align: center; margin-top: 1.25rem; }
+.watch-panel .more[hidden], .watch-panel .empty[hidden] { display: none; }
+.watch-panel .empty { margin-top: .5rem; }
+.series-head { display: flex; gap: 1.25rem; align-items: flex-start; margin: .5rem 0 1rem; }
+.series-poster { width: 120px; flex: none; aspect-ratio: 2 / 3; object-fit: cover; border-radius: var(--radius-sm); background: var(--surface-2); }
+.series-poster[hidden] { display: none; }
+.series-head h2 { font-size: 1.25rem; margin-bottom: .35rem; }
+.series-head label { max-width: 14rem; }
+.series-head label[hidden] { display: none; }
+.series-plot { font-size: .9rem; }
+.episodes { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; }
+.episode { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: .15rem 1rem; text-align: left; white-space: normal; padding: .7rem .9rem; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); font-weight: 500; }
+.episode:hover { background: var(--surface-2); border-color: var(--hover-border); }
+.episode.playing { border-color: var(--koraal); }
+.episode strong { font-weight: 700; }
+.episode small { grid-column: 1 / -1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+@media (max-width: 640px) {
+  .tile-grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: .55rem; }
+  .poster-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: .8rem .6rem; }
+  .player-card { margin-left: -16px; margin-right: -16px; border-radius: 0; border-left: 0; border-right: 0; }
+  .player-info { padding: .85rem 16px; }
+  .watch-tabs { width: 100%; }
+  .watch-tabs button { flex: 1; padding: .45rem .5rem; }
+  .watch-tabs .count { display: none; }
+  .series-poster { width: 84px; }
+}
+@media (prefers-reduced-motion: reduce) { .radio-wave i { animation: none; transform: scaleY(.6); } }
 /* My channels and parental controls */
 .card-head h2 .icon, .card > h2 .icon { vertical-align: -3px; color: var(--tint); }
 button.icon-only { padding: .3rem .4rem; }

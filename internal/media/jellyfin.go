@@ -35,6 +35,28 @@ func (j *jellyfin) get(ctx context.Context, p string, q url.Values, v any) error
 
 func (j *jellyfin) URL(p string) string { return j.base + withQuery(p, "api_key", j.token) }
 
+func (j *jellyfin) Auth() url.Values { return url.Values{"api_key": {j.token}} }
+
+// WebPath asks Jellyfin for H.264/AAC in HLS; Jellyfin copies streams
+// that already fit instead of transcoding them.
+func (j *jellyfin) WebPath(it *Item) string {
+	if it.Stream == "" || browserFile(it.Container) {
+		return it.Stream
+	}
+	q := url.Values{
+		"MediaSourceId":               {it.Key},
+		"DeviceId":                    {"iptv-portal-web"},
+		"PlaySessionId":               {randomID()},
+		"VideoCodec":                  {"h264"},
+		"AudioCodec":                  {"aac"},
+		"TranscodingMaxAudioChannels": {"2"},
+		"MaxStreamingBitrate":         {"12000000"},
+		"SegmentContainer":            {"ts"},
+		"BreakOnNonKeyFrames":         {"true"},
+	}
+	return "/Videos/" + url.PathEscape(it.Key) + "/master.m3u8?" + q.Encode()
+}
+
 func (j *jellyfin) Libraries(ctx context.Context) ([]Library, error) {
 	var folders []struct {
 		Name           string

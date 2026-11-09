@@ -460,14 +460,23 @@ func (h *Handler) seen(r *http.Request, u store.User, ip string) {
 // open records that the player starts watching, or refuses it with 403
 // when the user already watches from as many places as allowed.
 func (h *Handler) open(w http.ResponseWriter, r *http.Request, u store.User, channelID int64, title, kind string) bool {
+	if h.tryOpen(r, u, channelID, title, kind) {
+		return true
+	}
+	http.Error(w, "maximum number of connections reached", http.StatusForbidden)
+	return false
+}
+
+// tryOpen records that the user starts watching, unless they already
+// watch from as many places as allowed.
+func (h *Handler) tryOpen(r *http.Request, u store.User, channelID int64, title, kind string) bool {
 	limit := u.ConnectionLimit()
 	ip := web.ClientIP(r)
 	if h.activity.Open(u.ID, u.Username, ip, r.UserAgent(), channelID, title, limit) {
 		h.stats.Open(r.Context(), u.ID, u.Username, ip, r.UserAgent(), channelID, title, kind)
 		return true
 	}
-	h.log.Info("connection limit reached", "username", u.Username, "ip", web.ClientIP(r), "limit", limit)
-	http.Error(w, "maximum number of connections reached", http.StatusForbidden)
+	h.log.Info("connection limit reached", "username", u.Username, "ip", ip, "limit", limit)
 	return false
 }
 

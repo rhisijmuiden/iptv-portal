@@ -30,6 +30,35 @@ func (p *plex) getPage(ctx context.Context, path string, h http.Header, v any) e
 
 func (p *plex) URL(path string) string { return p.base + withQuery(path, "X-Plex-Token", p.token) }
 
+func (p *plex) Auth() url.Values { return url.Values{"X-Plex-Token": {p.token}} }
+
+// WebPath asks Plex's universal transcoder for H.264/AAC in HLS; Plex
+// copies the video when it already fits.
+func (p *plex) WebPath(it *Item) string {
+	if it.Stream == "" || browserFile(it.Container) {
+		return it.Stream
+	}
+	q := url.Values{
+		"path":                      {"/library/metadata/" + it.Key},
+		"mediaIndex":                {"0"},
+		"partIndex":                 {"0"},
+		"protocol":                  {"hls"},
+		"fastSeek":                  {"1"},
+		"directPlay":                {"0"},
+		"directStream":              {"1"},
+		"videoCodec":                {"h264"},
+		"audioCodec":                {"aac"},
+		"maxVideoBitrate":           {"12000"},
+		"session":                   {randomID()},
+		"X-Plex-Session-Identifier": {randomID()},
+		"X-Plex-Client-Identifier":  {"iptv-portal-web"},
+		"X-Plex-Product":            {"IPTV Portal"},
+		"X-Plex-Platform":           {"Chrome"},
+		"X-Plex-Device":             {"Web browser"},
+	}
+	return "/video/:/transcode/universal/start.m3u8?" + q.Encode()
+}
+
 func (p *plex) Libraries(ctx context.Context) ([]Library, error) {
 	var resp struct {
 		MediaContainer struct {

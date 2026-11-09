@@ -5,7 +5,7 @@
     <h1>{{tf "Hello, %s" $u.Username}}</h1>
     <p class="subtitle">{{t "Your account at a glance: until when it is valid, what it includes and how much you watched."}}</p>
   </div>
-  <div class="buttons"><a class="button" href="/account/setup">{{icon "tv"}}{{t "Set up your TV"}}</a></div>
+  <div class="buttons">{{if and .WebPlayer $u.Active}}<a class="button" href="/account/watch">{{icon "play"}}{{t "Watch in your browser"}}</a>{{end}}<a class="button{{if and .WebPlayer $u.Active}} secondary{{end}}" href="/account/setup">{{icon "tv"}}{{t "Set up your TV"}}</a></div>
 </div>
 {{if not $u.Enabled}}
 <p class="flash err">{{t "Your account is disabled, so your TV box cannot play anything. Contact the person who gave you access."}}</p>

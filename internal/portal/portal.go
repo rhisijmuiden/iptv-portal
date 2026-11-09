@@ -56,6 +56,9 @@ type Handler struct {
 	// linkSecret signs the play links of the Stalker portal.
 	linkMu     sync.Mutex
 	linkSecret []byte
+	// streams makes the addresses of streams the web player gets through
+	// the portal.
+	streams *streamTokens
 }
 
 // SetStats makes the portal record views in rec.
@@ -64,7 +67,7 @@ func (h *Handler) SetStats(rec *stats.Recorder) { h.stats = rec }
 // New builds the client portal. Player requests are recorded in tracker.
 func New(st *store.Store, guide *epg.Guide, tracker *activity.Tracker, vod *media.Catalog, log *slog.Logger) (*Handler, error) {
 	h := &Handler{store: st, log: log, mux: http.NewServeMux(), guide: guide, activity: tracker, vod: vod,
-		nowPlaying: nowplaying.New(), logos: logos.New(),
+		nowPlaying: nowplaying.New(), logos: logos.New(), streams: newStreamTokens(),
 		limiter: web.NewLimiter(20, 15*time.Minute), authLimiter: web.NewLimiter(30, 15*time.Minute),
 		pinLimiter: web.NewLimiter(5, 15*time.Minute)}
 	if err := h.parseTemplates(); err != nil {
@@ -95,7 +98,7 @@ func New(st *store.Store, guide *epg.Guide, tracker *activity.Tracker, vod *medi
 // rendered by executing "layout.html".
 func (h *Handler) parseTemplates() error {
 	plain := []string{"invite", "welcome", "login", "forgot", "reset"}
-	app := []string{"account", "setup", "history", "profile", "guide", "devices", "packages", "channels", "parental"}
+	app := []string{"account", "setup", "history", "profile", "guide", "devices", "packages", "channels", "parental", "watch"}
 	h.pages = map[string]map[string]*template.Template{}
 	for _, l := range i18n.Languages {
 		funcs := templateFuncs(l.Code)

@@ -22,6 +22,16 @@
     <p class="muted"><small>{{th `Users log in at <code>%s/account</code> with the username and password of their player to see until when their account is valid, find their player details and viewing history, and change their password. With a mail server they can also reset a forgotten password.` .Data.PortalURL}}</small></p>
     <label class="check"><input type="checkbox" name="stalker_portal" value="1" {{if .Data.StalkerPortal}}checked{{end}}> {{t "MAG / Stalker portal"}}</label>
     <p class="muted"><small>{{th `For MAG boxes and apps with a MAC portal (Stalker / Ministra), such as MyTVOnline, STB Emulator and Smart STB. The portal address is <code>%s/c/</code>. A device logs in with its MAC address only, so it works for MAC addresses registered with an account (on the account page or under Devices of the user). A device with an unknown MAC address can link itself by logging in once with a username and password. Turn it on only when you need it: a MAC address is easier to guess than a password.` .Data.PortalURL}}</small></p>
+    <label class="check"><input type="checkbox" name="web_player" value="1" {{if .Data.WebPlayer}}checked{{end}}> {{t "Web player in the account pages"}}</label>
+    <p class="muted"><small>{{t "Users can watch their TV channels, radio stations and On Demand in the browser, on a computer or phone. Their package and connection limit apply as in their player."}}</small></p>
+    <label>{{t "Streams in the web player"}}
+      <select name="web_player_proxy">
+        <option value="auto"{{if eq .Data.WebPlayerProxy "auto"}} selected{{end}}>{{t "From the source, through the portal when the browser needs it (recommended)"}}</option>
+        <option value="always"{{if eq .Data.WebPlayerProxy "always"}} selected{{end}}>{{t "Always through the portal"}}</option>
+        <option value="never"{{if eq .Data.WebPlayerProxy "never"}} selected{{end}}>{{t "Always from the source"}}</option>
+      </select>
+      <small>{{t "Browsers refuse http streams on an https portal and streams from sources that do not allow other websites. The portal then passes the stream on, which uses its bandwidth. On Demand always goes through the portal."}}</small>
+    </label>
   </section>
   <section class="card stack-card">
     <h2>{{t "Network"}}</h2>

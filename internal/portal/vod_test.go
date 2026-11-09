@@ -53,6 +53,12 @@ func vodSetup(t *testing.T, direct bool) (fixture, *httptest.Server) {
 		case r.URL.Path == "/Videos/m1/stream":
 			w.Header().Set("Set-Cookie", "secret=1")
 			http.ServeContent(w, r, "heat.mkv", time.Time{}, bytes.NewReader(movieData))
+		case r.URL.Path == "/Videos/m1/master.m3u8":
+			// Jellyfin's playlists hold relative addresses without the key.
+			w.Header().Set("Content-Type", "application/x-mpegURL")
+			fmt.Fprint(w, "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1000\nmain.m3u8?DeviceId=web\n")
+		case r.URL.Path == "/Videos/m1/main.m3u8":
+			w.Write([]byte("heat-segment"))
 		case r.URL.Path == "/Videos/e3/stream":
 			w.Write([]byte("episode"))
 		case r.URL.Path == "/Items/m1/Images/Primary":

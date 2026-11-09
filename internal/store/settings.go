@@ -59,6 +59,12 @@ type Settings struct {
 	// the MAC address of the device (Stalker / Ministra middleware API).
 	// Off by default: a MAC address is easier to guess than a password.
 	StalkerPortal bool
+	// WebPlayer lets users watch their channels, radio stations and On
+	// Demand in the browser from the account pages.
+	WebPlayer bool
+	// WebPlayerProxy says when the web player gets streams through the
+	// portal instead of from the source; see the WebPlayer* constants.
+	WebPlayerProxy string
 	// SSO lets admins sign in with Microsoft Entra ID next to the local
 	// accounts, which keep working as a fallback.
 	SSO entra.Config
@@ -84,6 +90,18 @@ const (
 	UpdateChannelTest   = "test"
 )
 
+// Modes for WebPlayerProxy.
+const (
+	// WebPlayerAuto plays from the source and goes through the portal
+	// when the browser cannot: an http stream on an https portal, or a
+	// source that does not allow other websites (CORS).
+	WebPlayerAuto = "auto"
+	// WebPlayerAlways sends every stream through the portal.
+	WebPlayerAlways = "always"
+	// WebPlayerNever never sends live streams through the portal.
+	WebPlayerNever = "never"
+)
+
 // MinServiceTokenLength is the shortest service token accepted.
 const MinServiceTokenLength = 32
 
@@ -98,6 +116,8 @@ var DefaultSettings = Settings{
 	RadioNowPlaying: true,
 	RadioLabel:      true,
 	AccountPortal:   true,
+	WebPlayer:       true,
+	WebPlayerProxy:  WebPlayerAuto,
 	Mail:            mail.Config{Port: 587, Security: mail.StartTLS},
 }
 
@@ -114,6 +134,8 @@ const (
 	keyAccounts   = "account_portal"
 	keyRadioLabel = "radio_category_label"
 	keyStalker    = "stalker_portal"
+	keyWebPlayer  = "web_player"
+	keyWebProxy   = "web_player_proxy"
 
 	keySMTPHost     = "smtp_host"
 	keySMTPPort     = "smtp_port"
@@ -178,6 +200,10 @@ func (s *Store) Settings(ctx context.Context) (Settings, error) {
 			out.RadioLabel = v == "1"
 		case keyStalker:
 			out.StalkerPortal = v == "1"
+		case keyWebPlayer:
+			out.WebPlayer = v == "1"
+		case keyWebProxy:
+			out.WebPlayerProxy = v
 		case keySMTPHost:
 			out.Mail.Host = v
 		case keySMTPPort:
@@ -243,6 +269,13 @@ func (st *Settings) Validate() error {
 		st.UpdateChannel = UpdateChannelStable
 	default:
 		return fmt.Errorf("release channel %q is invalid (stable or test)", st.UpdateChannel)
+	}
+	switch st.WebPlayerProxy {
+	case WebPlayerAuto, WebPlayerAlways, WebPlayerNever:
+	case "":
+		st.WebPlayerProxy = WebPlayerAuto
+	default:
+		return fmt.Errorf("web player mode %q is invalid (auto, always or never)", st.WebPlayerProxy)
 	}
 	if st.Language == "" {
 		st.Language = i18n.Default
@@ -350,6 +383,8 @@ func (s *Store) SaveSettings(ctx context.Context, st Settings) error {
 		keyAccounts:   boolString(st.AccountPortal),
 		keyRadioLabel: boolString(st.RadioLabel),
 		keyStalker:    boolString(st.StalkerPortal),
+		keyWebPlayer:  boolString(st.WebPlayer),
+		keyWebProxy:   st.WebPlayerProxy,
 
 		keySMTPHost:     st.Mail.Host,
 		keySMTPPort:     strconv.Itoa(st.Mail.Port),

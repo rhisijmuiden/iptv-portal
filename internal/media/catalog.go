@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 	"sync"
@@ -476,4 +477,22 @@ func (c *Catalog) URL(it *Item, path string) (u string, direct bool) {
 		return "", false
 	}
 	return cl.URL(path), c.servers[it.ServerID].Direct
+}
+
+// WebURL returns the full address (with token) that plays a movie or
+// episode in a web browser, and the token as query parameter for the
+// addresses in the server's HLS playlists. The browser always gets it
+// through the portal, so the token stays on the server.
+func (c *Catalog) WebURL(it *Item) (u string, auth url.Values) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	cl, ok := c.clients[it.ServerID]
+	if !ok {
+		return "", nil
+	}
+	p := cl.WebPath(it)
+	if p == "" {
+		return "", nil
+	}
+	return cl.URL(p), cl.Auth()
 }
