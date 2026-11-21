@@ -219,7 +219,7 @@ func (s *Store) ChangeOwnPassword(ctx context.Context, sess Session, current, pa
 	if err != nil {
 		return err
 	}
-	return s.withTx(ctx, func(tx *sql.Tx) error {
+	err = s.withTx(ctx, func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx,
 			`UPDATE admins SET password_hash = ?, must_change = 0 WHERE id = ?`,
 			string(hash), sess.Admin.ID); err != nil {
@@ -229,6 +229,10 @@ func (s *Store) ChangeOwnPassword(ctx context.Context, sess Session, current, pa
 			`DELETE FROM sessions WHERE admin_id = ? AND token <> ?`, sess.Admin.ID, sess.Token)
 		return err
 	})
+	if err == nil {
+		s.forgetInitialCredentials(sess.Admin.Username)
+	}
+	return err
 }
 
 // GeneratePassword returns a random password that is easy to type over

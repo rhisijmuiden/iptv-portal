@@ -21,4 +21,30 @@ jobs:
       - run: go vet ./...
       - run: go test ./...
       - name: Check shell scripts
-        run: shellcheck install.sh ct/iptv-portal.sh install/iptv-portal-install.sh scripts/next-test-version.sh
+        run: shellcheck install.sh ct/iptv-portal.sh install/iptv-portal-install.sh scripts/*.sh
+
+  # Builds the Proxmox CT template and boots it, and runs install.sh on a
+  # bare Debian 13, both as systemd-nspawn containers.
+  ct-template:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build
+        run: |
+          mkdir -p dist
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath \
+            -ldflags "-s -w -X github.com/rhisijmuiden/iptv-portal/internal/version.Version=v0.0.0-ci" \
+            -o dist/iptv-portal ./cmd/iptv-portal
+          cp LICENSE dist/LICENSE
+          tar -C dist -czf dist/iptv-portal_linux_amd64.tar.gz iptv-portal LICENSE
+      - name: Install systemd-nspawn
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq systemd-container zstd
+      - name: Build the CT template
+        run: sudo KEEP_BASE=dist/debian-13-base.tar.zst scripts/build-ct-template.sh dist/iptv-portal_linux_amd64.tar.gz dist/debian-13-iptv-portal_amd64.tar.zst
+      - name: First boot of the CT template
+        run: sudo scripts/test-ct-template.sh template dist/debian-13-iptv-portal_amd64.tar.zst
+      - name: install.sh on a bare Debian 13
+        run: sudo scripts/test-ct-template.sh bare dist/debian-13-base.tar.zst dist/iptv-portal_linux_amd64.tar.gz

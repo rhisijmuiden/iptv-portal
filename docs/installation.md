@@ -1,34 +1,55 @@
 # Installation
 
-IPTV Portal is a single program with no dependencies. It runs on any 64-bit Linux system with systemd (amd64 or arm64): dedicated hardware, a VPS, or a Proxmox LXC container.
+IPTV Portal is a single program with no dependencies. It runs on any 64-bit Linux system with systemd (amd64 or arm64): a bare Debian 13 on dedicated hardware, a VM, a VPS or a container, or Proxmox VE.
 
-- [Dedicated hardware or VPS](#dedicated-hardware-or-vps)
+- [Debian 13: hardware, VM or container](#debian-13-hardware-vm-or-container)
+- [Proxmox CT template](#proxmox-ct-template)
 - [Proxmox LXC container](#proxmox-lxc-container)
 - [Behind a reverse proxy](#behind-a-reverse-proxy)
 - [Updating](#updating)
 - [Uninstalling](#uninstalling)
 - [Troubleshooting](#troubleshooting)
 
-## Dedicated hardware or VPS
+## Debian 13: hardware, VM or container
 
-On Debian, Ubuntu or another systemd-based distribution, run as root:
+A bare Debian 13 (trixie) install is enough, for example a netinst with only *standard system utilities*, or a Debian LXC container. Debian 12, Ubuntu and other systemd-based distributions work too. As root (`su -`, or prefix `sudo` when you have it), run:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/rhisijmuiden/iptv-portal/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/rhisijmuiden/iptv-portal/main/install.sh | bash
+```
+
+Without curl, use wget, which a standard Debian has:
+
+```sh
+wget -qO- https://raw.githubusercontent.com/rhisijmuiden/iptv-portal/main/install.sh | bash
 ```
 
 The installer:
 
-1. downloads the latest release for your CPU and checks its checksum,
-2. creates the system user `iptv-portal`,
-3. installs the program in `/opt/iptv-portal` and the data in `/var/lib/iptv-portal`,
-4. installs and starts the systemd service `iptv-portal`,
-5. prints the admin panel address, the username `admin` and a **one-time password**. You have to choose a new password after logging in.
+1. installs what a bare system may lack with apt (curl, ca-certificates),
+2. downloads the latest release for your CPU and checks its checksum,
+3. creates the system user `iptv-portal`,
+4. installs the program in `/opt/iptv-portal` and the data in `/var/lib/iptv-portal`,
+5. installs and starts the systemd service `iptv-portal`,
+6. shows the login, and nothing else:
+
+```
+==> IPTV Portal v0.7.0 is installed and running
+
+    Admin panel:        http://192.168.1.20:8080/
+    Username:           admin
+    One-time password:  x7KpQ2mWv9RtZh3c
+    You must change this password after your first login.
+```
+
+Open the address, log in and choose a new password. All further configuration (portal name, public URL, ports, mail server, backups, channels) is done in the admin panel.
+
+The same login is shown on the console before you log in (the login banner) and every time you open a root shell, so you can find it again. Once you have changed the password, only the admin panel address is shown.
 
 If port 80 or 8080 is already taken (for example by a reverse proxy on the same machine), the installer picks 8081 or 8090 instead and says so. You can also choose the ports yourself:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/rhisijmuiden/iptv-portal/main/install.sh | sudo bash -s -- --portal-port 8081 --admin-port 8080
+curl -fsSL https://raw.githubusercontent.com/rhisijmuiden/iptv-portal/main/install.sh | bash -s -- --portal-port 8081 --admin-port 8080
 ```
 
 | Option | Meaning |
@@ -36,15 +57,62 @@ curl -fsSL https://raw.githubusercontent.com/rhisijmuiden/iptv-portal/main/insta
 | `--version vX.Y.Z` | Install a specific release instead of the latest stable one, also a pre-release such as `v0.4.0-rc.1` |
 | `--admin-port PORT` | Admin panel port (default 8080) |
 | `--portal-port PORT` | Portal port for TV boxes (default 80) |
+| `--archive FILE` | Install from a downloaded `iptv-portal_linux_*.tar.gz` instead of downloading it (offline installs) |
 | `--reset-admin` | Print a new one-time admin password |
+| `--template` | Prepare a container template: install everything, but create the admin on the first boot and start nothing. This is how the Proxmox CT template is built. |
 | `--uninstall` | Remove the service and program, keep the data |
 | `--purge` | With `--uninstall`, also delete the data |
 
 Both ports can be changed later under **Settings** in the admin panel.
 
+## Proxmox CT template
+
+Every release has a ready-made Proxmox VE container template: the official Proxmox *debian-13-standard* template with IPTV Portal installed. Nothing has to run on the Proxmox host.
+
+1. In the Proxmox web interface, select a storage that holds container templates (usually *local*), open **CT Templates** and click **Download from URL**.
+2. Paste the URL and click **Query URL**:
+
+   ```
+   https://github.com/rhisijmuiden/iptv-portal/releases/latest/download/debian-13-iptv-portal_amd64.tar.zst
+   ```
+
+   For a specific version, use `https://github.com/rhisijmuiden/iptv-portal/releases/download/vX.Y.Z/debian-13-iptv-portal_amd64.tar.zst` (the test channel's pre-releases have one too). To verify the download, choose *SHA-256* as hash algorithm and paste the checksum of the file from the release's `checksums.txt`.
+3. Click **Download**.
+4. Click **Create CT**, pick the template under *Template*, and set a root password or SSH key, the disk (2 GB is enough), CPU (1 core), memory (512 MB) and the network (DHCP or a static IP). Leave *Unprivileged container* on.
+5. Start the container.
+
+On its first boot the container creates the admin account with a one-time password and starts the portal. Open the container's **Console** in Proxmox: above the login prompt it shows
+
+```
+IPTV Portal
+  Admin panel:        http://192.168.1.21:8080/
+  Username:           admin
+  One-time password:  x7KpQ2mWv9RtZh3c
+  (change it after your first login)
+```
+
+The same appears when you run `pct enter <ID>` on the Proxmox host or log in as root over SSH. Open the address, log in and choose a new password; the console then shows only the address. Everything else is configured in the admin panel.
+
+From the shell on the Proxmox host:
+
+```sh
+wget -O /var/lib/vz/template/cache/debian-13-iptv-portal_amd64.tar.zst \
+  https://github.com/rhisijmuiden/iptv-portal/releases/latest/download/debian-13-iptv-portal_amd64.tar.zst
+pct create 120 local:vztmpl/debian-13-iptv-portal_amd64.tar.zst \
+  --hostname iptv-portal --unprivileged 1 --features nesting=1 \
+  --cores 1 --memory 512 --rootfs local-lvm:2 \
+  --net0 name=eth0,bridge=vmbr0,ip=dhcp --password
+pct start 120
+pct enter 120
+```
+
+`pveam`, the template command line tool, only knows the templates of the official Proxmox list, so use the web interface or `wget` as above.
+
+The template is amd64 only, like the other Proxmox templates. Updating works as for any install: **Info → Update now** in the admin panel.
+
 ## Proxmox LXC container
 
-On the Proxmox VE host shell, run:
+Instead of the [CT template](#proxmox-ct-template) you can let a script create the container. On the Proxmox VE host shell, run:
 
 ```sh
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/rhisijmuiden/iptv-portal/main/ct/iptv-portal.sh)"
@@ -52,10 +120,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/rhisijmuiden/iptv-portal
 
 This uses the [community-scripts](https://community-scripts.github.io/ProxmoxVE/) framework, the same one as its Debian LXC script. You get its usual menu with default and advanced settings. The defaults are an unprivileged Debian 13 container with 1 CPU core, 512 MB RAM and 2 GB disk. Inside the container it runs the installer above.
 
-At the end, the console shows:
-
-- the admin panel address with the username `admin` and a one-time password. You have to change the password after the first login.
-- the portal address for TV boxes (`http://<container IP>`).
+At the end, the console shows only the admin panel address (IP and port), the username `admin` and a one-time password. You have to change the password after the first login; everything else is configured in the admin panel.
 
 To update later, use **Info → Update now** in the admin panel, run `update` in the container's console, or run the installer command from [Updating](#updating) inside the container.
 
@@ -161,6 +226,7 @@ Add `--purge` to delete the data in `/var/lib/iptv-portal` as well.
 | Problem | Fix |
 |---|---|
 | Forgot the admin password | `sudo iptv-portal admin-reset` prints a new one-time password |
+| Where was the one-time password again? | `sudo iptv-portal login-info`, or open a root shell or the console: both show it until it has been changed |
 | Admin panel unreachable after changing its port | `sudo iptv-portal set-port -admin 8080 && sudo systemctl restart iptv-portal` |
 | Service does not start | `journalctl -u iptv-portal -e` shows the log |
 | A port is taken | Change it under **Settings**, or with `iptv-portal set-port` |
