@@ -29,25 +29,33 @@ It can also offer the movies and series of your own **Jellyfin** or **Plex** ser
 - **Alerts and reminders**: get a message by email, Telegram or Discord when streams stop working, subscriptions are about to expire or a backup fails, and email users a reminder before their subscription ends. See [Alerts and reminders](#alerts-and-reminders).
 - **Updates from the admin panel** with release notes, stable and test release channels, an optional daily check and automatic rollback.
 - **English and Dutch.** English is the default; every admin picks a language at the bottom of the menu, and subscribers can switch on the invitation pages. See [Languages](#languages).
-- **Simple to host**: one Go binary with SQLite, an installer for any systemd Linux and a script for Proxmox VE LXC.
+- **Simple to host**: one Go binary with SQLite, an installer for any systemd Linux (a bare Debian 13 is enough), a Proxmox VE CT template and a Proxmox LXC script.
 
 See [The admin panel](#the-admin-panel) below for a page-by-page tour.
 
 ## Installation
 
-On a dedicated server or VPS (Debian, Ubuntu or another systemd-based Linux):
+On a bare Debian 13 (or 12, Ubuntu or another systemd-based Linux), on hardware, in a VM or in a container, run as root:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/rhisijmuiden/iptv-portal/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/rhisijmuiden/iptv-portal/main/install.sh | bash
 ```
 
-As a Proxmox VE LXC container, on the Proxmox host:
+No curl yet? `wget -qO- https://raw.githubusercontent.com/rhisijmuiden/iptv-portal/main/install.sh | bash` works the same; the installer adds what it needs.
+
+On Proxmox VE, download the ready-made **CT template** under *Storage → CT Templates → Download from URL*:
+
+```
+https://github.com/rhisijmuiden/iptv-portal/releases/latest/download/debian-13-iptv-portal_amd64.tar.zst
+```
+
+Create a container from it; on its first boot it sets itself up. Or let the community-scripts based script create the container, on the Proxmox host:
 
 ```sh
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/rhisijmuiden/iptv-portal/main/ct/iptv-portal.sh)"
 ```
 
-Both print the admin panel address, the username and a one-time password at the end. See [docs/installation.md](docs/installation.md) for options, reverse proxy examples (Nginx, Caddy, Nginx Proxy Manager, Traefik), updating and troubleshooting.
+Each way ends by showing only what you need to log in: the admin panel address (IP and port), the username and a one-time password. Everything else is configured in the admin panel. See [docs/installation.md](docs/installation.md) for options, reverse proxy examples (Nginx, Caddy, Nginx Proxy Manager, Traefik), updating and troubleshooting.
 
 ## The admin panel
 
@@ -204,7 +212,7 @@ When the portal runs behind a reverse proxy, set **Settings → Public URL** to 
 
 ## Releases
 
-Pushing a tag such as `v0.1.0`, or running the **Release** workflow under *Actions* with a version, builds the Linux binaries (amd64 and arm64) and publishes a GitHub release with generated release notes. The installers download the latest stable release.
+Pushing a tag such as `v0.1.0`, or running the **Release** workflow under *Actions* with a version, builds the Linux binaries (amd64 and arm64) and the Proxmox CT template and publishes a GitHub release with generated release notes. The installers download the latest stable release.
 
 There are two release channels:
 

@@ -53,11 +53,15 @@ description
 msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
 
-# Create the one-time admin password now, so it is shown on this console.
-CREDS="$(pct exec "$CTID" -- runuser -u iptv-portal -- env IPTV_PORTAL_DATA=/var/lib/iptv-portal /opt/iptv-portal/iptv-portal admin-reset)"
-echo -e "${INFO}${YW} Admin panel login (one-time password, change it after logging in):${CL}"
+# The installer created the admin with a one-time password; show the login.
+# Releases before login-info need a new one-time password instead.
+portal() { pct exec "$CTID" -- runuser -u iptv-portal -- env IPTV_PORTAL_DATA=/var/lib/iptv-portal /opt/iptv-portal/iptv-portal "$@"; }
+if portal help | grep -q login-info; then
+  CREDS="$(portal login-info)"
+else
+  CREDS="$(portal admin-reset)"
+fi
+echo -e "${INFO}${YW} IPTV Portal admin login (change the one-time password after logging in):${CL}"
 while IFS= read -r line; do
   echo -e "${TAB}${BGN}${line}${CL}"
 done <<<"$CREDS"
-echo -e "${INFO}${YW} Portal address for TV boxes:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}http://${IP}${CL}"

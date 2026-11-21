@@ -49,6 +49,8 @@ Commands:
   station [--reset-admin]     Apply the Build My TV Station settings from the
                               STATION_* environment, restart the service and
                               print station.json (run as root)
+  login-info                  Print the admin panel address, and the
+                              one-time login until it has been changed
   version                     Print the version
 
 Common option:
@@ -72,6 +74,8 @@ func main() {
 		err = setPort(args)
 	case "station":
 		err = station(args, os.Stdout, os.Stderr)
+	case "login-info":
+		err = loginInfo(args)
 	case "version":
 		fmt.Println(version.Version)
 	case "help", "-h", "--help":
@@ -273,10 +277,11 @@ func adminReset(args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Admin panel:        %s\n", adminURL(settings.AdminPort, settings.BasePath))
-	fmt.Printf("Username:           %s\n", *username)
-	fmt.Printf("One-time password:  %s\n", pw)
-	fmt.Println("You must change this password after your first login.")
+	creds := store.InitialCredentials{Username: *username, Password: pw}
+	if err := saveLoginInfo(*data, creds, settings); err != nil {
+		fmt.Fprintln(os.Stderr, "warning: could not save the login for the console:", err)
+	}
+	printLoginInfo(os.Stdout, settings, &creds)
 	return nil
 }
 
@@ -324,19 +329,34 @@ func setPort(args []string) error {
 	return nil
 }
 
-// adminURL guesses the admin panel address from the first non-loopback
-// IPv4 address of this machine.
+// adminURL guesses the admin panel address from the IPv4 address this
+// machine uses for its default route, or else its first non-loopback IPv4
+// address.
 func adminURL(port int, basePath string) string {
-	host := "localhost"
+	return panelURL(localIPv4(), port, basePath)
+}
+
+func panelURL(host string, port int, basePath string) string {
+	return "http://" + net.JoinHostPort(host, strconv.Itoa(port)) + basePath + "/"
+}
+
+func localIPv4() string {
+	// Connecting a UDP socket sends nothing; it only picks the route.
+	if c, err := net.Dial("udp4", "192.0.2.1:9"); err == nil {
+		ip := c.LocalAddr().(*net.UDPAddr).IP
+		c.Close()
+		if !ip.IsLoopback() && !ip.IsUnspecified() {
+			return ip.String()
+		}
+	}
 	if addrs, err := net.InterfaceAddrs(); err == nil {
 		for _, a := range addrs {
 			if ipn, ok := a.(*net.IPNet); ok && !ipn.IP.IsLoopback() && ipn.IP.To4() != nil {
-				host = ipn.IP.String()
-				break
+				return ipn.IP.String()
 			}
 		}
 	}
-	return "http://" + net.JoinHostPort(host, strconv.Itoa(port)) + basePath + "/"
+	return "localhost"
 }
 
 // fixOwnership gives the database files back to the owner of the data
@@ -355,7 +375,7 @@ func fixOwnership(dataDir string) {
 	if !ok || st.Uid == 0 {
 		return
 	}
-	for _, name := range []string{"portal.db", "portal.db-wal", "portal.db-shm"} {
+	for _, name := range []string{"portal.db", "portal.db-wal", "portal.db-shm", store.CredentialsFile, store.BannerFile} {
 		os.Lchown(filepath.Join(dataDir, name), int(st.Uid), int(st.Gid))
 	}
 }

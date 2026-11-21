@@ -10,6 +10,9 @@ name: Release
 # release channel are offered it, and the installers keep using the latest
 # stable release.
 #
+# Every release also gets the Proxmox CT template
+# debian-13-iptv-portal_amd64.tar.zst (built by scripts/build-ct-template.sh).
+#
 # The Test release workflow calls this workflow after every merge to main,
 # so new features reach the test channel without manual steps.
 on:
@@ -65,7 +68,20 @@ jobs:
             tar -C dist -czf dist/iptv-portal_linux_${arch}.tar.gz iptv-portal LICENSE
             rm dist/iptv-portal dist/LICENSE
           done
-          (cd dist && sha256sum *.tar.gz > checksums.txt)
+      - name: Build the Proxmox CT template
+        # A Proxmox outage must not stop the release; it then ships without
+        # the template, with a warning.
+        continue-on-error: true
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq zstd
+          sudo scripts/build-ct-template.sh dist/iptv-portal_linux_amd64.tar.gz dist/debian-13-iptv-portal_amd64.tar.zst ||
+            { echo "::warning::The Proxmox CT template could not be built"; sudo rm -f dist/*.tar.zst; exit 1; }
+          sudo chown "$(id -u):$(id -g)" dist/debian-13-iptv-portal_amd64.tar.zst
+      - name: Checksums
+        run: |
+          cd dist
+          shopt -s nullglob
+          sha256sum *.tar.gz *.tar.zst > checksums.txt
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
